@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from . import models, schemas
 from .database import engine, get_db
+from typing import Optional
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -60,7 +61,6 @@ def edit_user(userDetail: schemas.UserData, response: Response, db: Session = De
 @app.get('/getUser')
 def get_user_details(response: Response, db: Session = Depends(get_db), userId=int | None):
     try:
-
         get_user = db.query(models.User).filter(
             models.User.customer_contact == userId).all()
 
@@ -72,3 +72,86 @@ def get_user_details(response: Response, db: Session = Depends(get_db), userId=i
     except IntegrityError as err:
         response.status_code = 404
         return {"status": 404, "message": "Error", "data": {}}
+
+
+@app.post('/addAddress')
+def add_address(createAddress: schemas.AddAddress, response: Response, db: Session = Depends(get_db)):
+    try:
+        new_address = models.Addresses(**createAddress.model_dump())
+        db.add(new_address)
+        db.commit()
+        db.refresh(new_address)
+        return {"status": "200", "message": "New address created!", "data": new_address}
+    except IntegrityError as err:
+        response.status_code = 404
+        return {"status": "404", "message": "Error", "data": {}}
+
+
+@app.get('/getAllAddresses')
+def get_address(response: Response, db: Session = Depends(get_db), userId=int | None, companyId: Optional[str] = None):
+    if companyId:
+        try:
+            user_addresses = db.query(models.Addresses).filter(
+                models.Addresses.company == companyId).filter(
+                models.Addresses.user_contact == userId).all()
+            if not user_addresses:
+                response.status_code = 200
+                return {"status": "200", "message": "No address found", "data": []}
+
+            return {"status": "200", "message": "success", "data": user_addresses}
+
+        except IntegrityError as err:
+            response.status_code = 404
+            return {"status": "404", "message": "Error", "data": {}}
+
+    try:
+        user_addresses = db.query(models.Addresses).filter(
+            models.Addresses.user_contact == userId).all()
+
+        if not user_addresses:
+            response.status_code = 200
+            return {"status": "200", "message": "No address found", "data": []}
+
+        return {"status": "200", "message": "success", "data": user_addresses}
+    except IntegrityError as err:
+        response.status_code = 404
+        return {"status": "404", "message": "Error", "data": {}}
+
+
+@app.put('/editAddress')
+def edit_address(editAddress: schemas.Address, response: Response, db: Session = Depends(get_db),
+                 addressId=int | None):
+    try:
+        edit_user_address = db.query(models.Addresses).filter(
+            models.Addresses.address_id == addressId)
+        address_exist = edit_user_address.first()
+        if not address_exist:
+            response.status_code = 200
+            return {"status": 204, "message": "Address doesn't exists", "data": {}}
+
+        edit_user_address.update(editAddress.model_dump(
+            exclude_unset=True), synchronize_session=False)
+        db.commit()
+        return {"status": "200", "message": "address edited!", "data": edit_user_address.first()}
+
+    except IntegrityError as err:
+        response.status_code = 404
+        return {"status": "404", "message": "Error", "data": {}}
+
+
+@app.delete('/deleteAddress')
+def delete_user_address(response: Response, db: Session = Depends(get_db), addressId=int):
+    try:
+        delete_address = db.query(models.Addresses).filter(
+            models.Addresses.address_id == addressId)
+        address_exist = delete_address.first()
+        if not address_exist:
+            response.status_code = 200
+            return {"status": "204", "message": "Address doesn't exists", "data": {}}
+
+        delete_address.delete(synchronize_session=False)
+        db.commit()
+        return {"status": "200", "message": "Address deleted!", "data": {}}
+    except IntegrityError as err:
+        response.status_code = 404
+        return {"status": "404", "message": "Error", "data": {}}
