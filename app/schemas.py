@@ -1,16 +1,14 @@
-from typing import Optional
+from typing import List
 from pydantic import BaseModel
 from datetime import date
 
 
-class User(BaseModel):
+class UserData(BaseModel):
     customer_id: str
-    customer_name: Optional[str]
+    customer_name: str | None = None
     customer_contact: int
-    customer_birthdate: Optional[date]
-    is_new_customer: Optional[bool]
+    customer_birthdate: date | None = None
+    companies: List[str] | None = None
 
     class Config:
-        orm_mode = True
-
-
+        from_attributes = True
