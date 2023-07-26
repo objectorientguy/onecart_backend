@@ -1,6 +1,6 @@
 from typing import List
 from pydantic import BaseModel
-from datetime import date
+from datetime import date, time
 
 
 class UserData(BaseModel):
@@ -8,7 +8,7 @@ class UserData(BaseModel):
     customer_name: str | None = None
     customer_contact: int
     customer_birthdate: date | None = None
-    companies: List[str] | None = None
+    companies: List[str] | None = []
 
     class Config:
         from_attributes = True
@@ -21,7 +21,7 @@ class Address(BaseModel):
     address_name: str
     city: str
     pincode: int
-    company: str | None = None
+    company: str
 
     class Config:
         from_attributes = True
@@ -29,3 +29,33 @@ class Address(BaseModel):
 
 class AddAddress(Address):
     pass
+
+
+class Cart(BaseModel):
+    cart_id: int | None = None
+    user_contact: int
+    company_id: str
+    products: List[str]
+
+    class Config:
+        from_attributes = True
+
+
+class UpdateCart(Cart):
+    pass
+
+
+class Bookings(BaseModel):
+    booking_id: int | None = None
+    user_contact: int
+    company_id: str
+    products: List[str]
+    address_id: int
+    booking_time: time
+    booking_date: date
+    total: str
+    coupon: str
+    coupon_discount: str
+
+    class Config:
+        from_attributes = True
