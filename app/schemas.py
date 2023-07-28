@@ -1,21 +1,21 @@
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel
 from datetime import date, time
 
 
 class UserData(BaseModel):
     customer_id: str
-    customer_name: str | None = None
+    customer_name: Optional[str]
     customer_contact: int
-    customer_birthdate: date | None = None
-    companies: List[str] | None = []
+    customer_birthdate: Optional[date]
+    companies: Optional[List[str]]
 
     class Config:
         from_attributes = True
 
 
 class Address(BaseModel):
-    address_id: int | None = None
+    address_id: Optional[int]
     user_contact: int
     address_title: str
     address_name: str
@@ -32,7 +32,7 @@ class AddAddress(Address):
 
 
 class Cart(BaseModel):
-    cart_id: int | None = None
+    cart_id: Optional[int]
     user_contact: int
     company_id: str
     products: List[str]
@@ -46,7 +46,7 @@ class UpdateCart(Cart):
 
 
 class Bookings(BaseModel):
-    booking_id: int | None = None
+    booking_id: Optional[int]
     user_contact: int
     company_id: str
     products: List[str]
