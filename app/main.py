@@ -35,7 +35,8 @@ async def upload_image(name: str, request: Request, file: UploadFile = File(...)
         image_obj = save_image_to_db(db, name, file.filename)
         base_url = request.base_url
         image_url = f"{base_url}images/{file.filename}"
-        return {"message": "Image uploaded successfully", "image_id": image_obj.id, "image_url": image_url}
+        return {"status": 200, "message": "Image uploaded successfully",
+                "data": {"image_id": image_obj.id, "image_url": image_url}}
     finally:
         db.close()
 
@@ -91,7 +92,8 @@ def create_user(loginSignupAuth: schemas.UserData, response: Response,
                 return {"status": 200, "message": "New user successfully Logged in!", "data": user_data}
             except IntegrityError:
                 response.status_code = 200
-                return {"status": "204", "message": "User is not registered for this company please Sing up", "data": {}}
+                return {"status": "204", "message": "User is not registered for this company please Sing up",
+                        "data": {}}
 
         return {"status": 200, "message": "New user successfully Logged in for this company!", "data": user_data}
 
