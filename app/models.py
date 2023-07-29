@@ -63,6 +63,13 @@ class Products(Base):
     category = relationship("Categories")
 
 
+class Image(Base):
+    __tablename__ = "images"
+    id = Column(BIGINT, primary_key=True, index=True)
+    name = Column(String)
+    filename = Column(String)
+
+
 class User(Base):
     __tablename__ = "customers"
 
