@@ -10,8 +10,6 @@ class Companies(Base):
     __tablename__ = "companies"
 
     company_id = Column(BIGINT, nullable=False, primary_key=True, autoincrement=True, unique=True)
-    user_contact = Column(BIGINT, ForeignKey(
-        "customers.customer_contact", ondelete="CASCADE"), nullable=False)
     company_name = Column(String, nullable=False)
     password = Column(String, primary_key=True, nullable=False)
     email = Column(String, nullable=True)
@@ -52,8 +50,6 @@ class Products(Base):
         "customers.customer_contact", ondelete="CASCADE"), nullable=False)
     category_id = Column(BIGINT, ForeignKey(
         "categories.category_id", ondelete="CASCADE"), nullable=False)
-    store_id = Column(BIGINT, ForeignKey(
-        "companies.company_id", ondelete="CASCADE"), nullable=True)
     product_name = Column(String, nullable=False)
     image = Column(JSON, nullable=False)
     item_count = Column(BIGINT, nullable=False)
@@ -64,7 +60,6 @@ class Products(Base):
 
     customer = relationship("User")
     company = relationship("Companies")
-    store = relationship("Stores")
     category = relationship("Categories")
 
 

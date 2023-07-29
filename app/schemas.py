@@ -90,19 +90,6 @@ class Category(BaseModel):
         from_attributes = True
 
 
-class Store(BaseModel):
-    store_id: int | None = None
-    user_contact: int
-    store_name: str
-    password: str
-    email: str
-    store_contact: int
-    store_address: str
-
-    class Config:
-        from_attributes = True
-
-
 class Product(BaseModel):
     product_id: int | None = None
     company_id: int

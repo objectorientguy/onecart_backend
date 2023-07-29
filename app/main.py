@@ -15,9 +15,9 @@ def root():
 
 
 @app.post('/userAuthenticate')
-def create_user(loginSignupAuth: schemas.UserData, response: Response, db: Session = Depends(get_db)):
+def create_user(loginSignupAuth: schemas.UserData, response: Response,
+                db: Session = Depends(get_db), companyId=str):
     try:
-        print(loginSignupAuth.customer_name)
         user_data = db.query(models.User).get(
             loginSignupAuth.customer_contact)
 
@@ -25,8 +25,12 @@ def create_user(loginSignupAuth: schemas.UserData, response: Response, db: Sessi
             try:
                 new_user_data = models.User(
                     **loginSignupAuth.model_dump())
-
+                print(loginSignupAuth)
+                new_user_added = models.UserCompany(
+                    company_id=companyId,
+                    user_contact=loginSignupAuth.customer_contact)
                 db.add(new_user_data)
+                db.add(new_user_added)
                 db.commit()
                 db.refresh(new_user_data)
                 return {"status": 200, "message": "New user successfully created!", "data": new_user_data}
@@ -34,7 +38,23 @@ def create_user(loginSignupAuth: schemas.UserData, response: Response, db: Sessi
                 response.status_code = 200
                 return {"status": 204, "message": "User is not registered please Sing up", "data": {}}
 
-        return {"status": 200, "message": "New user successfully Logged in!", "data": user_data}
+        user_exists = db.query(models.UserCompany).filter(models.UserCompany.company_id == companyId).filter(
+            models.UserCompany.user_contact == loginSignupAuth.customer_contact).first()
+        print(user_exists)
+        if not user_exists:
+            try:
+                new_user_company = models.UserCompany(
+                    company_id=companyId,
+                    user_contact=loginSignupAuth.customer_contact)
+                db.add(new_user_company)
+                db.commit()
+                db.refresh(new_user_company)
+                return {"status": 200, "message": "New user successfully Logged in!", "data": user_data}
+            except IntegrityError:
+                response.status_code = 200
+                return {"status": "204", "message": "User is not registered for this company please Sing up", "data": {}}
+
+        return {"status": 200, "message": "New user successfully Logged in for this company!", "data": user_data}
 
     except IntegrityError:
         response.status_code = 404
@@ -94,7 +114,7 @@ def add_address(createAddress: schemas.AddAddress, response: Response, db: Sessi
 def get_address(response: Response, db: Session = Depends(get_db), userId=int, companyId=str):
     try:
         user_addresses = db.query(models.Addresses).filter(
-            models.Addresses.company == companyId).filter(
+            models.Addresses.company_id == companyId).filter(
             models.Addresses.user_contact == userId).all()
 
         if not user_addresses:
