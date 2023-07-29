@@ -282,7 +282,7 @@ def add_bookings(bookOrder: schemas.Bookings, response: Response, db: Session = 
 @app.post('/addCompany')
 def add_companies(addCompany: schemas.Bookings, response: Response, db: Session = Depends(get_db)):
     try:
-        new_company = models.Bookings(**addCompany.model_dump())
+        new_company = models.Companies(**addCompany.model_dump())
         db.add(new_company)
         db.commit()
         db.refresh(new_company)
@@ -296,7 +296,7 @@ def add_companies(addCompany: schemas.Bookings, response: Response, db: Session 
 @app.post('/addCategory')
 def add_categories(addCategory: schemas.Category, response: Response, db: Session = Depends(get_db)):
     try:
-        new_category = models.Bookings(**addCategory.model_dump())
+        new_category = models.Categories(**addCategory.model_dump())
         db.add(new_category)
         db.commit()
         db.refresh(new_category)
@@ -307,10 +307,43 @@ def add_categories(addCategory: schemas.Category, response: Response, db: Sessio
         return {"status": "404", "message": "Error", "data": {}}
 
 
+@app.put('/editCategory')
+def edit_categories(editCategory: schemas.EditCategory, response: Response, db: Session = Depends(get_db), ):
+    try:
+        edit_category = db.query(models.Categories).filter(
+            models.Categories.category_id == editCategory.category_id)
+        category_exist = edit_category.first()
+        if not category_exist:
+            response.status_code = 200
+            return {"status": 204, "message": "User doesn't exists", "data": {}}
+
+        edit_category.update(editCategory.model_dump(), synchronize_session=False)
+        db.commit()
+        return {"status": 200, "message": "Category edited!", "data": edit_category.first()}
+
+    except IntegrityError:
+        response.status_code = 200
+        return {"status": "404", "message": "Error", "data": {}}
+
+
+@app.get('/getCategories')
+def get_categories(response: Response, db: Session = Depends(get_db)):
+    try:
+        fetch_categories = db.query(models.Categories).all()
+
+        if not fetch_categories:
+            return {"status": 204, "message": "No categories available please add", "data": {}}
+
+        return {"status": 200, "message": "Categories Fetched", "data": fetch_categories}
+    except IntegrityError:
+        response.status_code = 200
+        return {"status": 204, "message": "Error", "data": {}}
+
+
 @app.post('/addProducts')
 def add_products(addProduct: schemas.Product, response: Response, db: Session = Depends(get_db)):
     try:
-        new_product = models.Bookings(**addProduct.model_dump())
+        new_product = models.Products(**addProduct.model_dump())
         db.add(new_product)
         db.commit()
         db.refresh(new_product)
