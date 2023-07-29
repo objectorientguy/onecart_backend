@@ -1,12 +1,51 @@
-from fastapi import FastAPI, Response, Depends
+from fastapi import FastAPI, Response, Depends, UploadFile, File, Request, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
+from starlette.responses import FileResponse
+
 from . import models, schemas
+from .models import Image
 from .database import engine, get_db
+import os
 
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+
+UPLOAD_DIR = "app/images"
+
+
+def save_image_to_db(db, name, filename):
+    image = Image(name=name, filename=filename)
+    db.add(image)
+    db.commit()
+    db.refresh(image)
+    return image
+
+
+@app.post("/upload")
+async def upload_image(name: str, request: Request, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    image_data = file.file.read()
+    image_path = os.path.join(UPLOAD_DIR, file.filename)
+
+    with open(image_path, "wb") as f:
+        f.write(image_data)
+
+    try:
+        image_obj = save_image_to_db(db, name, file.filename)
+        base_url = request.base_url
+        image_url = f"{base_url}images/{file.filename}"
+        return {"message": "Image uploaded successfully", "image_id": image_obj.id, "image_url": image_url}
+    finally:
+        db.close()
+
+
+@app.get("/images/{filename}")
+async def get_image(filename: str):
+    image_path = os.path.join(UPLOAD_DIR, filename)
+    if not os.path.exists(image_path):
+        raise HTTPException(status_code=404, detail="Image not found")
+    return FileResponse(image_path)
 
 
 @app.get('/')

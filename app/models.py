@@ -5,6 +5,13 @@ from sqlalchemy.sql.sqltypes import TIMESTAMP
 from .database import Base
 
 
+class Image(Base):
+    __tablename__ = "images"
+    id = Column(BIGINT, primary_key=True, index=True)
+    name = Column(String)
+    filename = Column(String)
+
+
 class User(Base):
     __tablename__ = "customers"
     customer_id = Column(String, nullable=False)
@@ -69,9 +76,9 @@ class Bookings(Base):
 
     booking_id = Column(BIGINT, nullable=False, primary_key=True, autoincrement=True)
     user_contact = Column(BIGINT, ForeignKey(
-        "customers.customer_contact", ondelete="CASCADE"), nullable=False,)
+        "customers.customer_contact", ondelete="CASCADE"), nullable=False, )
     company_id = Column(String, nullable=False)
-    products = Column(JSON, nullable=False )
+    products = Column(JSON, nullable=False)
     address_id = Column(BIGINT, ForeignKey(
         "address.address_id", ondelete="CASCADE"), nullable=False)
     booking_date = Column(Date, nullable=False)
