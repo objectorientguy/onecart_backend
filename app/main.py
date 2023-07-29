@@ -15,8 +15,7 @@ def root():
 
 
 @app.post('/userAuthenticate')
-def create_user(loginSignupAuth: schemas.UserData, response: Response, db: Session = Depends(get_db),
-                companyId=str | None):
+def create_user(loginSignupAuth: schemas.UserData, response: Response, db: Session = Depends(get_db)):
     try:
         print(loginSignupAuth.customer_name)
         user_data = db.query(models.User).get(
@@ -26,7 +25,7 @@ def create_user(loginSignupAuth: schemas.UserData, response: Response, db: Sessi
             try:
                 new_user_data = models.User(
                     **loginSignupAuth.model_dump())
-                new_user_data.companies.append(companyId)
+
                 db.add(new_user_data)
                 db.commit()
                 db.refresh(new_user_data)
@@ -35,11 +34,7 @@ def create_user(loginSignupAuth: schemas.UserData, response: Response, db: Sessi
                 response.status_code = 200
                 return {"status": 204, "message": "User is not registered please Sing up", "data": {}}
 
-        try:
-            k = user_data.companies.index(companyId)
-            return {"status": 200, "message": "New user successfully Logged in!", "data": user_data}
-        except ValueError:
-            return {"status": 204, "message": "User is not registered for this company please Sing up", "data": {}}
+        return {"status": 200, "message": "New user successfully Logged in!", "data": user_data}
 
     except IntegrityError:
         response.status_code = 404
@@ -218,6 +213,48 @@ def add_bookings(bookOrder: schemas.Bookings, response: Response, db: Session = 
         db.refresh(new_booking)
 
         return {"status": "200", "message": "New booking successful!", "data": new_booking}
+    except IntegrityError:
+        response.status_code = 200
+        return {"status": "404", "message": "Error", "data": {}}
+
+
+@app.post('/addCompany')
+def add_companies(addCompany: schemas.Bookings, response: Response, db: Session = Depends(get_db)):
+    try:
+        new_company = models.Bookings(**addCompany.model_dump())
+        db.add(new_company)
+        db.commit()
+        db.refresh(new_company)
+
+        return {"status": "200", "message": "New company added successfully!", "data": new_company}
+    except IntegrityError:
+        response.status_code = 200
+        return {"status": "404", "message": "Error", "data": {}}
+
+
+@app.post('/addCategory')
+def add_categories(addCategory: schemas.Category, response: Response, db: Session = Depends(get_db)):
+    try:
+        new_category = models.Bookings(**addCategory.model_dump())
+        db.add(new_category)
+        db.commit()
+        db.refresh(new_category)
+
+        return {"status": "200", "message": "New category added successfully!", "data": new_category}
+    except IntegrityError:
+        response.status_code = 200
+        return {"status": "404", "message": "Error", "data": {}}
+
+
+@app.post('/addProducts')
+def add_products(addProduct: schemas.Product, response: Response, db: Session = Depends(get_db)):
+    try:
+        new_product = models.Bookings(**addProduct.model_dump())
+        db.add(new_product)
+        db.commit()
+        db.refresh(new_product)
+
+        return {"status": "200", "message": "New product added successfully!", "data": new_product}
     except IntegrityError:
         response.status_code = 200
         return {"status": "404", "message": "Error", "data": {}}
