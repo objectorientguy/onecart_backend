@@ -1,6 +1,55 @@
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel
 from datetime import date, time
+
+
+class Companies(BaseModel):
+    company_id: int | None = None
+    user_contact: int
+    company_name: str
+    password: str
+    email: str
+    company_contact: int
+    company_address: str
+
+    class Config:
+        from_attributes = True
+
+
+class UserCompany(BaseModel):
+    company_id: int
+    user_contact: int
+
+    class Config:
+        from_attributes = True
+
+
+class Category(BaseModel):
+    category_id: Optional[int] | None = None
+    category_name: str
+    category_image: str
+
+    class Config:
+        from_attributes = True
+
+
+class EditCategory(Category):
+    pass
+
+
+class Product(BaseModel):
+    product_id: int | None = None
+    company_id: int
+    user_contact: int
+    category_id: int
+    store_id: int | None = None
+    product_name: str
+    image: List[str]
+    item_count: int
+    variants: List[str]
+    cost: str
+    discounted_cost: int
+    details: str
 
 
 class UserData(BaseModel):
@@ -30,11 +79,18 @@ class AddAddress(Address):
     pass
 
 
+class CartProducts(BaseModel):
+    product_id: int
+
+    class Config:
+        from_attributes = True
+
+
 class Cart(BaseModel):
     cart_id: int | None = None
     user_contact: int
     company_id: str
-    products: List[str]
+    products: List[CartProducts]
 
     class Config:
         from_attributes = True
@@ -48,7 +104,7 @@ class Bookings(BaseModel):
     booking_id: int | None = None
     user_contact: int
     company_id: str
-    products: List[str]
+    products: List[Product]
     address_id: int
     booking_time: time
     booking_date: date
@@ -58,48 +114,3 @@ class Bookings(BaseModel):
 
     class Config:
         from_attributes = True
-
-
-class Companies(BaseModel):
-    company_id: int | None = None
-    user_contact: int
-    company_name: str
-    password: str
-    email: str
-    company_contact: int
-    company_address: str
-
-    class Config:
-        from_attributes = True
-
-
-class UserCompany(BaseModel):
-    company_id: int
-    user_contact: int
-
-    class Config:
-        from_attributes = True
-
-
-class Category(BaseModel):
-    category_id: int | None = None
-    category_name: str
-    category_image: str | None = None
-
-    class Config:
-        from_attributes = True
-
-
-class Product(BaseModel):
-    product_id: int | None = None
-    company_id: int
-    user_contact: int
-    category_id: int
-    store_id: int | None = None
-    product_name: str
-    image: List[str]
-    item_count: int
-    variants: List[str]
-    cost: str
-    discounted_cost: int
-    details: str
