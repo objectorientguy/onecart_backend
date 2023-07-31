@@ -17,7 +17,7 @@ class Companies(BaseModel):
 
 
 class UserCompany(BaseModel):
-    company_id: int
+    company_name: str
     user_contact: int
 
     class Config:
@@ -40,8 +40,7 @@ class EditCategory(Category):
 class Product(BaseModel):
     product_id: int | None = None
     company_id: int
-    user_contact: int
-    category_id: int
+    company_name: str
     store_id: int | None = None
     product_name: str
     image: List[str]
@@ -69,7 +68,7 @@ class Address(BaseModel):
     address_name: str
     city: str
     pincode: int
-    company: str
+    company_id: int
 
     class Config:
         from_attributes = True
@@ -79,31 +78,32 @@ class AddAddress(Address):
     pass
 
 
-class CartProducts(BaseModel):
+class CartItemCreate(BaseModel):
     product_id: int
 
-    class Config:
-        from_attributes = True
+
+class CartCreate(BaseModel):
+    company_id: int
+    user_id: int
+    items: List[CartItemCreate]
 
 
-class Cart(BaseModel):
-    cart_id: int | None = None
-    user_contact: int
-    company_id: str
-    products: List[CartProducts]
-
-    class Config:
-        from_attributes = True
+class CartItemResponse(BaseModel):
+    id: int
+    product_id: int
 
 
-class UpdateCart(Cart):
-    pass
+class CartResponse(BaseModel):
+    id: int
+    company_id: int
+    user_id: int
+    items: List[CartItemResponse]
 
 
 class Bookings(BaseModel):
     booking_id: int | None = None
     user_contact: int
-    company_id: str
+    company_name: str
     products: List[Product]
     address_id: int
     booking_time: time
@@ -114,3 +114,8 @@ class Bookings(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class CompanyLogin(BaseModel):
+    email: str
+    password: str
