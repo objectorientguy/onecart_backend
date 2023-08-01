@@ -1,3 +1,6 @@
+from typing import List
+
+import bcrypt
 from fastapi import FastAPI, Response, Depends, UploadFile, File, Request, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
@@ -15,16 +18,21 @@ app = FastAPI()
 UPLOAD_DIR = "app/images"
 
 
-def save_image_to_db(db, name, filename):
-    image = Image(name=name, filename=filename)
+def save_image_to_db(db, filename, file_path):
+    image = Image(filename=filename, file_path=file_path)
     db.add(image)
     db.commit()
     db.refresh(image)
     return image
 
 
+@app.get('/')
+def root():
+    return {'message': 'Hello world'}
+
+
 @app.post("/upload")
-async def upload_image(name: str, request: Request, file: UploadFile = File(...), db: Session = Depends(get_db)):
+async def upload_image(request: Request, file: UploadFile = File(...), db: Session = Depends(get_db)):
     image_data = file.file.read()
     image_path = os.path.join(UPLOAD_DIR, file.filename)
 
@@ -32,7 +40,7 @@ async def upload_image(name: str, request: Request, file: UploadFile = File(...)
         f.write(image_data)
 
     try:
-        image_obj = save_image_to_db(db, name, file.filename)
+        image_obj = save_image_to_db(db, file.filename, image_path)
         base_url = request.base_url
         image_url = f"{base_url}images/{file.filename}"
         return {"status": 200, "message": "Image uploaded successfully",
@@ -49,9 +57,29 @@ async def get_image(filename: str):
     return FileResponse(image_path)
 
 
-@app.get('/')
-def root():
-    return {'message': 'Hello world'}
+@app.post("/multipleUpload")
+async def upload_image(request: Request, files: List[UploadFile] = File(...), db: Session = Depends(get_db)):
+    image_urls = []
+    for file in files:
+        contents = await file.read()
+        filename = file.filename
+        file_path = os.path.join(UPLOAD_DIR, filename)
+
+        with open(file_path, "wb") as f:
+            f.write(contents)
+
+        image = Image(filename=filename, file_path=file_path)
+        try:
+            db.add(image)
+            db.commit()
+            db.refresh(image)
+        finally:
+            db.close()
+        base_url = request.base_url
+        image_url = f"{base_url}images/{file.filename}"
+        image_urls.append(image_url)
+
+    return {"status": 200, "message": "Images uploaded successfully", "data": {"image_url": image_urls}}
 
 
 @app.post('/userAuthenticate')
@@ -65,7 +93,6 @@ def create_user(loginSignupAuth: schemas.UserData, response: Response,
             try:
                 new_user_data = models.User(
                     **loginSignupAuth.model_dump())
-                print(loginSignupAuth)
                 new_user_added = models.UserCompany(
                     company_id=companyId,
                     user_contact=loginSignupAuth.customer_contact)
@@ -121,25 +148,8 @@ def edit_user(userDetail: schemas.UserData, response: Response, db: Session = De
         return {"status": 404, "message": "Error", "data": {}}
 
 
-@app.get('/getUser')
-def get_user_details(response: Response, db: Session = Depends(get_db), userId=int, companyId=str):
-    try:
-        get_user = db.query(models.User).filter(
-            models.User.customer_contact == userId).filter(
-            models.User.companies.contains(companyId)).all()
-
-        if not get_user:
-            response.status_code = 200
-            return {"status": 204, "message": "No user found", "data": []}
-
-        return {"status": 200, "message": "success", "data": get_user}
-    except IntegrityError:
-        response.status_code = 404
-        return {"status": 404, "message": "Error", "data": {}}
-
-
 @app.post('/addAddress')
-def add_address(createAddress: schemas.AddAddress, response: Response, db: Session = Depends(get_db)):
+def add_address(createAddress: schemas.Address, response: Response, db: Session = Depends(get_db)):
     try:
         new_address = models.Addresses(**createAddress.model_dump())
         db.add(new_address)
@@ -169,8 +179,7 @@ def get_address(response: Response, db: Session = Depends(get_db), userId=int, c
 
 
 @app.put('/editAddress')
-def edit_address(editAddress: schemas.Address, response: Response, db: Session = Depends(get_db),
-                 addressId=int):
+def edit_address(editAddress: schemas.Address, response: Response, db: Session = Depends(get_db), addressId=int):
     try:
         edit_user_address = db.query(models.Addresses).filter(
             models.Addresses.address_id == addressId)
@@ -207,62 +216,29 @@ def delete_user_address(response: Response, db: Session = Depends(get_db), addre
         return {"status": "404", "message": "Error", "data": {}}
 
 
-@app.post('/addCart')
-def add_cart(createCart: schemas.Cart, response: Response, db: Session = Depends(get_db)):
-    try:
-        add_to_cart = db.query(models.UserCart).filter(models.UserCart.user_contact == createCart.user_contact).filter(
-            models.UserCart.company_id == createCart.company_id).first()
+@app.post("/add_to_cart", response_model=schemas.CartResponse)
+def add_to_cart(cart_data: schemas.CartCreate, db: Session = Depends(get_db)):
+    cart = db.query(models.Cart).filter(models.Cart.company_id == cart_data.company_id,
+                                        models.Cart.user_id == cart_data.user_id).first()
 
-        if not add_to_cart:
-            try:
-                new_cart = models.UserCart(**createCart.model_dump())
-                db.add(new_cart)
-                db.commit()
-                db.refresh(new_cart)
-                return {"status": 200, "message": "new cart successfully created!", "data": new_cart}
-            except IntegrityError:
-                response.status_code = 200
-                return {"status": 204, "message": "Error", "data": {}}
-
-        return {"status": 200, "message": "Fetched Cart", "data": add_to_cart}
-    except IntegrityError:
-        response.status_code = 200
-        return {"status": 204, "message": "Error", "data": {}}
-
-
-@app.get('/getCart')
-def get_cart(response: Response, db: Session = Depends(get_db), userId=int, companyId=str):
-    try:
-        fetch_cart = db.query(models.UserCart).filter(models.UserCart.user_contact == userId).filter(
-            models.UserCart.company_id == companyId).first()
-
-        if not fetch_cart:
-            return {"status": 204, "message": "Error", "data": {}}
-
-        return {"status": 200, "message": "Fetched Cart", "data": fetch_cart}
-    except IntegrityError:
-        response.status_code = 200
-        return {"status": 204, "message": "Error", "data": {}}
-
-
-@app.put('/editCart')
-def edit_user_cart(editCart: schemas.UpdateCart, response: Response, db: Session = Depends(get_db), cartId=int):
-    try:
-        edit_cart = db.query(models.UserCart).filter(
-            models.UserCart.cart_id == cartId)
-        cart_exist = edit_cart.first()
-        if not cart_exist:
-            response.status_code = 200
-            return {"status": 204, "message": "Address doesn't exists", "data": {}}
-
-        edit_cart.update(editCart.model_dump(
-            exclude_unset=True), synchronize_session=False)
+    if cart is None:
+        cart = models.Cart(**cart_data.model_dump())
+        db.add(cart)
         db.commit()
-        return {"status": "200", "message": "Cart edited!", "data": edit_cart.first()}
+    else:
+        cart_items = db.query(models.CartItem).filter(cart.id).all()
+        existing_product_ids = set(item.product_id for item in cart_items)
+        for item in cart_data.items:
+            if item.product_id not in existing_product_ids:
+                new_cart_item = models.CartItem(cart_id=cart.id, product_id=item.product_id)
+                db.add(new_cart_item)
 
-    except IntegrityError:
-        response.status_code = 404
-        return {"status": "404", "message": "Error", "data": {}}
+        db.flush()
+
+    db.commit()
+    db.refresh(cart)
+
+    return cart
 
 
 @app.post('/bookOrder')
@@ -279,10 +255,13 @@ def add_bookings(bookOrder: schemas.Bookings, response: Response, db: Session = 
         return {"status": "404", "message": "Error", "data": {}}
 
 
-@app.post('/addCompany')
-def add_companies(addCompany: schemas.Bookings, response: Response, db: Session = Depends(get_db)):
+@app.post('/signupCompany')
+def add_companies(addCompany: schemas.Companies, response: Response, db: Session = Depends(get_db)):
     try:
+        salt = bcrypt.gensalt()
+        password = bcrypt.hashpw(addCompany.password.encode('utf-8'), salt)
         new_company = models.Companies(**addCompany.model_dump())
+        new_company.password = password.decode('utf-8')
         db.add(new_company)
         db.commit()
         db.refresh(new_company)
@@ -291,6 +270,20 @@ def add_companies(addCompany: schemas.Bookings, response: Response, db: Session 
     except IntegrityError:
         response.status_code = 200
         return {"status": "404", "message": "Error", "data": {}}
+
+
+@app.post("/companyLogin")
+def company_login(loginCompany: schemas.CompanyLogin, db: Session = Depends(get_db)):
+    company_exists = db.query(models.Companies).filter(models.Companies.email == loginCompany.email).first()
+    if company_exists:
+        correct_password = bcrypt.checkpw(loginCompany.password.encode('utf-8'),
+                                          company_exists.password.encode('utf-8'))
+        if correct_password:
+            return {"status": "200", "message": "New company logged in!", "data": company_exists}
+
+        return {"status": "204", "message": "Incorrect password!", "data": company_exists}
+
+    return {"status": "204", "message": "Company not registered, Please sign up!", "data": {}}
 
 
 @app.post('/addCategory')
@@ -308,16 +301,17 @@ def add_categories(addCategory: schemas.Category, response: Response, db: Sessio
 
 
 @app.put('/editCategory')
-def edit_categories(editCategory: schemas.EditCategory, response: Response, db: Session = Depends(get_db), ):
+def edit_categories(editCategory: schemas.EditCategory, response: Response, db: Session = Depends(get_db),
+                    categoryId=int):
     try:
         edit_category = db.query(models.Categories).filter(
-            models.Categories.category_id == editCategory.category_id)
+            models.Categories.category_id == categoryId)
         category_exist = edit_category.first()
         if not category_exist:
             response.status_code = 200
             return {"status": 204, "message": "User doesn't exists", "data": {}}
 
-        edit_category.update(editCategory.model_dump(), synchronize_session=False)
+        edit_category.update(editCategory.model_dump(exclude_unset=True), synchronize_session=False)
         db.commit()
         return {"status": 200, "message": "Category edited!", "data": edit_category.first()}
 

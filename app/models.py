@@ -10,7 +10,7 @@ class Companies(Base):
     __tablename__ = "companies"
 
     company_id = Column(BIGINT, nullable=False, primary_key=True, autoincrement=True, unique=True)
-    company_name = Column(String, nullable=False)
+    company_name = Column(String, nullable=False, primary_key=True, unique=True)
     password = Column(String, primary_key=True, nullable=False)
     email = Column(String, nullable=True)
     company_contact = Column(BIGINT, nullable=True)
@@ -44,10 +44,8 @@ class Products(Base):
     __tablename__ = "products"
 
     product_id = Column(BIGINT, nullable=False, primary_key=True, autoincrement=True, unique=True)
-    company_id = Column(BIGINT, ForeignKey(
-        "companies.company_id", ondelete="CASCADE"), nullable=False)
-    user_contact = Column(BIGINT, ForeignKey(
-        "customers.customer_contact", ondelete="CASCADE"), nullable=False)
+    company_name = Column(String, ForeignKey(
+        "companies.company_name", ondelete="CASCADE"), nullable=False)
     category_id = Column(BIGINT, ForeignKey(
         "categories.category_id", ondelete="CASCADE"), nullable=False)
     product_name = Column(String, nullable=False)
@@ -58,7 +56,6 @@ class Products(Base):
     discounted_cost = Column(String, nullable=True)
     details = Column(String, nullable=False)
 
-    customer = relationship("User")
     company = relationship("Companies")
     category = relationship("Categories")
 
@@ -66,8 +63,8 @@ class Products(Base):
 class Image(Base):
     __tablename__ = "images"
     id = Column(BIGINT, primary_key=True, index=True)
-    name = Column(String)
     filename = Column(String)
+    file_path = Column(String)
 
 
 class User(Base):
@@ -100,11 +97,11 @@ class CompositeKey:
 class UserCompany(Base):
     __tablename__ = "user-companies"
 
-    company_id = Column(BIGINT, ForeignKey(
-        "companies.company_id", ondelete="CASCADE"), nullable=False, primary_key=True)
+    company_name = Column(String, ForeignKey(
+        "companies.company_name", ondelete="CASCADE"), nullable=False, primary_key=True)
     user_contact = Column(BIGINT, ForeignKey(
         "customers.customer_contact", ondelete="CASCADE"), nullable=False, primary_key=True)
-    composite_key = composite(CompositeKey, company_id, user_contact)
+    composite_key = composite(CompositeKey, company_name, user_contact)
 
     customer = relationship("User")
     company = relationship("Companies")
@@ -123,8 +120,8 @@ class Addresses(Base):
     address_id = Column(BIGINT, nullable=False, primary_key=True, autoincrement=True)
     user_contact = Column(BIGINT, ForeignKey(
         "customers.customer_contact", ondelete="CASCADE"), nullable=False)
-    company_id = Column(BIGINT, ForeignKey(
-        "companies.company_id", ondelete="CASCADE"), nullable=False)
+    company_name = Column(String, ForeignKey(
+        "companies.company_name", ondelete="CASCADE"), nullable=False)
     address_title = Column(String, nullable=False)
     address_name = Column(String, nullable=False)
     city = Column(String, nullable=False)
@@ -133,7 +130,7 @@ class Addresses(Base):
     customer = relationship("User")
     company = relationship("Companies")
 
-    @validates('user_contact', 'address_title', 'address_name', 'city', 'pincode', 'company_id')
+    @validates('user_contact', 'address_title', 'address_name', 'city', 'pincode', 'company_name')
     def empty_string_to_null(self, key, value):
         if isinstance(value, str) and value == '':
             return None
@@ -141,25 +138,22 @@ class Addresses(Base):
             return value
 
 
-class UserCart(Base):
-    __tablename__ = "cart"
+class CartItem(Base):
+    __tablename__ = "cart_items"
+    id = Column(BIGINT, primary_key=True, index=True, )
+    product_id = Column(BIGINT, ForeignKey("products.product_id"))
+    cart_id = Column(BIGINT, ForeignKey("carts.id"))
 
-    cart_id = Column(BIGINT, nullable=False, primary_key=True, autoincrement=True)
-    user_contact = Column(BIGINT, ForeignKey(
-        "customers.customer_contact", ondelete="CASCADE"), nullable=False, primary_key=True)
-    company_id = Column(BIGINT, ForeignKey(
-        "companies.company_id", ondelete="CASCADE"), nullable=False)
-    products = Column(JSON, nullable=False)
+    cart = relationship("Cart", back_populates="items")
 
-    customer = relationship("User")
-    company = relationship("Companies")
 
-    @validates('cart_id', 'user_contact', 'company_id')
-    def empty_string_to_null(self, key, value):
-        if isinstance(value, str) and value == '':
-            return None
-        else:
-            return value
+class Cart(Base):
+    __tablename__ = "carts"
+    id = Column(BIGINT, primary_key=True, index=True)
+    company_name = Column(String, ForeignKey("companies.company_name"))
+    user_id = Column(BIGINT, ForeignKey("customers.customer_contact"))
+
+    items = relationship("CartItem", back_populates="cart")
 
 
 class Bookings(Base):
@@ -168,8 +162,8 @@ class Bookings(Base):
     booking_id = Column(BIGINT, nullable=False, primary_key=True, autoincrement=True)
     user_contact = Column(BIGINT, ForeignKey(
         "customers.customer_contact", ondelete="CASCADE"), nullable=False, )
-    company_id = Column(BIGINT, ForeignKey(
-        "companies.company_id", ondelete="CASCADE"), nullable=False)
+    company_id = Column(String, ForeignKey(
+        "companies.company_name", ondelete="CASCADE"), nullable=False)
     products = Column(JSON, nullable=False)
     address_id = Column(BIGINT, ForeignKey(
         "address.address_id", ondelete="CASCADE"), nullable=False)
