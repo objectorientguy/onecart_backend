@@ -454,3 +454,21 @@ def add_favorite_item(response: Response, favorite_item_data: schemas.FavoriteIt
     except Exception as e:
         response.status_code = 500
         return {"status": 500, "message": "Error adding favorite item", "data": {}}
+
+#remove fav item/items
+@app.delete("/remove_item/")
+def remove_favorite_item(response: Response,item_id: int = Query(..., alias='item_id'),  db: Session = Depends(get_db)):
+    try:
+        # Check if the favorite item exists
+        favorite_item = db.query(models.FavoriteItem).filter(models.FavoriteItem.item_id == item_id).first()
+        if not favorite_item:
+            raise HTTPException(status_code=404, detail="Favorite item not found")
+
+        # Delete the favorite item
+        db.delete(favorite_item)
+        db.commit()
+
+        return {"status": 200, "message": "Favorite item removed successfully", "data": {}}
+    except Exception as e:
+        response.status_code = 500
+        return {"status": 500, "message": "Error removing favorite item", "data": {}}
