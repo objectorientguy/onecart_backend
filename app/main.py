@@ -1,19 +1,31 @@
 from typing import List
-
+import psycopg2
 import bcrypt
-from fastapi import FastAPI, Response, Depends, UploadFile, File, Request, HTTPException
+from fastapi import FastAPI, Response, Depends, UploadFile, File, Request, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from starlette.responses import FileResponse
-
+from psycopg2.extras import RealDictCursor
 from . import models, schemas
 from .models import Image
 from .database import engine, get_db
 import os
-
+import time
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+
+  # code to connect database
+while True:
+    try:
+      conn =psycopg2.connect(host='localhost',database='fastapi2',user='postgres',password='sakshishukla@2335',cursor_factory=RealDictCursor)
+      cursor = conn.cursor()
+      print("Database connection was successful!!")
+      break
+    except Exception as error:
+        print("connection to database failed!!")
+        print("Error:",error)
+        time.sleep(2)
 
 UPLOAD_DIR = "app/images"
 
@@ -346,3 +358,20 @@ def add_products(addProduct: schemas.Product, response: Response, db: Session = 
     except IntegrityError:
         response.status_code = 200
         return {"status": "404", "message": "Error", "data": {}}
+
+@app.get('/booking_history/')
+def get_booking_history(
+    response: Response,
+    booking_id: str = Query(..., alias='booking_id'),
+    db: Session = Depends(get_db)):
+    try:
+        # Check if the booking history record exists
+        booking_data = db.query(models.Bookings).get(booking_id)
+        if not booking_data:
+            response.status_code = 404
+            return {"status": 404, "message": "Booking history not found", "data": {}}
+
+        return {"status": 200, "message": "Booking history retrieved successfully", "data": booking_data}
+    except IntegrityError as err:
+        response.status_code = 500
+        return {"status": 500, "message": "Error retrieving booking history", "data": {}}
