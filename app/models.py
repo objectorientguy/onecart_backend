@@ -172,6 +172,8 @@ class Bookings(Base):
     total = Column(String, nullable=False)
     coupon = Column(String, nullable=True)
     coupon_discount = Column(String, nullable=True)
+    review = Column(BIGINT, nullable=True)
+    feedback = Column(String, nullable=True)
 
     customer = relationship("User")
     company = relationship("Companies")

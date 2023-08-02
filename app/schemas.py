@@ -111,6 +111,15 @@ class Bookings(BaseModel):
     total: str
     coupon: str
     coupon_discount: str
+    review: Optional[int] = None
+    feedback: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+    class ReviewFeedback(BaseModel):
+        review: Optional[int] = None
+        feedback: Optional[str] = None
 
     class Config:
         from_attributes = True

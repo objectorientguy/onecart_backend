@@ -7,7 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from starlette.responses import FileResponse
 from psycopg2.extras import RealDictCursor
 from . import models, schemas
-from .models import Image
+from .models import Image,Bookings
 from .database import engine, get_db
 import os
 import time
@@ -375,3 +375,16 @@ def get_booking_history(
     except IntegrityError as err:
         response.status_code = 500
         return {"status": 500, "message": "Error retrieving booking history", "data": {}}
+
+@app.delete("/cancel_booking/")
+def cancel_booking(response: Response, booking_id: int = Query(..., alias='booking_id'), db: Session = Depends(get_db)):
+    try:
+        # Check if the booking exists
+        booking = db.query(Bookings).filter(Bookings.booking_id == booking_id).first()
+        if not booking:
+            raise HTTPException(status_code=404, detail="Booking not found")
+
+        return {"status": 200, "message": "Booking canceled successfully", "data": {}}
+    except Exception as e:
+        response.status_code = 500
+        return {"status": 500, "message": "Error canceling booking", "data": {}}
