@@ -388,3 +388,35 @@ def cancel_booking(response: Response, booking_id: int = Query(..., alias='booki
     except Exception as e:
         response.status_code = 500
         return {"status": 500, "message": "Error canceling booking", "data": {}}
+
+#favourite item
+@app.get("/favorite_item/")
+def get_favorite_item_by_user_contact(response: Response, user_contact: int = Query(..., alias='user_contact'),
+                                      db: Session = Depends(get_db)):
+    try:
+        # Check if the user exists
+        user_data = db.query(models.User).get(user_contact)
+        if not user_data:
+            response.status_code = 404
+            return {"status": 404, "message": "User not found", "data": {}}
+
+        # Retrieve the favorite item records by user_contact
+        favorite_item_data = db.query(models.FavoriteItem).filter_by(user_contact=user_contact).all()
+        if not favorite_item_data:
+            response.status_code = 404
+            return {"status": 404, "message": "Favorite item not found", "data": {}}
+
+        # Create a list to store the favorite item data
+        favorite_items = []
+        for item in favorite_item_data:
+            favorite_items.append({
+                "id": item.item_id,
+                "item_name": item.item_name,
+                "user_contact": item.user_contact
+            })
+
+        return {"status": 200, "message": "Favorite item retrieved successfully", "data": favorite_items}
+    except IntegrityError as err:
+        response.status_code = 500
+        return {"status": 500, "message": "Error retrieving favorite item", "data": {}}
+

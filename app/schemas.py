@@ -128,3 +128,11 @@ class Bookings(BaseModel):
 class CompanyLogin(BaseModel):
     email: str
     password: str
+
+class FavoriteItem(BaseModel):
+    item_id: int
+    user_contact: int
+    item_name: str
+
+    class Config:
+        orm_mode = True
