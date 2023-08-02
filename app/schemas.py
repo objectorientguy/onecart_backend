@@ -136,3 +136,10 @@ class FavoriteItem(BaseModel):
 
     class Config:
         orm_mode = True
+
+class ReviewFeedback(BaseModel):
+    review: Optional[int]
+    feedback: Optional[str]
+
+    class Config:
+        orm_mode = True

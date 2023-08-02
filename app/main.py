@@ -8,6 +8,7 @@ from starlette.responses import FileResponse
 from psycopg2.extras import RealDictCursor
 from . import models, schemas
 from .models import Image,Bookings
+from .schemas import ReviewFeedback
 from .database import engine, get_db
 import os
 import time
@@ -472,3 +473,34 @@ def remove_favorite_item(response: Response,item_id: int = Query(..., alias='ite
     except Exception as e:
         response.status_code = 500
         return {"status": 500, "message": "Error removing favorite item", "data": {}}
+
+
+from fastapi import Query
+
+@app.post("/bookings/")
+def add_review_feedback(review_feedback: ReviewFeedback,
+    booking_id: int = Query(..., description="Booking ID"),
+
+    db: Session = Depends(get_db)
+):
+    # Retrieve the booking from the database
+    booking = db.query(models.Bookings).get(booking_id)
+
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    # Update the review and feedback fields if provided
+    if review_feedback.review is not None:
+        booking.review = review_feedback.review
+
+    if review_feedback.feedback is not None:
+        booking.feedback = review_feedback.feedback
+
+    db.commit()
+
+    updated_data = {
+        "review": booking.review,
+        "feedback": booking.feedback
+    }
+
+    return {"status": 200, "message": "Review and feedback added successfully", "data": updated_data}
