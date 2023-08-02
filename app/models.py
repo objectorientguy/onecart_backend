@@ -189,7 +189,7 @@ class FavoriteItem(Base):
     __tablename__ = "favorite_item"
     item_id = Column(BIGINT, primary_key=True, autoincrement=True)
     user_contact = Column(BIGINT, ForeignKey("customers.customer_contact"), nullable=False)
-    item_name = Column(String, nullable=False)
+    item_name = Column(JSON, nullable=False)
 
     @validates('user_contact')
     def validate_non_null_user_contact(self, key, value):

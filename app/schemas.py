@@ -132,7 +132,7 @@ class CompanyLogin(BaseModel):
 class FavoriteItem(BaseModel):
     item_id: int
     user_contact: int
-    item_name: str
+    item_name: List[str]
 
     class Config:
         orm_mode = True

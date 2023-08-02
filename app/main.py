@@ -420,3 +420,37 @@ def get_favorite_item_by_user_contact(response: Response, user_contact: int = Qu
         response.status_code = 500
         return {"status": 500, "message": "Error retrieving favorite item", "data": {}}
 
+
+
+#Add favorite items
+@app.post("/favorite_item/")
+def add_favorite_item(response: Response, favorite_item_data: schemas.FavoriteItem, db: Session = Depends(get_db)):
+    try:
+        # Check if the user exists
+        user_data = db.query(models.User).get(favorite_item_data.user_contact)
+        if not user_data:
+            response.status_code = 404
+            return {"status": 404, "message": "User not found", "data": {}}
+
+        # Create a new favorite item
+        new_favorite_item = models.FavoriteItem(
+            item_id=favorite_item_data.item_id,
+            user_contact=favorite_item_data.user_contact,
+            item_name=favorite_item_data.item_name
+        )
+
+        db.add(new_favorite_item)
+        db.commit()
+        db.refresh(new_favorite_item)
+
+        # Access the exact id value of the newly added FavoriteItem
+        new_favorite_item_id = new_favorite_item.item_id
+
+        return {
+            "status": 200,
+            "message": "Favorite item added successfully",
+            "data": [{"item_id": new_favorite_item_id, "item_name": favorite_item_data.item_name, "user_contact": favorite_item_data.user_contact}]
+        }
+    except Exception as e:
+        response.status_code = 500
+        return {"status": 500, "message": "Error adding favorite item", "data": {}}
