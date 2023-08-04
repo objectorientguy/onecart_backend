@@ -322,6 +322,9 @@ def edit_categories(editCategory: schemas.EditCategory, response: Response, db: 
         return {"status": "404", "message": "Error", "data": {}}
 
 
+
+
+
 @app.get('/getCategories')
 def get_categories(response: Response, db: Session = Depends(get_db)):
     try:
@@ -411,3 +414,28 @@ def add_product_variants(product_id: int, variants: List[schemas.ProductVariant]
             return {"status": "400", "message": "error"}
         else:
             raise
+
+@app.get("/getProducts")
+def get_all_products(response: Response, db: Session = Depends(get_db)):
+    db = SessionLocal()
+    try:
+        fetch_products = db.query(models.Products).all()
+        if not fetch_products:
+            return {"status": 204, "message": "No products available please add", "data": {}}
+
+        return {"status": 200, "message": "Products Fetched", "data": fetch_products}
+    except IntegrityError:
+        response.status_code = 200
+        return {"status": 204, "message": "Error", "data": {}}
+
+@app.get("/getProductVariants/{product_id}")
+def get_product_variants(response: Response, product_id: int, db: Session = Depends(get_db)):
+    try:
+        fetch_variants = db.query(models.ProductVariant).filter(models.ProductVariant.product_id == product_id).all()
+        if not fetch_variants:
+            return {"status": 204, "message": "No product variants available", "data": {}}
+
+        return {"status": 200, "message": "Product Variants Fetched", "data": fetch_variants}
+    except IntegrityError:
+        response.status_code = 200
+        return {"status": 204, "message": "Error", "data": {}}
