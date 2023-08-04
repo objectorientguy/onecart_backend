@@ -46,6 +46,9 @@ class ProductVariant(BaseModel):
         from_attributes = True
 
 
+
+
+
 class Product(BaseModel):
     product_id: int | None = None
     company_id: int
@@ -62,6 +65,8 @@ class Product(BaseModel):
         from_attributes = True
 
 
+class EditProduct(Product):
+    pass
 
 class UserData(BaseModel):
     customer_id: str

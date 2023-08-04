@@ -439,3 +439,25 @@ def get_product_variants(response: Response, product_id: int, db: Session = Depe
     except IntegrityError:
         response.status_code = 200
         return {"status": 204, "message": "Error", "data": {}}
+
+
+
+@app.put("/editProduct")
+def edit_product(editProduct: schemas.EditProduct,response: Response,product_id: int,db: Session = Depends(get_db)):
+    try:
+        edit_product = db.query(models.Products).filter(
+            models.Products.product_id == product_id
+        )
+        product_exist = edit_product.first()
+        if not product_exist:
+            response.status_code = 404
+            return {"status": 404, "message": "Product doesn't exist", "data": {}}
+
+        edit_product.update(editProduct.model_dump(exclude_unset=True), synchronize_session=False)
+        db.commit()
+        return {"status": 200, "message": "Product edited!", "data": edit_product.first()}
+
+    except IntegrityError:
+        response.status_code = 400
+        return {"status": 400, "message": "Error", "data": {}}
+
