@@ -37,18 +37,30 @@ class EditCategory(Category):
     pass
 
 
+class ProductVariant(BaseModel):
+    variant_price: float
+    variant_quantity: int
+    product_id: int
+
+    class Config:
+        from_attributes = True
+
+
 class Product(BaseModel):
     product_id: int | None = None
     company_id: int
     company_name: str
-    store_id: int | None = None
     product_name: str
     image: List[str]
     item_count: int
-    variants: List[str]
     cost: str
-    discounted_cost: int
+    discounted_cost: float
     details: str
+    category_id: int
+
+    class Config:
+        from_attributes = True
+
 
 
 class UserData(BaseModel):

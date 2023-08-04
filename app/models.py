@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, BIGINT, Date, JSON, ForeignKey, Time, Boolean
+from sqlalchemy import Column, String, BIGINT, Date, JSON, ForeignKey, Time, Boolean,Float
 from sqlalchemy.orm import validates, relationship
 from sqlalchemy.sql.expression import text
 from sqlalchemy.sql.sqltypes import TIMESTAMP
@@ -43,7 +43,8 @@ class Categories(Base):
 class Products(Base):
     __tablename__ = "products"
 
-    product_id = Column(BIGINT, nullable=False, primary_key=True, autoincrement=True, unique=True)
+    product_id = Column(BIGINT, nullable=False, primary_key=True, autoincrement=True, unique=True, index=True)
+    company_id = Column(BIGINT, nullable=False)
     company_name = Column(String, ForeignKey(
         "companies.company_name", ondelete="CASCADE"), nullable=False)
     category_id = Column(BIGINT, ForeignKey(
@@ -51,13 +52,23 @@ class Products(Base):
     product_name = Column(String, nullable=False)
     image = Column(JSON, nullable=False)
     item_count = Column(BIGINT, nullable=False)
-    variants = Column(JSON, nullable=False)
     cost = Column(String, nullable=False)
     discounted_cost = Column(String, nullable=True)
     details = Column(String, nullable=False)
 
     company = relationship("Companies")
     category = relationship("Categories")
+
+class ProductVariant(Base):
+    __tablename__ = "product_variants"
+
+    id = Column(BIGINT, primary_key=True, index=True, autoincrement=True)
+    variant_price = Column(Float, nullable=False)
+    variant_quantity = Column(BIGINT, nullable=False)
+    product_id = Column(BIGINT, ForeignKey(
+        "products.product_id", ondelete="CASCADE"), nullable=False)
+
+
 
 
 class Image(Base):
@@ -95,7 +106,7 @@ class CompositeKey:
 
 
 class UserCompany(Base):
-    __tablename__ = "user-companies"
+    __tablename__ = "user_companies"
 
     company_name = Column(String, ForeignKey(
         "companies.company_name", ondelete="CASCADE"), nullable=False, primary_key=True)
