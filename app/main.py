@@ -461,3 +461,14 @@ def edit_product(editProduct: schemas.EditProduct,response: Response,product_id:
         response.status_code = 400
         return {"status": 400, "message": "Error", "data": {}}
 
+@app.get("/products/categories/{category_id}")
+def get_products_by_category_id(response: Response, category_id: int, db: Session = Depends(get_db)):
+    try:
+        fetch_product_category = db.query(models.Products).filter(models.Products.category_id == category_id).all()
+        if not fetch_product_category:
+            return {"status": 204, "message": "No product of this category available", "data": {}}
+
+        return {"status": 200, "message": "Product by category Fetched", "data": fetch_product_category}
+    except IntegrityError:
+        response.status_code = 200
+        return {"status": 204, "message": "Error", "data": {}}
