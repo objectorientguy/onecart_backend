@@ -1,7 +1,7 @@
 from typing import List
 
 import bcrypt
-from fastapi import FastAPI, Response, Depends, UploadFile, File, Request, HTTPException
+from fastapi import FastAPI, Response, Depends, UploadFile, File, Request, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from starlette.responses import FileResponse
@@ -325,6 +325,7 @@ def edit_categories(editCategory: schemas.EditCategory, response: Response, db: 
 
 
 
+
 @app.get('/getCategories')
 def get_categories(response: Response, db: Session = Depends(get_db)):
     try:
@@ -472,3 +473,16 @@ def get_products_by_category_id(response: Response, category_id: int, db: Sessio
     except IntegrityError:
         response.status_code = 200
         return {"status": 204, "message": "Error", "data": {}}
+
+@app.get('/searchProducts')
+def search_product(product_name: str = Query(..., title="Product Name", description="Name of the product to search for"), db: Session = Depends(get_db)):
+    try:
+        products = db.query(models.Products).filter(models.Products.product_name.ilike(f"%{product_name}%")).all()
+
+        if not products:
+            raise HTTPException(status_code=404, detail="Products not found")
+
+        return {"status": "200", "message": "Products found", "data": products}
+    except Exception as e:
+        print(repr(e))
+        return {"status": "500", "message": "Internal server error"}
