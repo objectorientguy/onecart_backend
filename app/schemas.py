@@ -117,13 +117,6 @@ class Bookings(BaseModel):
     class Config:
         from_attributes = True
 
-    class ReviewFeedback(BaseModel):
-        review: Optional[int] = None
-        feedback: Optional[str] = None
-
-    class Config:
-        from_attributes = True
-
 
 class CompanyLogin(BaseModel):
     email: str

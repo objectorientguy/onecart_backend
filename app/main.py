@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from starlette.responses import FileResponse
 from psycopg2.extras import RealDictCursor
-from . import models, schemas
+from . import models, schemas, database
 from .models import Image,Bookings,Companies
 from .models import Companies as CompaniesModel
 from .schemas import ReviewFeedback,Companies
@@ -508,3 +508,25 @@ def get_company(company_id: int = Query(..., description="Company ID"), db: Sess
     return {"status": 200, "message": "Company retrieved successfully", "data": company}
 
 
+#edit company
+@app.put("/edit_company/")
+def edit_company(
+    company_update: dict,
+    company_id: int = Query(..., description="Company ID"),
+    db: Session = Depends(database.get_db)
+):
+    # Retrieve the company from the database
+    db_company = db.query(models.Companies).filter(models.Companies.company_id == company_id).first()
+
+    if db_company is None:
+        raise HTTPException(status_code=404, detail="Company not found")
+
+    # Update company fields with new values
+    for field, value in company_update.items():
+        if hasattr(db_company, field) and value is not None:
+            setattr(db_company, field, value)
+
+    db.commit()
+    db.refresh(db_company)
+
+    return {"status": 200, "message": "Company updated successfully", "data": db_company}
