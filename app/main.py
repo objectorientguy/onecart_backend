@@ -1,32 +1,24 @@
 from typing import List
 import psycopg2
 import bcrypt
+from app import models
 from fastapi import FastAPI, Response, Depends, UploadFile, File, Request, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from starlette.responses import FileResponse
 from psycopg2.extras import RealDictCursor
 from . import models, schemas
-from .models import Image,Bookings
-from .schemas import ReviewFeedback
-from .database import engine, get_db
+from .models import Image,Bookings,Companies
+from .models import Companies as CompaniesModel
+from .schemas import ReviewFeedback,Companies
+from .database import engine, get_db, Base
 import os
+
 import time
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
-  # code to connect database
-while True:
-    try:
-      conn =psycopg2.connect(host='localhost',database='fastapi2',user='postgres',password='sakshishukla@2335',cursor_factory=RealDictCursor)
-      cursor = conn.cursor()
-      print("Database connection was successful!!")
-      break
-    except Exception as error:
-        print("connection to database failed!!")
-        print("Error:",error)
-        time.sleep(2)
 
 UPLOAD_DIR = "app/images"
 
@@ -475,8 +467,6 @@ def remove_favorite_item(response: Response,item_id: int = Query(..., alias='ite
         return {"status": 500, "message": "Error removing favorite item", "data": {}}
 
 
-from fastapi import Query
-
 @app.post("/bookings/")
 def add_review_feedback(review_feedback: ReviewFeedback,
     booking_id: int = Query(..., description="Booking ID"),
@@ -504,3 +494,17 @@ def add_review_feedback(review_feedback: ReviewFeedback,
     }
 
     return {"status": 200, "message": "Review and feedback added successfully", "data": updated_data}
+
+
+#get company
+@app.get("/get_company/")
+def get_company(company_id: int = Query(..., description="Company ID"), db: Session = Depends(get_db)):
+    def get_company_by_id(db: Session, company_id: int):
+        return db.query(models.Companies).filter(models.Companies.company_id == company_id).first()
+
+    company = get_company_by_id(db, company_id)
+    if company is None:
+        raise HTTPException(status_code=404, detail="Company not found")
+    return {"status": 200, "message": "Company retrieved successfully", "data": company}
+
+

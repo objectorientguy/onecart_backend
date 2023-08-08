@@ -11,6 +11,8 @@ class Companies(Base):
 
     company_id = Column(BIGINT, nullable=False, primary_key=True, autoincrement=True, unique=True)
     company_name = Column(String, nullable=False, primary_key=True, unique=True)
+    user_contact = Column(BIGINT, ForeignKey(
+        "customers.customer_contact", ondelete="CASCADE"), nullable=False, primary_key=True)
     password = Column(String, primary_key=True, nullable=False)
     email = Column(String, nullable=True)
     company_contact = Column(BIGINT, nullable=True)
@@ -71,6 +73,7 @@ class User(Base):
     __tablename__ = "customers"
 
     customer_id = Column(String, nullable=False)
+    user_contact = Column(String,nullable=True)
     customer_name = Column(String, nullable=False)
     customer_contact = Column(BIGINT, primary_key=True, nullable=False)
     customer_birthdate = Column(Date, nullable=True)
