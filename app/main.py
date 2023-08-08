@@ -530,3 +530,21 @@ def edit_company(
     db.refresh(db_company)
 
     return {"status": 200, "message": "Company updated successfully", "data": db_company}
+
+#delete company
+@app.delete("/delete_company/")
+def delete_company(
+    company_id: int = Query(..., description="Company ID"),
+    db: Session = Depends(database.get_db)
+):
+    # Retrieve the company from the database
+    db_company = db.query(models.Companies).filter(models.Companies.company_id == company_id).first()
+
+    if db_company is None:
+        raise HTTPException(status_code=404, detail="Company not found")
+
+    # Delete the company
+    db.delete(db_company)
+    db.commit()
+
+    return {"status": 200, "message": "Company deleted successfully", "data": {}}
