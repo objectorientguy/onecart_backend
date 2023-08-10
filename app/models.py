@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, BIGINT, Date, JSON, ForeignKey, Time, Boolean
+from sqlalchemy import Column, String, BIGINT, Date, JSON, ForeignKey, Time, Boolean,Integer
 from sqlalchemy.orm import validates, relationship
 from sqlalchemy.sql.expression import text
 from sqlalchemy.sql.sqltypes import TIMESTAMP
@@ -138,24 +138,6 @@ class Addresses(Base):
             return value
 
 
-class CartItem(Base):
-    __tablename__ = "cart_items"
-    id = Column(BIGINT, primary_key=True, index=True, )
-    product_id = Column(BIGINT, ForeignKey("products.product_id"))
-    cart_id = Column(BIGINT, ForeignKey("carts.id"))
-
-    cart = relationship("Cart", back_populates="items")
-
-
-class Cart(Base):
-    __tablename__ = "carts"
-    id = Column(BIGINT, primary_key=True, index=True)
-    company_name = Column(String, ForeignKey("companies.company_name"))
-    user_id = Column(BIGINT, ForeignKey("customers.customer_contact"))
-
-    items = relationship("CartItem", back_populates="cart")
-
-
 class Bookings(Base):
     __tablename__ = "bookings"
 
@@ -177,6 +159,40 @@ class Bookings(Base):
     company = relationship("Companies")
 
     @validates('cart_id', 'user_contact', 'company_id')
+    def empty_string_to_null(self, key, value):
+        if isinstance(value, str) and value == '':
+            return None
+        else:
+            return value
+
+class Cart(Base):
+    __tablename__ = "carts"
+    id = Column(Integer, primary_key=True, index=True,autoincrement=True)
+    company_id = Column(BIGINT, ForeignKey("companies.company_id", ondelete="CASCADE"), nullable=False)
+    customer_contact = Column(BIGINT, ForeignKey("customers.customer_contact", ondelete="CASCADE"), nullable=False)
+    #creation_time = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text("now()"))
+
+    company = relationship("Companies")
+    user = relationship("User")
+
+    @validates('id', 'company_id', 'customer_contact')
+    def empty_string_to_null(self, key, value):
+        if isinstance(value, str) and value == '':
+            return None
+        else:
+            return value
+
+class CartItem(Base):
+    __tablename__ = "cart_items"
+    id = Column(Integer, primary_key=True, index=True)
+    product_id = Column(Integer, ForeignKey("products.product_id", ondelete="CASCADE"), nullable=False)
+    cart_id = Column(Integer, ForeignKey("carts.id", ondelete="CASCADE"), nullable=False)
+    quantity = Column(Integer, nullable=False)
+
+    product = relationship("Products")
+    cart = relationship("Cart")
+
+    @validates('id', 'product_id', 'cart_id', 'quantity')
     def empty_string_to_null(self, key, value):
         if isinstance(value, str) and value == '':
             return None

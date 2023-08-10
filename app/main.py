@@ -4,6 +4,7 @@ import bcrypt
 from fastapi import FastAPI, Response, Depends, UploadFile, File, Request, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
+from pydantic import ValidationError
 from starlette.responses import FileResponse
 
 from . import models, schemas
@@ -216,29 +217,29 @@ def delete_user_address(response: Response, db: Session = Depends(get_db), addre
         return {"status": "404", "message": "Error", "data": {}}
 
 
-@app.post("/add_to_cart", response_model=schemas.CartResponse)
-def add_to_cart(cart_data: schemas.CartCreate, db: Session = Depends(get_db)):
-    cart = db.query(models.Cart).filter(models.Cart.company_id == cart_data.company_id,
-                                        models.Cart.user_id == cart_data.user_id).first()
-
-    if cart is None:
-        cart = models.Cart(**cart_data.model_dump())
-        db.add(cart)
-        db.commit()
-    else:
-        cart_items = db.query(models.CartItem).filter(cart.id).all()
-        existing_product_ids = set(item.product_id for item in cart_items)
-        for item in cart_data.items:
-            if item.product_id not in existing_product_ids:
-                new_cart_item = models.CartItem(cart_id=cart.id, product_id=item.product_id)
-                db.add(new_cart_item)
-
-        db.flush()
-
-    db.commit()
-    db.refresh(cart)
-
-    return cart
+# @app.post("/add_to_cart", response_model=schemas.CartResponse)
+# def add_to_cart(cart_data: schemas.CartCreate, db: Session = Depends(get_db)):
+#     cart = db.query(models.Cart).filter(models.Cart.company_id == cart_data.company_id,
+#                                         models.Cart.user_id == cart_data.user_id).first()
+#
+#     if cart is None:
+#         cart = models.Cart(**cart_data.model_dump())
+#         db.add(cart)
+#         db.commit()
+#     else:
+#         cart_items = db.query(models.CartItem).filter(cart.id).all()
+#         existing_product_ids = set(item.product_id for item in cart_items)
+#         for item in cart_data.items:
+#             if item.product_id not in existing_product_ids:
+#                 new_cart_item = models.CartItem(cart_id=cart.id, product_id=item.product_id)
+#                 db.add(new_cart_item)
+#
+#         db.flush()
+#
+#     db.commit()
+#     db.refresh(cart)
+#
+#     return cart
 
 
 @app.post('/bookOrder')
@@ -346,3 +347,33 @@ def add_products(addProduct: schemas.Product, response: Response, db: Session = 
     except IntegrityError:
         response.status_code = 200
         return {"status": "404", "message": "Error", "data": {}}
+
+
+@app.post("/carts/")
+async def create_cart(cart: schemas.CartSchema, response: Response, db: Session = Depends(get_db)):
+
+    try:
+        new_cart = models.Cart(**cart.model_dump())
+        db.add(new_cart)
+        db.commit()
+        db.refresh(new_cart)
+
+        return {"status": "200", "message": "New cart created successfully!", "data": new_cart}
+    except IntegrityError:
+        response.status_code = 400
+        return {"status": "400","data": {}}
+
+@app.post("/carts/Items")
+async def create_cart(items: schemas.CartItemSchema, response: Response, db: Session = Depends(get_db)):
+
+    try:
+        new_items = models.CartItem(**items.model_dump())
+        db.add(new_items)
+        db.commit()
+        db.refresh(new_items)
+
+        return {"status": "200", "message": "New Items added to the cart successfully!", "data": new_items}
+    except IntegrityError:
+        response.status_code = 400
+        return {"status": "400","data": {}}
+

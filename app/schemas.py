@@ -78,28 +78,6 @@ class AddAddress(Address):
     pass
 
 
-class CartItemCreate(BaseModel):
-    product_id: int
-
-
-class CartCreate(BaseModel):
-    company_id: int
-    user_id: int
-    items: List[CartItemCreate]
-
-
-class CartItemResponse(BaseModel):
-    id: int
-    product_id: int
-
-
-class CartResponse(BaseModel):
-    id: int
-    company_id: int
-    user_id: int
-    items: List[CartItemResponse]
-
-
 class Bookings(BaseModel):
     booking_id: int | None = None
     user_contact: int
@@ -119,3 +97,17 @@ class Bookings(BaseModel):
 class CompanyLogin(BaseModel):
     email: str
     password: str
+
+
+class CartSchema(BaseModel):
+    id: int
+    company_id: int
+    customer_contact: int
+    #creation_time: datetime
+
+
+class CartItemSchema(BaseModel):
+    id: int
+    product_id: int
+    cart_id: int
+    quantity: int
