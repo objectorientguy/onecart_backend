@@ -377,3 +377,36 @@ async def create_cart(items: schemas.CartItemSchema, response: Response, db: Ses
         response.status_code = 400
         return {"status": "400","data": {}}
 
+@app.post('/deleteCart')
+def delete_cart(id: int, response: Response, db: Session = Depends(get_db)):
+    try:
+        cart = db.query(models.Cart).get(id)
+
+        if not cart:
+            raise HTTPException(status_code=404, detail="Cart not found")
+
+        db.delete(cart)
+        db.commit()
+
+        return {"status": "200", "message": "Cart deleted successfully!"}
+    except Exception as e:
+        print(repr(e))
+        response.status_code = 500
+        return {"status": "500", "message": "Internal server error"}
+
+@app.post('/deleteCartItem')
+def delete_cart_item(id: int, response: Response, db: Session = Depends(get_db)):
+    try:
+        cartItem = db.query(models.CartItem).get(id)
+
+        if not cartItem:
+            raise HTTPException(status_code=404, detail="Cart Item not found")
+
+        db.delete(cartItem)
+        db.commit()
+
+        return {"status": "200", "message": "Cart Item deleted successfully!"}
+    except Exception as e:
+        print(repr(e))
+        response.status_code = 500
+        return {"status": "500", "message": "Internal server error"}
