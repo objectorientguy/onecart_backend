@@ -162,10 +162,9 @@ def add_address(createAddress: schemas.Address, response: Response, db: Session 
 
 
 @app.get('/getAllAddresses')
-def get_address(response: Response, db: Session = Depends(get_db), userId=int, companyId=str):
+def get_address(response: Response, db: Session = Depends(get_db), userId=int):
     try:
         user_addresses = db.query(models.Addresses).filter(
-            models.Addresses.company_id == companyId).filter(
             models.Addresses.user_contact == userId).all()
 
         if not user_addresses:
@@ -178,8 +177,8 @@ def get_address(response: Response, db: Session = Depends(get_db), userId=int, c
         return {"status": "404", "message": "Error", "data": {}}
 
 
-@app.put('/editAddress')
-def edit_address(editAddress: schemas.Address, response: Response, db: Session = Depends(get_db), addressId=int):
+@app.put('/editAddress/{addressId}')
+def edit_address(editAddress: schemas.Address, response: Response, addressId : int, db: Session = Depends(get_db)):
     try:
         edit_user_address = db.query(models.Addresses).filter(
             models.Addresses.address_id == addressId)
@@ -334,15 +333,3 @@ def get_categories(response: Response, db: Session = Depends(get_db)):
         return {"status": 204, "message": "Error", "data": {}}
 
 
-@app.post('/addProducts')
-def add_products(addProduct: schemas.Product, response: Response, db: Session = Depends(get_db)):
-    try:
-        new_product = models.Products(**addProduct.model_dump())
-        db.add(new_product)
-        db.commit()
-        db.refresh(new_product)
-
-        return {"status": "200", "message": "New product added successfully!", "data": new_product}
-    except IntegrityError:
-        response.status_code = 200
-        return {"status": "404", "message": "Error", "data": {}}

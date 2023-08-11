@@ -64,11 +64,10 @@ class UserData(BaseModel):
 class Address(BaseModel):
     address_id: int | None = None
     user_contact: int
-    address_title: str
+    address_type: str
     address_name: str
     city: str
     pincode: int
-    company_id: int
 
     class Config:
         from_attributes = True
