@@ -573,5 +573,18 @@ def add_company(
 
     return {"status": 200, "message": "Company added successfully", "data": new_company}
 
+#book_order
 
+@app.post('/book_order')
+def add_booking(response: Response, bookOrder: schemas.BookingsCreate, db: Session = Depends(get_db)):
+    try:
+        new_booking = models.Bookings(**bookOrder.dict())
+        db.add(new_booking)
+        db.commit()
+        db.refresh(new_booking)
+
+        return {"status": 200, "message": "Booking order created successfully!", "data": new_booking}
+    except IntegrityError:
+        response.status_code = 400
+        return {"status": 400, "message": "Error creating booking order", "data": {}}
 

@@ -19,7 +19,7 @@ class Companies(Base):
     company_address = Column(String, nullable=False)
     white_labelled = Column(Boolean, nullable=False)
 
-    @validates('company_name', 'password', 'email', 'company_contact', 'company_address')
+    @validates('company_name','company_id', 'password', 'email', 'company_contact', 'company_address')
     def empty_string_to_null(self, key, value):
         if isinstance(value, str) and value == '':
             return None
@@ -165,9 +165,10 @@ class Bookings(Base):
     booking_id = Column(BIGINT, nullable=False, primary_key=True, autoincrement=True)
     user_contact = Column(BIGINT, ForeignKey(
         "customers.customer_contact", ondelete="CASCADE"), nullable=False, )
-    company_id = Column(String, ForeignKey(
-        "companies.company_name", ondelete="CASCADE"), nullable=False)
-    products = Column(JSON, nullable=False)
+    company_id = Column(BIGINT, ForeignKey(
+        "companies.company_id", ondelete="CASCADE"), nullable=False)
+    product_id = Column(BIGINT, ForeignKey(
+        "products.product_id", ondelete="CASCADE"), nullable=False)
     address_id = Column(BIGINT, ForeignKey(
         "address.address_id", ondelete="CASCADE"), nullable=False)
     booking_date = Column(Date, nullable=False)
@@ -175,10 +176,14 @@ class Bookings(Base):
     total = Column(String, nullable=False)
     coupon = Column(String, nullable=True)
     coupon_discount = Column(String, nullable=True)
+    status = Column(String, nullable=False)
+    payment_type = Column(String, nullable=False)
     review = Column(BIGINT, nullable=True)
     feedback = Column(String, nullable=True)
 
     customer = relationship("User")
+    product = relationship("Products")
+    address = relationship('Addresses')
     company = relationship("Companies")
 
     @validates('cart_id', 'user_contact', 'company_id')
@@ -187,6 +192,20 @@ class Bookings(Base):
             return None
         else:
             return value
+
+    @validates('status')
+    def validate_status(self, key, value):
+        allowed_statuses = ['paid', 'checkout', 'canceled', 'failed', 'expired']
+        if value not in allowed_statuses:
+            raise ValueError("Invalid order status")
+        return value
+
+    @validates('payment_type')
+    def validate_payment_type(self, key, value):
+        allowed_payment_types = ['credit_card', 'paypal', 'cash on delivery']
+        if value not in allowed_payment_types:
+            raise ValueError("Invalid payment type")
+        return value
 
 class FavoriteItem(Base):
     __tablename__ = "favorite_item"

@@ -103,19 +103,23 @@ class CartResponse(BaseModel):
 class Bookings(BaseModel):
     booking_id: int | None = None
     user_contact: int
-    company_name: str
-    products: List[Product]
+    company_id: int
+    product_id: int
     address_id: int
-    booking_time: time
     booking_date: date
+    booking_time: time
     total: str
     coupon: str
     coupon_discount: str
+    status: str
+    payment_type: str
     review: Optional[int] = None
     feedback: Optional[str] = None
 
     class Config:
         from_attributes = True
+class BookingsCreate(Bookings):
+    pass
 
 
 class CompanyLogin(BaseModel):
@@ -136,3 +140,6 @@ class ReviewFeedback(BaseModel):
 
     class Config:
         orm_mode = True
+
+
+
