@@ -2,7 +2,7 @@ from typing import List
 import psycopg2
 import bcrypt
 from app import models
-from fastapi import FastAPI, Response, Depends, UploadFile, File, Request, HTTPException, Query
+from fastapi import FastAPI, Response, Depends, UploadFile, File, Request, HTTPException, Query, Form
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from starlette.responses import FileResponse
@@ -12,6 +12,7 @@ from .models import Image,Bookings,Companies
 from .models import Companies as CompaniesModel
 from .schemas import ReviewFeedback,Companies
 from .database import engine, get_db, Base
+from .database import SessionLocal
 import os
 
 import time
@@ -548,3 +549,29 @@ def delete_company(
     db.commit()
 
     return {"status": 200, "message": "Company deleted successfully", "data": {}}
+
+@app.post("/add_company/")
+def add_company(
+    company_data: dict,
+    db: Session = Depends(database.get_db)
+):
+    company_name = company_data.get("company_name")
+
+    # Check if a company with the same name already exists
+    existing_company = db.query(models.Companies).filter(models.Companies.company_name == company_name).first()
+
+    if existing_company:
+        return {"status": 400, "message": "Company already exists", "data": existing_company}
+
+    # Create a new instance of the Companies model and populate its fields
+    new_company = models.Companies(**company_data)
+
+    # Add the new company to the database
+    db.add(new_company)
+    db.commit()
+    db.refresh(new_company)
+
+    return {"status": 200, "message": "Company added successfully", "data": new_company}
+
+
+
