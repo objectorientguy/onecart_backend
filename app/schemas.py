@@ -1,3 +1,4 @@
+
 from typing import List, Optional
 from pydantic import BaseModel
 from datetime import date, time
@@ -119,3 +120,4 @@ class Bookings(BaseModel):
 class CompanyLogin(BaseModel):
     email: str
     password: str
+
