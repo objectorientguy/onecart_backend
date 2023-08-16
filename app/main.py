@@ -1,4 +1,5 @@
 from typing import List
+from contextlib import contextmanager
 
 import bcrypt
 from fastapi import FastAPI, Response, Depends, UploadFile, File, Request, HTTPException
@@ -25,6 +26,22 @@ def save_image_to_db(db, filename, file_path):
     db.refresh(image)
     return image
 
+def create_categories(db):
+    # Create 20 different categories and add them to the database
+    categories_to_create = [
+        {"category_name": "Electronics", "category_image": "electronics.jpg"},
+        {"category_name": "Clothing", "category_image": "clothing.jpg"}
+        # Add more categories here...
+    ]
+
+    session = SessionLocal()
+    for category_data in categories_to_create:
+        category = models.categories(**category_data)
+        session.add(category)
+        session.commit()
+        session.refresh(category)
+
+    session.close()
 
 @app.get('/')
 def root():
@@ -346,3 +363,38 @@ def add_products(addProduct: schemas.Product, response: Response, db: Session = 
     except IntegrityError:
         response.status_code = 200
         return {"status": "404", "message": "Error", "data": {}}
+
+@contextmanager
+def session_scope():
+    """Provide a transactional scope around a series of operations."""
+    session = Session(bind=engine)
+    try:
+        yield session
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
+@app.post("/create_categories/")
+def create_categories():
+    try:
+        # Create 20 different categories and add them to the database
+        categories_to_create = [
+            {"category_name": "Electronics", "category_image": "electronics.jpg"},
+            {"category_name": "Clothing", "category_image": "clothing.jpg"},
+            # Add more categories here...
+        ]
+
+        with session_scope() as session:
+            for category_data in categories_to_create:
+                category = models.Categories(**category_data)
+                session.add(category)
+                session.commit()
+                session.refresh(category)
+
+        return {"message": "Categories created successfully"}
+
+    except Exception as e:
+        print(repr(e))
+        raise HTTPException(status_code=500, detail=str(e))
