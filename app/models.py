@@ -122,17 +122,16 @@ class Addresses(Base):
     address_id = Column(BIGINT, nullable=False, primary_key=True, autoincrement=True)
     user_contact = Column(BIGINT, ForeignKey(
         "customers.customer_contact", ondelete="CASCADE"), nullable=False)
-    company_name = Column(String, ForeignKey(
-        "companies.company_name", ondelete="CASCADE"), nullable=False)
-    address_title = Column(String, nullable=False)
+    address_type = Column(String, nullable=False)
     address_name = Column(String, nullable=False)
+    phone_no = Column(BIGINT,nullable=False)
     city = Column(String, nullable=False)
+    state = Column(String,nullable = False)
     pincode = Column(BIGINT, nullable=False)
 
     customer = relationship("User")
-    company = relationship("Companies")
 
-    @validates('user_contact', 'address_title', 'address_name', 'city', 'pincode', 'company_name')
+    @validates('user_contact', 'address_type', 'address_name', 'city', 'pincode', 'state', 'phone_no')
     def empty_string_to_null(self, key, value):
         if isinstance(value, str) and value == '':
             return None

@@ -65,18 +65,25 @@ class UserData(BaseModel):
 class Address(BaseModel):
     address_id: int | None = None
     user_contact: int
-    address_title: str
+    address_type: str
     address_name: str
+    phone_no: int
     city: str
+    state: str
     pincode: int
-    company_id: int
 
     class Config:
         from_attributes = True
 
 
 class AddAddress(Address):
-    pass
+    address_type: str
+    address_name: str
+    phone_no: int
+    city: str
+    state: str
+    pincode: int
+
 
 
 class CartItemCreate(BaseModel):

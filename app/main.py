@@ -26,22 +26,6 @@ def save_image_to_db(db, filename, file_path):
     db.refresh(image)
     return image
 
-def create_categories(db):
-    # Create 20 different categories and add them to the database
-    categories_to_create = [
-        {"category_name": "Electronics", "category_image": "electronics.jpg"},
-        {"category_name": "Clothing", "category_image": "clothing.jpg"}
-        # Add more categories here...
-    ]
-
-    session = SessionLocal()
-    for category_data in categories_to_create:
-        category = models.categories(**category_data)
-        session.add(category)
-        session.commit()
-        session.refresh(category)
-
-    session.close()
 
 @app.get('/')
 def root():
@@ -388,7 +372,7 @@ def create_categories():
                 session.commit()
                 session.refresh(category)
 
-        return {"message": "Categories created successfully", "data" : category }
+        return {"message": "Categories created successfully", "data" : {} }
 
     except Exception as e:
         print(repr(e))
