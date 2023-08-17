@@ -49,6 +49,7 @@ class Product(BaseModel):
     cost: str
     discounted_cost: int
     details: str
+    today_deal: bool
 
 
 class UserData(BaseModel):

@@ -57,7 +57,7 @@ class Products(Base):
     cost = Column(String, nullable=False)
     discounted_cost = Column(String, nullable=True)
     details = Column(String, nullable=False)
-
+    today_deal = Column(Boolean, nullable=False)
     company = relationship("Companies")
     category = relationship("Categories")
 

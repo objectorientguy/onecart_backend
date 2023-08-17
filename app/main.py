@@ -588,3 +588,35 @@ def add_booking(response: Response, bookOrder: schemas.BookingsCreate, db: Sessi
         response.status_code = 400
         return {"status": 400, "message": "Error creating booking order", "data": {}}
 
+
+# Today deal products
+@app.get("/today_deal_products/")
+def today_deal_products(
+    product_id: int,
+    db: Session = Depends(database.get_db)
+):
+    try:
+        # Retrieve the list of products with today_deal=True and matching product_id
+        products = db.query(models.Products).filter(
+            models.Products.product_id == product_id,
+            models.Products.today_deal == True
+        ).all()
+
+        if not products:
+            return {"status": 200, "message": "Product not in today's deal list", "data": {}}
+
+        # Create a list of dictionaries with selected fields for each product
+        selected_products = [
+            {
+                "product_id": product.product_id,
+                "product_name": product.product_name,
+                "image": product.image,
+                "cost": product.cost,
+                "discounted_cost": product.discounted_cost
+            }
+            for product in products
+        ]
+
+        return {"status": 200, "message": "This product is in today's deal", "data": selected_products}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Error retrieving today's deal products")
