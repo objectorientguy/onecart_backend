@@ -352,40 +352,23 @@ def get_categories(response: Response, db: Session = Depends(get_db)):
         return {"status": 204, "message": "Error", "data": {}}
 
 
-@app.post('/addProducts')
-def add_products(addProduct: schemas.Product, response: Response, db: Session = Depends(get_db)):
-    try:
-        new_product = models.Products(**addProduct.model_dump())
-        db.add(new_product)
-        db.commit()
-        db.refresh(new_product)
-
-        return {"status": "200", "message": "New product added successfully!", "data": new_product}
-    except Exception as e:
-        print(repr(e))
-        response.status_code = 200
-        return {"status": "404", "message": "Error", "data": {}}
-
-@contextmanager
-def session_scope():
-    """Provide a transactional scope around a series of operations."""
-    session = Session(bind=engine)
-    try:
-        yield session
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
-    finally:
-        session.close()
 @app.post("/create_categories/")
 def create_categories():
     try:
         # Create 20 different categories and add them to the database
         categories_to_create = [
-            {"category_name": "Electronics", "category_image": "electronics.jpg"},
-            {"category_name": "Clothing", "category_image": "clothing.jpg"},
-            # Add more categories here...
+            {"category_name": "Fruits & Vegetables", "category_image": "electronics.jpg"},
+            {"category_name": "Staples", "category_image": "clothing.jpg"},
+            {"category_name": "Dairy & Bakery", "category_image" : ".jpg"},
+            {"category_name": "Snaks & Branded Fruits", "category_image" : ".jpg"},
+            {"category_name": "Beverages", "category_image" : ".jpg"},
+            {"category_name": "Premium Fruits", "category_image": ".jpg"},
+            {"category_name": "Home Care", "category_image": ".jpg"},
+            {"category_name": "Personal Care", "category_image": ".jpg"},
+            {"category_name": "Breakfast & Instant Food", "category_image": ".jpg"},
+            {"category_name": "Home Care", "category_image": ".jpg"}
+
+
         ]
 
         with session_scope() as session:
@@ -395,7 +378,7 @@ def create_categories():
                 session.commit()
                 session.refresh(category)
 
-        return {"message": "Categories created successfully"}
+        return {"message": "Categories created successfully", "data" : category }
 
     except Exception as e:
         print(repr(e))
