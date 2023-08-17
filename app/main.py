@@ -149,19 +149,6 @@ def edit_user(userDetail: schemas.UserData, response: Response, db: Session = De
         return {"status": 404, "message": "Error", "data": {}}
 
 
-# @app.post('/addAddress')
-# def add_address(createAddress: schemas.Address, response: Response, db: Session = Depends(get_db)):
-#     try:
-#         new_address = models.Addresses(**createAddress.model_dump())
-#         db.add(new_address)
-#         db.commit()
-#         db.refresh(new_address)
-#         return {"status": "200", "message": "New address created!", "data": new_address}
-#     except IntegrityError:
-#         response.status_code = 404
-#         return {"status": "404", "message": "Error", "data": {}}
-
-
 @app.post("/addAddress")
 def add_address( user_contact: int, createAddress: schemas.AddAddress, response: Response, db: Session = Depends(get_db)):
     try:
@@ -393,3 +380,121 @@ def create_categories():
     except Exception as e:
         print(repr(e))
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post('/addProducts')
+def add_products(products: List[schemas.Product], response: Response, db: Session = Depends(get_db)):
+    try:
+        new_products = []
+        for product in products:
+            existing_product = db.query(models.Products).filter(
+                models.Products.product_name == product.product_name
+            ).first()
+
+            if existing_product:
+                # Check if the company ID and categories match
+                return {"status": "200", "message": "Product already exists!"}
+                continue
+
+            new_product = models.Products(**product.model_dump())
+            db.add(new_product)
+            new_products.append(new_product)
+
+        db.commit()
+        for product in new_products:
+            db.refresh(product)
+
+        return {"status": "200", "message": "New products added successfully!", "data": new_products}
+    except IntegrityError as e:
+        if "duplicate key value violates unique constraint" in str(e):
+            response.status_code = 400
+            return {"status": "400", "message": "check the company and categories", "data": {}}
+        else:
+            raise
+
+@app.post('/addProductVariants/{product_id}')
+def add_product_variants(product_id: int, variants: List[schemas.ProductVariant], response: Response, db: Session = Depends(get_db)):
+    try:
+        if not isinstance(product_id, int):
+            raise HTTPException(status_code=400, detail="Product ID must be an integer")
+        if not isinstance(variants, list):
+            raise HTTPException(status_code=400, detail="Variants must be a list of ProductVariant objects")
+
+        product = db.query(models.Products).filter(models.Products.product_id == product_id).first()
+        if not product:
+            raise HTTPException(status_code=404, detail="Product not found")
+
+        new_variants = []
+        for variant in variants:
+            existing_variant = db.query(models.ProductVariant).filter(
+                models.ProductVariant.variant_price == variant.variant_price,
+                models.ProductVariant.variant_quantity == variant.variant_quantity,
+                models.ProductVariant.product_id == product_id,
+            ).first()
+
+            if existing_variant:
+                return {"status": "200", "message": "Variants already exists!"}
+
+                continue
+
+            new_variant = models.ProductVariant(
+                variant_price=variant.variant_price,
+                variant_quantity=variant.variant_quantity,
+                product_id=product_id,
+            )
+            db.add(new_variant)
+            new_variants.append(new_variant)
+
+        db.commit()
+
+        return {"status": "200", "message": "New variants added successfully!"}
+    except IntegrityError as e:
+        if "duplicate key value violates unique constraint" in str(e):
+            response.status_code = 400
+            return {"status": "400", "message": "error"}
+        else:
+            raise
+
+@app.get("/getProducts")
+def get_all_products(response: Response, db: Session = Depends(get_db)):
+    try:
+        fetch_products = db.query(models.Products).all()
+        if not fetch_products:
+            return {"status": 204, "message": "No products available please add", "data": {}}
+
+        return {"status": 200, "message": "Products Fetched", "data": fetch_products}
+    except IntegrityError:
+        response.status_code = 200
+        return {"status": 204, "message": "Error", "data": {}}
+
+@app.get("/getProductVariants/{product_id}")
+def get_product_variants(response: Response, product_id: int, db: Session = Depends(get_db)):
+    try:
+        fetch_variants = db.query(models.ProductVariant).filter(models.ProductVariant.product_id == product_id).all()
+        if not fetch_variants:
+            return {"status": 204, "message": "No product variants available", "data": {}}
+
+        return {"status": 200, "message": "Product Variants Fetched", "data": fetch_variants}
+    except IntegrityError:
+        response.status_code = 200
+        return {"status": 204, "message": "Error", "data": {}}
+
+@app.put("/editProduct")
+def edit_product(editProduct: schemas.EditProduct,response: Response,product_id: int,db: Session = Depends(get_db)):
+    try:
+        edit_product = db.query(models.Products).filter(
+            models.Products.product_id == product_id
+        )
+        product_exist = edit_product.first()
+        if not product_exist:
+            response.status_code = 404
+            return {"status": 404, "message": "Product doesn't exist", "data": {}}
+
+        edit_product.update(editProduct.model_dump(exclude_unset=True), synchronize_session=False)
+        db.commit()
+        return {"status": 200, "message": "Product edited!", "data": edit_product.first()}
+
+    except IntegrityError:
+        response.status_code = 400
+        return {"status": 400, "message": "Error", "data": {}}
+
+
