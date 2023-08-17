@@ -597,3 +597,37 @@ def delete_cart_item(id: int, response: Response, db: Session = Depends(get_db))
         response.status_code = 500
         return {"status": "500", "message": "Internal server error"}
 
+@app.post('/deleteMultipleProduct')
+def delete_multiple_products(product_ids: List[int], response: Response, db: Session = Depends(get_db)):
+    if not product_ids:
+        raise HTTPException(status_code=400, detail="Please provide a list of product IDs")
+
+    try:
+        products = db.query(models.Products).filter(models.Products.product_id.in_(product_ids))
+
+        if not products:
+            raise HTTPException(status_code=404, detail="Products not found")
+
+        for product in products:
+            db.delete(product)
+        db.commit()
+
+        return {"status": "200", "message": "Products deleted successfully!"}
+    except Exception as e:
+        response.status_code = 500
+        return {"status": "500", "message": "Internal server error"}
+
+@app.get("/products/search")
+def search_products(response: Response, product_name: str, db: Session = Depends(get_db)):
+    try:
+        fetch_products = db.query(models.Products).filter(models.Products.product_name.like(f"%{product_name}%")).all()
+        if not fetch_products:
+            return {"status": 204, "message": "No product found", "data": {}}
+
+        return {"status": 200, "message": "Products fetched", "data": fetch_products}
+    except IntegrityError as e:
+        print(repr(e))
+        response.status_code = 200
+        return {"status": 204, "message": "Error", "data": {}}
+
+
