@@ -180,10 +180,9 @@ def add_address( user_contact: int, createAddress: schemas.AddAddress, response:
 
 
 @app.get('/getAllAddresses')
-def get_address(response: Response, db: Session = Depends(get_db), userId=int, companyId=str):
+def get_address(response: Response, db: Session = Depends(get_db), userId=int):
     try:
         user_addresses = db.query(models.Addresses).filter(
-            models.Addresses.company_id == companyId).filter(
             models.Addresses.user_contact == userId).all()
 
         if not user_addresses:
