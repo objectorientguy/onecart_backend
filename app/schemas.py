@@ -77,14 +77,15 @@ class Address(BaseModel):
 
 
 class AddAddress(Address):
-    address_type: str
     address_name: str
+    address_type: str
     phone_no: int
     city: str
     state: str
     pincode: int
 
-
+    class Config:
+        from_attributes = True
 
 class CartItemCreate(BaseModel):
     product_id: int

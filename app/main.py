@@ -149,17 +149,34 @@ def edit_user(userDetail: schemas.UserData, response: Response, db: Session = De
         return {"status": 404, "message": "Error", "data": {}}
 
 
-@app.post('/addAddress')
-def add_address(createAddress: schemas.Address, response: Response, db: Session = Depends(get_db)):
+# @app.post('/addAddress')
+# def add_address(createAddress: schemas.Address, response: Response, db: Session = Depends(get_db)):
+#     try:
+#         new_address = models.Addresses(**createAddress.model_dump())
+#         db.add(new_address)
+#         db.commit()
+#         db.refresh(new_address)
+#         return {"status": "200", "message": "New address created!", "data": new_address}
+#     except IntegrityError:
+#         response.status_code = 404
+#         return {"status": "404", "message": "Error", "data": {}}
+
+
+@app.post("/addAddress")
+def add_address( user_contact: int, createAddress: schemas.AddAddress, response: Response, db: Session = Depends(get_db)):
     try:
-        new_address = models.Addresses(**createAddress.model_dump())
-        db.add(new_address)
-        db.commit()
-        db.refresh(new_address)
-        return {"status": "200", "message": "New address created!", "data": new_address}
-    except IntegrityError:
+
+            new_address = models.Addresses(**createAddress.model_dump())
+            db.add(new_address)
+            db.commit()
+            db.refresh(new_address)
+
+            return {"status": "200", "message": "New address created!", "data": new_address}
+    except IntegrityError as e:
+        print(repr(e))
         response.status_code = 404
         return {"status": "404", "message": "Error", "data": {}}
+
 
 
 @app.get('/getAllAddresses')

@@ -124,14 +124,14 @@ class Addresses(Base):
         "customers.customer_contact", ondelete="CASCADE"), nullable=False)
     address_type = Column(String, nullable=False)
     address_name = Column(String, nullable=False)
-    phone_no = Column(BIGINT,nullable=False)
+    phone_no = Column(BIGINT, nullable=False)
     city = Column(String, nullable=False)
-    state = Column(String,nullable = False)
+    state = Column(String, nullable=False)
     pincode = Column(BIGINT, nullable=False)
 
     customer = relationship("User")
 
-    @validates('user_contact', 'address_type', 'address_name', 'city', 'pincode', 'state', 'phone_no')
+    @validates('address_type', 'address_name', 'city', 'pincode', 'state', 'phone_no')
     def empty_string_to_null(self, key, value):
         if isinstance(value, str) and value == '':
             return None
