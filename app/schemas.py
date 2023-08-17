@@ -102,26 +102,19 @@ class AddAddress(Address):
     class Config:
         from_attributes = True
 
-class CartItemCreate(BaseModel):
-    product_id: int
-
-
-class CartCreate(BaseModel):
-    company_id: int
-    user_id: int
-    items: List[CartItemCreate]
-
-
-class CartItemResponse(BaseModel):
-    id: int
-    product_id: int
-
-
-class CartResponse(BaseModel):
+class CartSchema(BaseModel):
     id: int
     company_id: int
-    user_id: int
-    items: List[CartItemResponse]
+    customer_contact: int
+    #creation_time: datetime
+
+
+class CartItemSchema(BaseModel):
+    id: int
+    product_id: int
+    cart_id: int
+    quantity: int
+
 
 
 class Bookings(BaseModel):
