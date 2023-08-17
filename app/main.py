@@ -466,6 +466,19 @@ def get_all_products(response: Response, db: Session = Depends(get_db)):
         response.status_code = 200
         return {"status": 204, "message": "Error", "data": {}}
 
+@app.get("/products/{product_id}")
+def get_product_by_product_id(response: Response, product_id: int, db: Session = Depends(get_db)):
+    try:
+        fetch_product = db.query(models.Products).filter(models.Products.product_id == product_id).first()
+        if not fetch_product:
+            return {"status": 204, "message": "Product not found", "data": {}}
+
+        return {"status": 200, "message": "Product fetched", "data": fetch_product}
+    except IntegrityError:
+        response.status_code = 200
+        return {"status": 204, "message": "Error", "data": {}}
+
+
 @app.get("/getProductVariants/{product_id}")
 def get_product_variants(response: Response, product_id: int, db: Session = Depends(get_db)):
     try:
