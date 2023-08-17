@@ -351,7 +351,17 @@ def get_categories(response: Response, db: Session = Depends(get_db)):
         response.status_code = 200
         return {"status": 204, "message": "Error", "data": {}}
 
-
+@contextmanager
+def session_scope():
+    session = Session(bind=engine)
+    try:
+        yield session
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
 @app.post("/create_categories/")
 def create_categories():
     try:
