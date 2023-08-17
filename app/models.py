@@ -6,6 +6,8 @@ from .database import Base
 from sqlalchemy.orm import composite
 
 
+
+
 class Companies(Base):
     __tablename__ = "companies"
 
@@ -182,3 +184,4 @@ class Bookings(Base):
             return None
         else:
             return value
+

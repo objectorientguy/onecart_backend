@@ -347,6 +347,7 @@ def get_categories(response: Response, db: Session = Depends(get_db)):
 
         return {"status": 200, "message": "Categories Fetched", "data": fetch_categories}
     except IntegrityError:
+        print(repr(e))
         response.status_code = 200
         return {"status": 204, "message": "Error", "data": {}}
 
@@ -360,7 +361,8 @@ def add_products(addProduct: schemas.Product, response: Response, db: Session = 
         db.refresh(new_product)
 
         return {"status": "200", "message": "New product added successfully!", "data": new_product}
-    except IntegrityError:
+    except Exception as e:
+        print(repr(e))
         response.status_code = 200
         return {"status": "404", "message": "Error", "data": {}}
 
