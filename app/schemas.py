@@ -142,3 +142,10 @@ class CompanyLogin(BaseModel):
     email: str
     password: str
 
+class Banners(BaseModel):
+    banner_id: int
+    description: str
+    banner_image: List[str]
+    discount: str
+    isActive: bool
+    tAc: str

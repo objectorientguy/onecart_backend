@@ -213,3 +213,12 @@ class CartItem(Base):
             return None
         else:
             return value
+
+class PromotionalBanners(Base):
+    __tablename__ = "banners"
+    banner_id = Column(Integer, primary_key=True, index=True)
+    banner_image = Column(JSON, nullable=False)
+    description = Column(String, nullable= True)
+    discount = Column(String, nullable=False)
+    isActive = Column(Boolean, nullable=False)
+    tAc = Column(String, nullable=False)

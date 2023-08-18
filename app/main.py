@@ -631,4 +631,14 @@ def search_products(response: Response, product_name: str, db: Session = Depends
         response.status_code = 200
         return {"status": 204, "message": "Error", "data": {}}
 
+@app.get("/getBanners")
+def get_all_banners(response: Response, db: Session = Depends(get_db)):
+    try:
+        fetch_banners = db.query(models.PromotionalBanners).all()
+        if not fetch_banners:
+            return {"status": 204, "message": "No Banners available please add", "data": {}}
 
+        return {"status": 200, "message": "Banners Fetched", "data": fetch_banners}
+    except IntegrityError:
+        response.status_code = 200
+        return {"status": 204, "message": "Error", "data": {}}
