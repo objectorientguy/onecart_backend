@@ -66,6 +66,10 @@ class ProductVariant(Base):
 
     variant_id = Column(BIGINT, primary_key=True, index=True, autoincrement=True)
     variant_price = Column(Float, nullable=False)
+    image = Column(JSON, nullable=False)
+    discounted_cost = Column(String, nullable=True)
+    discount = Column(String, nullable=True)
+    weight = Column(String, nullable=False)
     variant_quantity = Column(BIGINT, nullable=False)
     product_id = Column(BIGINT, ForeignKey(
         "products.product_id", ondelete="CASCADE"), nullable=False)

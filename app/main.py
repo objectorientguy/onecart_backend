@@ -491,6 +491,7 @@ def get_product_variants(response: Response, product_id: int, db: Session = Depe
         response.status_code = 200
         return {"status": 204, "message": "Error", "data": {}}
 
+
 @app.put("/editProduct")
 def edit_product(editProduct: schemas.EditProduct,response: Response,product_id: int,db: Session = Depends(get_db)):
     try:

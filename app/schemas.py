@@ -42,6 +42,11 @@ class ProductVariant(BaseModel):
     variant_price: float
     variant_quantity: int
     product_id: int
+    weight: int
+    discount: str
+    discounted_cost: float
+    image: List[str]
+
 
     class Config:
         from_attributes = True
