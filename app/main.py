@@ -642,3 +642,38 @@ def get_all_banners(response: Response, db: Session = Depends(get_db)):
     except IntegrityError:
         response.status_code = 200
         return {"status": 204, "message": "Error", "data": {}}
+
+@app.get("/getDeals")
+def get_deal_products(response: Response, db: Session = Depends(get_db)):
+    try:
+        deal_products = db.query(models.Products).filter(models.Products.deal == True).all()
+        if not deal_products:
+            return {"status": 204, "message": "No deal products available", "data": []}
+
+        return {"status": 200, "message": "Deal products fetched", "data": deal_products}
+    except IntegrityError:
+        response.status_code = 200
+        return {"status": 204, "message": "Error", "data": []}
+
+@app.get("/getCategoriesAndBannersAndDeals")
+def get_categories_and_banners_and_deals(response: Response, db: Session = Depends(get_db)):
+    try:
+        fetch_categories = db.query(models.Categories).all()
+        fetch_banners = db.query(models.PromotionalBanners).all()
+        deal_products = db.query(models.Products).filter(models.Products.deal == True).all()
+
+        if not fetch_categories or not fetch_banners or not deal_products:
+            return {"status": 204, "message": "No data available", "data": {}}
+
+        return {
+            "status": 200,
+            "message": "Categories, banners, and deals fetched",
+            "data": {
+                "categories": fetch_categories,
+                "banners": fetch_banners,
+                "deals": deal_products,
+            },
+        }
+    except IntegrityError:
+        response.status_code = 200
+        return {"status": 204, "message": "Error", "data": {}}
