@@ -1,6 +1,5 @@
 from typing import List
 from contextlib import contextmanager
-
 import bcrypt
 from fastapi import FastAPI, Response, Depends, UploadFile, File, Request, HTTPException
 from sqlalchemy.orm import Session
@@ -674,6 +673,46 @@ def get_categories_and_banners_and_deals(response: Response, db: Session = Depen
                 "deals": deal_products,
             },
         }
+    except IntegrityError:
+        response.status_code = 200
+        return {"status": 204, "message": "Error", "data": {}}
+
+@app.post('/bookOrder')
+def add_booking(response: Response, bookOrder: schemas.BookingsCreate, db: Session = Depends(get_db)):
+    try:
+        new_booking = models.Bookings(**bookOrder.model_dump())
+        db.add(new_booking)
+        db.commit()
+        db.refresh(new_booking)
+
+        return {"status": 200, "message": "Booking order created successfully!", "data": new_booking}
+    except IntegrityError:
+        response.status_code = 400
+        return {"status": 400, "message": "Error creating booking order", "data": {}}
+
+
+@app.get("/getOrders")
+def get_Orders(response: Response, db: Session = Depends(get_db)):
+    try:
+        orders = db.query(models.Bookings).all()
+        if not orders:
+            return {"status": 204, "message": "No Booking Orders available", "data": []}
+
+        return {"status": 200, "message": "Booking Orders  fetched", "data": orders}
+    except IntegrityError as e:
+        print(repr(e))
+        response.status_code = 200
+        return {"status": 204, "message": "Error", "data": []}
+
+
+@app.get("/getOrders/{order_id}")
+def get_oreders_by_order_id(response: Response, order_id: int, db: Session = Depends(get_db)):
+    try:
+        fetch_orders_id = db.query(models.Bookings).filter(models.Bookings.order_id == order_id).all()
+        if not fetch_orders_id:
+            return {"status": 204, "message": "No Booking Orders found", "data": {}}
+
+        return {"status": 200, "message": "Booking Orders fetched", "data": fetch_orders_id}
     except IntegrityError:
         response.status_code = 200
         return {"status": 204, "message": "Error", "data": {}}

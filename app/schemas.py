@@ -1,7 +1,7 @@
 
-from typing import List, Optional
+from typing import Optional, List
 from pydantic import BaseModel
-from datetime import date, time
+from datetime import date, time, datetime
 
 
 class Companies(BaseModel):
@@ -121,23 +121,6 @@ class CartItemSchema(BaseModel):
     quantity: int
 
 
-
-class Bookings(BaseModel):
-    booking_id: int | None = None
-    user_contact: int
-    company_name: str
-    products: List[Product]
-    address_id: int
-    booking_time: time
-    booking_date: date
-    total: str
-    coupon: str
-    coupon_discount: str
-
-    class Config:
-        from_attributes = True
-
-
 class CompanyLogin(BaseModel):
     email: str
     password: str
@@ -149,3 +132,20 @@ class Banners(BaseModel):
     discount: str
     isActive: bool
     tAc: str
+
+class Bookings(BaseModel):
+    order_id: int | None = None
+    cartItems_id: int
+    user_contact: int
+    address_id: int
+    item_count: int
+    # order_placed: datetime | None = None
+    order_confirmation: datetime | None = None
+    order_shipped: datetime | None = None
+    total_price: str
+    payment_type: str
+
+    class Config:
+        from_attributes = True
+class BookingsCreate(Bookings):
+    pass

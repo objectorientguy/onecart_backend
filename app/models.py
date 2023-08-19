@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, BIGINT, Date, JSON, ForeignKey, Time, Boolean, Float,Integer
+from sqlalchemy import Column, String, BIGINT, Date, JSON, ForeignKey, Time, Boolean, Float,Integer, DateTime
 from sqlalchemy.orm import validates, relationship
 from sqlalchemy.sql.expression import text
 from sqlalchemy.sql.sqltypes import TIMESTAMP
@@ -153,33 +153,6 @@ class Addresses(Base):
             return value
 
 
-class Bookings(Base):
-    __tablename__ = "bookings"
-
-    booking_id = Column(BIGINT, nullable=False, primary_key=True, autoincrement=True)
-    user_contact = Column(BIGINT, ForeignKey(
-        "customers.customer_contact", ondelete="CASCADE"), nullable=False, )
-    company_id = Column(String, ForeignKey(
-        "companies.company_name", ondelete="CASCADE"), nullable=False)
-    products = Column(JSON, nullable=False)
-    address_id = Column(BIGINT, ForeignKey(
-        "address.address_id", ondelete="CASCADE"), nullable=False)
-    booking_date = Column(Date, nullable=False)
-    booking_time = Column(Time, nullable=False)
-    total = Column(String, nullable=False)
-    coupon = Column(String, nullable=True)
-    coupon_discount = Column(String, nullable=True)
-
-    customer = relationship("User")
-    company = relationship("Companies")
-
-    @validates('cart_id', 'user_contact', 'company_id')
-    def empty_string_to_null(self, key, value):
-        if isinstance(value, str) and value == '':
-            return None
-        else:
-            return value
-
 class Cart(Base):
     __tablename__ = "carts"
     id = Column(Integer, primary_key=True, index=True,autoincrement=True)
@@ -222,3 +195,34 @@ class PromotionalBanners(Base):
     discount = Column(String, nullable=False)
     isActive = Column(Boolean, nullable=False)
     tAc = Column(String, nullable=False)
+
+class Bookings(Base):
+    __tablename__ = "bookings"
+
+    order_id = Column(BIGINT, nullable=False, primary_key=True, autoincrement=True)
+    cartItems_id = Column(Integer, ForeignKey(
+        "cart_items.id", ondelete="CASCADE"), nullable=False)
+    user_contact = Column(BIGINT, ForeignKey(
+        "customers.customer_contact", ondelete="CASCADE"), nullable=False)
+    address_id = Column(BIGINT, ForeignKey(
+        "address.address_id", ondelete="CASCADE"), nullable=False)
+    item_count = Column(BIGINT, nullable=False)
+    order_placed = Column(TIMESTAMP(timezone=True),
+                        nullable=False, server_default=text('now()'))
+    order_confirmation = Column(DateTime, nullable=True)
+    order_shipped = Column(DateTime, nullable=True)
+    total_price = Column(String, nullable=False)
+    payment_type = Column(String, nullable=False)
+
+
+    customer = relationship("User")
+    cartItems = relationship("CartItem")
+    address = relationship('Addresses')
+    # company = relationship("Companies")
+
+    @validates('user_contact', 'address_id')
+    def empty_string_to_null(self, key, value):
+        if isinstance(value, str) and value == '':
+            return None
+        else:
+            return value
