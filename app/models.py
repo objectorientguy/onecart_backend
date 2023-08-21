@@ -94,10 +94,6 @@ class User(Base):
     created_at = Column(TIMESTAMP(timezone=True),
                         nullable=False, server_default=text('now()'))
     email_id = Column(String, nullable=True)
-    order_id = Column(BIGINT, ForeignKey(
-        "bookings.order_id", ondelete="CASCADE"), nullable=False)
-    address_id = Column(BIGINT, ForeignKey(
-        "address.address_id", ondelete="CASCADE"), nullable=False)
     wallet = Column(Float, nullable=False)
     prev_pay_mode = Column(String, nullable=False)
 

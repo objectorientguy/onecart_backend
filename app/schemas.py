@@ -81,7 +81,6 @@ class UserData(BaseModel):
     email_id: EmailStr
     wallet: float
     prev_pay_mode: str
-    order_id: int
 
 
     class Config:
