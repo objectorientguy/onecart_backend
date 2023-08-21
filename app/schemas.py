@@ -153,15 +153,9 @@ class Bookings(BaseModel):
     user_contact: int
     address_id: int
     item_count: int
-    # order_placed: datetime | None = None
-    orderplaced_date: date
-    orderplaced_time: time
-    orderconfirm_date: date
-    orderconfirm_time: time
-    ordership_date: date
-    ordership_time: time
-    # order_confirmation: datetime | None = None
-    # order_shipped: datetime | None = None
+    order_placed: datetime | None = None
+    order_confirmation: datetime | None = None
+    order_shipped: datetime | None = None
     total_price: str
     payment_type: str
 
