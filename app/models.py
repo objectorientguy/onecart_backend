@@ -96,6 +96,7 @@ class User(Base):
     email_id = Column(String, nullable=True)
     wallet = Column(Float, nullable=False)
     prev_pay_mode = Column(String, nullable=False)
+    firebase_id = Column(String, nullable=False)
 
     @validates('customer_name', 'customer_contact', 'customer_id')
     def empty_string_to_null(self, key, value):
@@ -211,10 +212,19 @@ class Bookings(Base):
     address_id = Column(BIGINT, ForeignKey(
         "address.address_id", ondelete="CASCADE"), nullable=False)
     item_count = Column(BIGINT, nullable=False)
-    order_placed = Column(TIMESTAMP(timezone=True),
-                        nullable=False, server_default=text('now()'))
-    order_confirmation = Column(DateTime, nullable=True)
-    order_shipped = Column(DateTime, nullable=True)
+    # order_placed = Column(TIMESTAMP(timezone=True),
+    #                     nullable=False, server_default=text('now()')
+    orderplaced_date = Column(Date, nullable=False, server_default=text('now()'))
+    orderplaced_time = Column(Time, nullable=False, server_default=text('now()'))
+    # order_confirmation = Column(DateTime, nullable=True)
+    # order_shipped = Column(DateTime, nullable=True)
+    orderconfirm_date = Column(Date, nullable=True)
+    orderconfirm_time = Column(Time, nullable=True)
+    ordership_time = Column(Date, nullable=True)
+    orderpship_time = Column(Time, nullable=True)
+
+
+
     total_price = Column(String, nullable=False)
     payment_type = Column(String, nullable=False)
 

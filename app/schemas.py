@@ -81,10 +81,12 @@ class UserData(BaseModel):
     email_id: EmailStr
     wallet: float
     prev_pay_mode: str
+    firebase_id: str
 
 
     class Config:
         from_attributes = True
+
 class EditUserData(UserData):
     customer_name: str | None = None
     customer_contact: int
@@ -152,8 +154,14 @@ class Bookings(BaseModel):
     address_id: int
     item_count: int
     # order_placed: datetime | None = None
-    order_confirmation: datetime | None = None
-    order_shipped: datetime | None = None
+    orderplaced_date: date
+    orderplaced_time: time
+    orderconfirm_date: date
+    orderconfirm_time: time
+    ordership_date: date
+    ordership_time: time
+    # order_confirmation: datetime | None = None
+    # order_shipped: datetime | None = None
     total_price: str
     payment_type: str
 
