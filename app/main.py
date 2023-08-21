@@ -130,7 +130,7 @@ def create_user(loginSignupAuth: schemas.UserData, response: Response,
 
 
 @app.put('/editUser/{userId}')
-def edit_user(userDetail: schemas.UserData, response: Response, db: Session = Depends(get_db),
+def edit_user(userDetail: schemas.EditUserData, response: Response, db: Session = Depends(get_db),
               userId=int):
     try:
         edit_user_details = db.query(models.User).filter(models.User.customer_contact == userId)
@@ -183,7 +183,7 @@ def get_address(response: Response, db: Session = Depends(get_db), userId=int):
 
 
 @app.put('/editAddress')
-def edit_address(editAddress: schemas.Address, response: Response, db: Session = Depends(get_db), addressId=int):
+def edit_address(editAddress: schemas.EditAddress, response: Response, db: Session = Depends(get_db), addressId=int):
     try:
         edit_user_address = db.query(models.Addresses).filter(
             models.Addresses.address_id == addressId)
@@ -197,7 +197,8 @@ def edit_address(editAddress: schemas.Address, response: Response, db: Session =
         db.commit()
         return {"status": "200", "message": "address edited!", "data": edit_user_address.first()}
 
-    except IntegrityError:
+    except IntegrityError as e:
+        print(repr(e))
         response.status_code = 404
         return {"status": "404", "message": "Error", "data": {}}
 
@@ -717,3 +718,7 @@ def get_oreders_by_order_id(response: Response, order_id: int, db: Session = Dep
     except IntegrityError:
         response.status_code = 200
         return {"status": 204, "message": "Error", "data": {}}
+
+
+
+

@@ -84,16 +84,14 @@ class UserData(BaseModel):
     firebase_id: str
 
 
-    class Config:
-        from_attributes = True
-
 class EditUserData(UserData):
     customer_name: str | None = None
     customer_contact: int
     customer_birthdate: date | None = None
     email_id: EmailStr
-
     pass
+    class Config:
+        from_attributes = True
 
 
 class Address(BaseModel):
@@ -111,6 +109,17 @@ class Address(BaseModel):
 
 
 class AddAddress(Address):
+    address_name: str
+    address_type: str
+    phone_no: int
+    city: str
+    state: str
+    pincode: int
+
+    class Config:
+        from_attributes = True
+
+class EditAddress(Address):
     address_name: str
     address_type: str
     phone_no: int
