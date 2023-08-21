@@ -51,6 +51,7 @@ class Products(Base):
     category_id = Column(BIGINT, ForeignKey(
         "categories.category_id", ondelete="CASCADE"), nullable=False)
     product_name = Column(String, nullable=False)
+    brand_name = Column(String, nullable=False)
     image = Column(JSON, nullable=False)
     deal = Column(Boolean, nullable=False)
     item_count = Column(BIGINT, nullable=False)
@@ -86,12 +87,19 @@ class Image(Base):
 class User(Base):
     __tablename__ = "customers"
 
-    customer_id = Column(String, nullable=False)
+    customer_id = Column(Integer, nullable=False)
     customer_name = Column(String, nullable=False)
     customer_contact = Column(BIGINT, primary_key=True, nullable=False)
     customer_birthdate = Column(Date, nullable=True)
     created_at = Column(TIMESTAMP(timezone=True),
                         nullable=False, server_default=text('now()'))
+    email_id = Column(String, nullable=True)
+    order_id = Column(BIGINT, ForeignKey(
+        "bookings.order_id", ondelete="CASCADE"), nullable=False)
+    address_id = Column(BIGINT, ForeignKey(
+        "address.address_id", ondelete="CASCADE"), nullable=False)
+    wallet = Column(Float, nullable=False)
+    prev_pay_mode = Column(String, nullable=False)
 
     @validates('customer_name', 'customer_contact', 'customer_id')
     def empty_string_to_null(self, key, value):
@@ -111,7 +119,7 @@ class CompositeKey:
 
 
 class UserCompany(Base):
-    __tablename__ = "user-companies"
+    __tablename__ = "user_companies"
 
     company_name = Column(String, ForeignKey(
         "companies.company_name", ondelete="CASCADE"), nullable=False, primary_key=True)

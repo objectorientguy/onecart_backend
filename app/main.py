@@ -129,12 +129,12 @@ def create_user(loginSignupAuth: schemas.UserData, response: Response,
         return {"status": 404, "message": "Error", "data": {}}
 
 
-@app.put('/editUser')
+@app.put('/editUser/{userId}')
 def edit_user(userDetail: schemas.UserData, response: Response, db: Session = Depends(get_db),
               userId=int):
     try:
-        edit_user_details = db.query(models.User).filter(
-            models.User.customer_contact == userId)
+        edit_user_details = db.query(models.User).filter(models.User.customer_contact == userId)
+
         user_exist = edit_user_details.first()
         if not user_exist:
             response.status_code = 200
@@ -143,7 +143,8 @@ def edit_user(userDetail: schemas.UserData, response: Response, db: Session = De
         edit_user_details.update(userDetail.model_dump(), synchronize_session=False)
         db.commit()
         return {"status": 200, "message": "user edited!", "data": edit_user_details.first()}
-    except IntegrityError:
+    except IntegrityError as e:
+        print(repr(e))
         response.status_code = 404
         return {"status": 404, "message": "Error", "data": {}}
 

@@ -1,6 +1,6 @@
 
 from typing import Optional, List
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from datetime import date, time, datetime
 
 
@@ -56,6 +56,7 @@ class Product(BaseModel):
     product_id: int | None = None
     company_name: str
     product_name: str
+    brand_name: str
     image: List[str]
     item_count: int
     deal: bool
@@ -73,13 +74,25 @@ class EditProduct(Product):
 
 
 class UserData(BaseModel):
-    customer_id: str
+    customer_id: int
     customer_name: str | None = None
     customer_contact: int
     customer_birthdate: date | None = None
+    email_id: EmailStr
+    wallet: float
+    prev_pay_mode: str
+    order_id: int
+
 
     class Config:
         from_attributes = True
+class EditUserData(UserData):
+    customer_name: str | None = None
+    customer_contact: int
+    customer_birthdate: date | None = None
+    email_id: EmailStr
+
+    pass
 
 
 class Address(BaseModel):
