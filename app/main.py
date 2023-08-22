@@ -215,7 +215,7 @@ def delete_user_address(response: Response, db: Session = Depends(get_db), addre
 
         delete_address.delete(synchronize_session=False)
         db.commit()
-        return {"status": "200", "message": "Address deleted!", "data": {}}
+        return {"status": "200", "message": "Address deleted!"}
     except IntegrityError:
         response.status_code = 404
         return {"status": "404", "message": "Error", "data": {}}
@@ -680,6 +680,7 @@ def get_deal_products(response: Response, db: Session = Depends(get_db)):
         response.status_code = 200
         return {"status": 204, "message": "Error", "data": []}
 
+
 @app.get("/getCategoriesAndBannersAndDeals")
 def get_categories_and_banners_and_deals(response: Response, db: Session = Depends(get_db)):
     try:
@@ -702,6 +703,7 @@ def get_categories_and_banners_and_deals(response: Response, db: Session = Depen
     except IntegrityError:
         response.status_code = 200
         return {"status": 204, "message": "Error", "data": {}}
+
 
 @app.post('/bookOrder')
 def add_booking(response: Response, bookOrder: schemas.BookingsCreate, db: Session = Depends(get_db)):
