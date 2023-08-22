@@ -619,18 +619,42 @@ def delete_multiple_products(product_ids: List[int], response: Response, db: Ses
         response.status_code = 500
         return {"status": "500", "message": "Internal server error"}
 
-@app.get("/productsSearch")
-def search_products(response: Response, product_name: str, db: Session = Depends(get_db)):
-    try:
-        search_product = db.query(models.Products).filter(models.Products.product_name.like(f"%{product_name}%")).all()
-        if not search_product:
-            return {"status": 204, "message": "No product found", "data": {}}
 
-        return {"status": 200, "message": "Products fetched", "data": search_product}
-    except IntegrityError as e:
+@app.get("/productsSearch/")
+def search_products(response: Response, search_term: str, db: Session = Depends(get_db)):
+    try:
+
+        if not search_term:
+            raise ValueError("Search term cannot be empty.")
+        for char in search_term:
+            if not char.isalnum():
+                raise ValueError(f"Search term cannot contain invalid characters: {char}.")
+
+        search_results = db.query(models.Products).filter(
+            (models.Products.product_name.ilike(f"%{search_term}%")) |
+            (models.Products.brand_name.ilike(f"%{search_term}%"))
+        ).all()
+
+        if not search_results:
+            return {"status": 204, "message": "No product or brand found", "data": {}}
+
+        return {
+            "status": 200,
+            "message": "Products and Brand names fetched",
+            "data": {
+                "search_results": search_results
+            }
+        }
+
+
+    except ValueError as e:
         print(repr(e))
-        response.status_code = 200
-        return {"status": 204, "message": "Error", "data": {}}
+        response.status_code = 400
+        return {"status": 400, "message": "Error", "data": {} }
+    except IntegrityError as e:
+        response.status_code = 500
+        return {"status": 500, "message": "Error", "data": {}}
+
 
 @app.get("/getBanners")
 def get_all_banners(response: Response, db: Session = Depends(get_db)):
