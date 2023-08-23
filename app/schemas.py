@@ -172,3 +172,10 @@ class Bookings(BaseModel):
         from_attributes = True
 class BookingsCreate(Bookings):
     pass
+
+class Coupons(BaseModel):
+    coupon_id: int
+    coupon_image: str
+    discount_amount: float
+    isActive: bool
+    description: str

@@ -232,3 +232,12 @@ class Bookings(Base):
             return None
         else:
             return value
+
+class Coupon(Base):
+    __tablename__ = "coupons"
+
+    coupon_id = Column(Integer, autoincrement=True, primary_key=True)
+    coupon_image = Column(String, nullable=False)
+    discount_amount = Column(Float, nullable=False)
+    isActive = Column(Boolean, nullable=False)
+    description = Column(String, nullable=False)
