@@ -141,10 +141,11 @@ class CartSchema(BaseModel):
 
 
 class CartItemSchema(BaseModel):
-    id: int
+    cartItemId: int
     product_id: int
+    variant_id: int
     cart_id: int
-    quantity: int
+    item_count: int
 
 
 class CompanyLogin(BaseModel):
@@ -161,7 +162,7 @@ class Banners(BaseModel):
 
 class Bookings(BaseModel):
     order_id: int | None = None
-    cartItems_id: int
+    cartItemId: int
     user_contact: int
     address_id: int
     item_count: int
@@ -173,6 +174,7 @@ class Bookings(BaseModel):
 
     class Config:
         from_attributes = True
+
 class BookingsCreate(Bookings):
     pass
 

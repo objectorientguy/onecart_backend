@@ -180,13 +180,15 @@ class Cart(Base):
 
 class CartItem(Base):
     __tablename__ = "cart_items"
-    id = Column(Integer, primary_key=True, index=True)
+    cartItemId = Column(Integer, primary_key=True, index=True)
     product_id = Column(Integer, ForeignKey("products.product_id", ondelete="CASCADE"), nullable=False)
+    variant_id = Column(Integer, ForeignKey("product_variants.variant_id", ondelete="CASCADE"), nullable=False)
     cart_id = Column(Integer, ForeignKey("carts.id", ondelete="CASCADE"), nullable=False)
-    quantity = Column(Integer, nullable=False)
+    item_count = Column(Integer, nullable=False)
 
     product = relationship("Products")
     cart = relationship("Cart")
+    variant = relationship("ProductVariant")
 
     @validates('id', 'product_id', 'cart_id', 'quantity')
     def empty_string_to_null(self, key, value):
@@ -208,8 +210,8 @@ class Bookings(Base):
     __tablename__ = "bookings"
 
     order_id = Column(BIGINT, nullable=False, primary_key=True, autoincrement=True)
-    cartItems_id = Column(Integer, ForeignKey(
-        "cart_items.id", ondelete="CASCADE"), nullable=False)
+    cartItemId = Column(Integer, ForeignKey(
+        "cart_items.cartItemId", ondelete="CASCADE"), nullable=False)
     user_contact = Column(BIGINT, ForeignKey(
         "customers.customer_contact", ondelete="CASCADE"), nullable=False)
     address_id = Column(BIGINT, ForeignKey(
@@ -218,8 +220,6 @@ class Bookings(Base):
     order_placed = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('now()'))
     order_confirmation = Column(DateTime, nullable=True)
     order_shipped = Column(DateTime, nullable=True)
-
-
     total_price = Column(String, nullable=False)
     payment_type = Column(String, nullable=False)
 

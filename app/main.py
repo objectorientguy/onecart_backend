@@ -523,7 +523,7 @@ async def create_cart(items: schemas.CartItemSchema, response: Response, db: Ses
         response.status_code = 400
         return {"status": "400","data": {}}
 
-@app.get("/carts/{cart_id}")
+@app.get("/getCartItem/{cart_id}")
 def get_cart_items_by_cart_id(response: Response, cart_id: int, db: Session = Depends(get_db)):
     try:
         fetch_cart_items = db.query(models.CartItem).filter(models.CartItem.cart_id == cart_id).all()
@@ -716,6 +716,30 @@ def get_oreders_by_order_id(response: Response, order_id: int, db: Session = Dep
         response.status_code = 200
         return {"status": 204, "message": "Error", "data": {}}
 
+@app.get("/getProductswithCartId/{cart_id}")
+def get_cart_items_with_product_ids(response: Response, cart_id: int, db: Session = Depends(get_db)):
 
+    try:
+        fetch_cart_items = db.query(models.CartItem).filter(models.CartItem.cart_id == cart_id).all()
+        if not fetch_cart_items:
+            return {"status": 404, "message": "No cart items found", "data": {}}
 
+        cart_items_with_product_ids = []
+        for cart_item in fetch_cart_items:
+            product_id = cart_item.product_id
+            variant_id = cart_item.variant_id
 
+            product = db.query(models.Products).filter(models.Products.product_id == product_id).first()
+            variant = db.query(models.ProductVariant).filter(models.ProductVariant.variant_id == variant_id).first()
+
+            cart_items_with_product_ids.append({
+                "cartItemId": cart_item.cartItemId,
+                "product": product,
+                "variant": variant
+            })
+
+        return {"status": 200, "message": "Cart items fetched", "data": cart_items_with_product_ids}
+    except IntegrityError as e:
+        print(repr(e))
+        response.status_code = 500
+        return {"status": 500, "message": "Error", "data": {}}
