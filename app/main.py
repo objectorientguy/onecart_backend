@@ -413,47 +413,18 @@ def add_products(products: List[schemas.Product], response: Response, db: Sessio
             raise
 
 @app.post('/addProductVariants/{product_id}')
-def add_product_variants(product_id: int, variants: List[schemas.ProductVariant], response: Response, db: Session = Depends(get_db)):
+def add_product_variants(product_id: int, variants: schemas.ProductVariant, response: Response, db: Session = Depends(get_db)):
     try:
-        if not isinstance(product_id, int):
-            raise HTTPException(status_code=400, detail="Product ID must be an integer")
-        if not isinstance(variants, list):
-            raise HTTPException(status_code=400, detail="Variants must be a list of ProductVariant objects")
-
-        product = db.query(models.Products).filter(models.Products.product_id == product_id).first()
-        if not product:
-            raise HTTPException(status_code=404, detail="Product not found")
-
-        new_variants = []
-        for variant in variants:
-            existing_variant = db.query(models.ProductVariant).filter(
-                models.ProductVariant.variant_price == variant.variant_price,
-                models.ProductVariant.variant_quantity == variant.variant_quantity,
-                models.ProductVariant.product_id == product_id,
-            ).first()
-
-            if existing_variant:
-                return {"status": "200", "message": "Variants already exists!"}
-
-                continue
-
-            new_variant = models.ProductVariant(
-                variant_price=variant.variant_price,
-                variant_quantity=variant.variant_quantity,
-                product_id=product_id,
-            )
-            db.add(new_variant)
-            new_variants.append(new_variant)
-
+        new_product_variant = models.ProductVariant(**variants.model_dump())
+        db.add(new_product_variant)
         db.commit()
+        db.refresh(new_product_variant)
 
-        return {"status": "200", "message": "New variants added successfully!"}
-    except IntegrityError as e:
-        if "duplicate key value violates unique constraint" in str(e):
-            response.status_code = 400
-            return {"status": "400", "message": "error"}
-        else:
-            raise
+        return {"status": "200", "message": "New product variants added successfully!", "data": variants}
+    except IntegrityError:
+        response.status_code = 200
+        return {"status": "404", "message": "Error", "data": {}}
+
 
 @app.get("/getProducts")
 def get_all_products(response: Response, db: Session = Depends(get_db)):

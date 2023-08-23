@@ -40,9 +40,11 @@ class EditCategory(Category):
 
 class ProductVariant(BaseModel):
     variant_price: float
-    variant_quantity: int
+    variant_name: str
+    brand_name: str
+    item_count: int
     product_id: int
-    weight: int
+    weight: str
     discount: str
     discounted_cost: float
     image: List[str]
@@ -60,7 +62,8 @@ class Product(BaseModel):
     image: List[str]
     item_count: int
     deal: bool
-    cost: str
+    cost: float
+    discount: str
     discounted_cost: float
     details: str
     category_id: int
