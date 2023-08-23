@@ -413,47 +413,18 @@ def add_products(products: List[schemas.Product], response: Response, db: Sessio
             raise
 
 @app.post('/addProductVariants/{product_id}')
-def add_product_variants(product_id: int, variants: List[schemas.ProductVariant], response: Response, db: Session = Depends(get_db)):
+def add_product_variants(product_id: int, variants: schemas.ProductVariant, response: Response, db: Session = Depends(get_db)):
     try:
-        if not isinstance(product_id, int):
-            raise HTTPException(status_code=400, detail="Product ID must be an integer")
-        if not isinstance(variants, list):
-            raise HTTPException(status_code=400, detail="Variants must be a list of ProductVariant objects")
-
-        product = db.query(models.Products).filter(models.Products.product_id == product_id).first()
-        if not product:
-            raise HTTPException(status_code=404, detail="Product not found")
-
-        new_variants = []
-        for variant in variants:
-            existing_variant = db.query(models.ProductVariant).filter(
-                models.ProductVariant.variant_price == variant.variant_price,
-                models.ProductVariant.variant_quantity == variant.variant_quantity,
-                models.ProductVariant.product_id == product_id,
-            ).first()
-
-            if existing_variant:
-                return {"status": "200", "message": "Variants already exists!"}
-
-                continue
-
-            new_variant = models.ProductVariant(
-                variant_price=variant.variant_price,
-                variant_quantity=variant.variant_quantity,
-                product_id=product_id,
-            )
-            db.add(new_variant)
-            new_variants.append(new_variant)
-
+        new_product_variant = models.ProductVariant(**variants.model_dump())
+        db.add(new_product_variant)
         db.commit()
+        db.refresh(new_product_variant)
 
-        return {"status": "200", "message": "New variants added successfully!"}
-    except IntegrityError as e:
-        if "duplicate key value violates unique constraint" in str(e):
-            response.status_code = 400
-            return {"status": "400", "message": "error"}
-        else:
-            raise
+        return {"status": "200", "message": "New product variants added successfully!", "data": variants}
+    except IntegrityError:
+        response.status_code = 200
+        return {"status": "404", "message": "Error", "data": {}}
+
 
 @app.get("/getProducts")
 def get_all_products(response: Response, db: Session = Depends(get_db)):
@@ -552,7 +523,7 @@ async def create_cart(items: schemas.CartItemSchema, response: Response, db: Ses
         response.status_code = 400
         return {"status": "400","data": {}}
 
-@app.get("/carts/{cart_id}")
+@app.get("/getCartItem/{cart_id}")
 def get_cart_items_by_cart_id(response: Response, cart_id: int, db: Session = Depends(get_db)):
     try:
         fetch_cart_items = db.query(models.CartItem).filter(models.CartItem.cart_id == cart_id).all()
@@ -745,6 +716,30 @@ def get_oreders_by_order_id(response: Response, order_id: int, db: Session = Dep
         response.status_code = 200
         return {"status": 204, "message": "Error", "data": {}}
 
+@app.get("/getProductswithCartId/{cart_id}")
+def get_cart_items_with_product_ids(response: Response, cart_id: int, db: Session = Depends(get_db)):
 
+    try:
+        fetch_cart_items = db.query(models.CartItem).filter(models.CartItem.cart_id == cart_id).all()
+        if not fetch_cart_items:
+            return {"status": 404, "message": "No cart items found", "data": {}}
 
+        cart_items_with_product_ids = []
+        for cart_item in fetch_cart_items:
+            product_id = cart_item.product_id
+            variant_id = cart_item.variant_id
 
+            product = db.query(models.Products).filter(models.Products.product_id == product_id).first()
+            variant = db.query(models.ProductVariant).filter(models.ProductVariant.variant_id == variant_id).first()
+
+            cart_items_with_product_ids.append({
+                "cartItemId": cart_item.cartItemId,
+                "product": product,
+                "variant": variant
+            })
+
+        return {"status": 200, "message": "Cart items fetched", "data": cart_items_with_product_ids}
+    except IntegrityError as e:
+        print(repr(e))
+        response.status_code = 500
+        return {"status": 500, "message": "Error", "data": {}}

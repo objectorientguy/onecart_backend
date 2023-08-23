@@ -40,9 +40,11 @@ class EditCategory(Category):
 
 class ProductVariant(BaseModel):
     variant_price: float
-    variant_quantity: int
+    variant_name: str
+    brand_name: str
+    item_count: int
     product_id: int
-    weight: int
+    weight: str
     discount: str
     discounted_cost: float
     image: List[str]
@@ -60,7 +62,8 @@ class Product(BaseModel):
     image: List[str]
     item_count: int
     deal: bool
-    cost: str
+    cost: float
+    discount: str
     discounted_cost: float
     details: str
     category_id: int
@@ -138,10 +141,11 @@ class CartSchema(BaseModel):
 
 
 class CartItemSchema(BaseModel):
-    id: int
+    cartItemId: int
     product_id: int
+    variant_id: int
     cart_id: int
-    quantity: int
+    item_count: int
 
 
 class CompanyLogin(BaseModel):
@@ -158,7 +162,7 @@ class Banners(BaseModel):
 
 class Bookings(BaseModel):
     order_id: int | None = None
-    cartItems_id: int
+    cartItemId: int
     user_contact: int
     address_id: int
     item_count: int
@@ -170,6 +174,7 @@ class Bookings(BaseModel):
 
     class Config:
         from_attributes = True
+
 class BookingsCreate(Bookings):
     pass
 
