@@ -63,7 +63,7 @@ class Product(BaseModel):
     item_count: int
     deal: bool
     price: float
-    discount: str
+    discount: int
     discounted_cost: float
     details: str
     category_id: int

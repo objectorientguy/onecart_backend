@@ -54,9 +54,9 @@ class Products(Base):
     brand_name = Column(String, nullable=False)
     image = Column(JSON, nullable=False)
     deal = Column(Boolean, nullable=False)
-    item_count = Column(String, nullable=False)
+    item_count = Column(Integer, nullable=False)
     price = Column(Float, nullable=False)
-    discount = Column(String, nullable=False)
+    discount = Column(Integer, nullable=False)
     discounted_cost = Column(Float, nullable=True)
     details = Column(String, nullable=False)
 
