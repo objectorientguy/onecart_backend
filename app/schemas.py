@@ -62,7 +62,7 @@ class Product(BaseModel):
     image: List[str]
     item_count: int
     deal: bool
-    cost: float
+    price: float
     discount: str
     discounted_cost: float
     details: str
@@ -137,6 +137,7 @@ class CartSchema(BaseModel):
     id: int
     company_id: int
     customer_contact: int
+    coupon_id: int
     #creation_time: datetime
 
 
@@ -181,6 +182,16 @@ class BookingsCreate(Bookings):
 class Coupons(BaseModel):
     coupon_id: int
     coupon_image: str
+    coupon_name: str
     discount_amount: float
     isActive: bool
     description: str
+
+class CheckoutScreen(BaseModel):
+    bill_details: int
+    cart_total: float
+    discount: float
+    coupon_applied: str
+    delivery_charges: float = 45.50
+    total_bill: float
+
