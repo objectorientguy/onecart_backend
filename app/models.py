@@ -55,9 +55,9 @@ class Products(Base):
     image = Column(JSON, nullable=False)
     deal = Column(Boolean, nullable=False)
     item_count = Column(String, nullable=False)
-    cost = Column(Float, nullable=False)
+    price = Column(Float, nullable=False)
     discount = Column(String, nullable=False)
-    discounted_cost = Column(String, nullable=True)
+    discounted_cost = Column(Float, nullable=True)
     details = Column(String, nullable=False)
 
     company = relationship("Companies")
@@ -166,10 +166,12 @@ class Cart(Base):
     id = Column(Integer, primary_key=True, index=True,autoincrement=True)
     company_id = Column(BIGINT, ForeignKey("companies.company_id", ondelete="CASCADE"), nullable=False)
     customer_contact = Column(BIGINT, ForeignKey("customers.customer_contact", ondelete="CASCADE"), nullable=False)
+    coupon_id = Column(Integer, ForeignKey("coupons.coupon_id", ondelete="CASCADE"), nullable=True)
     #creation_time = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text("now()"))
 
     company = relationship("Companies")
     user = relationship("User")
+    coupon = relationship("Coupon")
 
     @validates('id', 'company_id', 'customer_contact')
     def empty_string_to_null(self, key, value):
@@ -240,6 +242,7 @@ class Coupon(Base):
     __tablename__ = "coupons"
 
     coupon_id = Column(Integer, autoincrement=True, primary_key=True)
+    coupon_name = Column(String, nullable=True)
     coupon_image = Column(String, nullable=False)
     discount_amount = Column(Float, nullable=False)
     isActive = Column(Boolean, nullable=False)
