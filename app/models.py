@@ -153,10 +153,12 @@ class Addresses(Base):
 
     customer = relationship("User")
 
+
     @validates('address_type', 'address_name', 'city', 'pincode', 'state', 'phone_no')
     def empty_string_to_null(self, key, value):
         if isinstance(value, str) and value == '':
-            return None
+            if key == 'address_type' and self.address_type == 'Home':
+                return None
         else:
             return value
 

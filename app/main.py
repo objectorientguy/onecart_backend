@@ -9,11 +9,20 @@ from starlette.responses import FileResponse
 from . import models, schemas
 from .models import Image
 from .database import engine, get_db
+from fastapi.middleware.cors import CORSMiddleware
 import os
 
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+origins = ["*"]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 UPLOAD_DIR = "app/images"
 
@@ -94,7 +103,7 @@ def create_user(loginSignupAuth: schemas.UserData, response: Response,
                 new_user_data = models.User(
                     **loginSignupAuth.model_dump())
                 new_user_added = models.UserCompany(
-                    company_id=companyId,
+                    company_name=companyName,
                     user_contact=loginSignupAuth.customer_contact)
                 db.add(new_user_data)
                 db.add(new_user_added)
@@ -111,7 +120,7 @@ def create_user(loginSignupAuth: schemas.UserData, response: Response,
         if not user_exists:
             try:
                 new_user_company = models.UserCompany(
-                    company_id=companyId,
+                    company_name=companyName,
                     user_contact=loginSignupAuth.customer_contact)
                 db.add(new_user_company)
                 db.commit()
@@ -124,7 +133,8 @@ def create_user(loginSignupAuth: schemas.UserData, response: Response,
 
         return {"status": 200, "message": "New user successfully Logged in for this company!", "data": user_data}
 
-    except IntegrityError:
+    except IntegrityError as e:
+        print(repr(e))
         response.status_code = 404
         return {"status": 404, "message": "Error", "data": {}}
 
@@ -775,22 +785,21 @@ def get_cart_item_count_with_price_and_discount_sum(response: Response, cart_id:
                 price = variant.variant_price
                 discount_amount = variant.discounted_cost
             else:
-                price = product.cost
+                price = product.price
                 discount_amount = product.discounted_cost
 
-            discount_sum += discount_amount
+            discount_sum += variant.discounted_cost * cart_item.item_count
+            discount_sum += product.discounted_cost * cart_item.item_count
 
             cart_item_count += cart_item.item_count
             cart_total += price * cart_item.item_count
 
         total_bill = cart_total - discount_sum + delivery_charges
 
-        return {"status": 200, "message": "Cart item count fetched", "data": {"cart_item_count": cart_item_count, "cart_total": cart_total, "discount_sum": discount_sum, "coupon_applied": coupon_applied, "delivery_charges": delivery_charges, "total_bill": total_bill}}
+        discount_sum = cart_total - discount_sum
+
+        return {"status": 200, "message": "CHECKOUT SCREEN fetched", "data": {"cart_item_count": cart_item_count, "cart_total": cart_total, "discount_sum": discount_sum, "coupon_applied": coupon_applied, "delivery_charges": delivery_charges, "total_bill": total_bill}}
     except IntegrityError as e:
         print(repr(e))
         response.status_code = 500
         return {"status": 500, "message": "Error", "data": {}}
-
-
-
-
