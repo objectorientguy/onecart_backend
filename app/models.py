@@ -53,7 +53,6 @@ class Products(Base):
     brand_id = Column(BIGINT, ForeignKey(
         "brands.brand_id", ondelete="CASCADE"), nullable=False)
     product_name = Column(String, nullable=False)
-    brand_id = Column(BIGINT, nullable=False)
     image = Column(JSON, nullable=False)
     deal = Column(Boolean, nullable=False)
     item_count = Column(Integer, nullable=False)
