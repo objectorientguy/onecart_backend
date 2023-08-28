@@ -58,7 +58,7 @@ class Product(BaseModel):
     product_id: int | None = None
     company_name: str
     product_name: str
-    brand_name: str
+    brand_id: int
     image: List[str]
     item_count: int
     deal: bool
@@ -195,3 +195,7 @@ class CheckoutScreen(BaseModel):
     delivery_charges: float = 45.50
     total_bill: float
 
+class Brand(BaseModel):
+    brand_id: int
+    brand_name: str
+    brand_image: str

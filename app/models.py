@@ -51,7 +51,7 @@ class Products(Base):
     category_id = Column(BIGINT, ForeignKey(
         "categories.category_id", ondelete="CASCADE"), nullable=False)
     product_name = Column(String, nullable=False)
-    brand_name = Column(String, nullable=False)
+    brand_id = Column(BIGINT, nullable=False)
     image = Column(JSON, nullable=False)
     deal = Column(Boolean, nullable=False)
     item_count = Column(Integer, nullable=False)
@@ -247,3 +247,10 @@ class Coupon(Base):
     discount_amount = Column(Float, nullable=False)
     isActive = Column(Boolean, nullable=False)
     description = Column(String, nullable=False)
+
+class Brand(Base):
+    __tablename__ = "brands"
+
+    brand_id = Column(BIGINT, autoincrement=True, primary_key=True)
+    brand_name = Column(String, nullable=False)
+    brand_image = Column(String, nullable=False)
