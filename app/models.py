@@ -11,10 +11,10 @@ from sqlalchemy.orm import composite
 class Companies(Base):
     __tablename__ = "companies"
 
-    company_id = Column(BIGINT, nullable=False, primary_key=True, autoincrement=True, unique=True)
+    company_id = Column(BIGINT, nullable=False, autoincrement=True, unique=True)
     company_name = Column(String, nullable=False, primary_key=True, unique=True)
     password = Column(String, primary_key=True, nullable=False)
-    email = Column(String, nullable=True)
+    email = Column(String, nullable=False)
     company_contact = Column(BIGINT, nullable=True)
     company_address = Column(String, nullable=False)
     white_labelled = Column(Boolean, nullable=False)
@@ -90,7 +90,7 @@ class Image(Base):
 class User(Base):
     __tablename__ = "customers"
 
-    customer_id = Column(Integer, nullable=False)
+    customer_id = Column(String, nullable=False, unique=True)
     customer_name = Column(String, nullable=False)
     customer_contact = Column(BIGINT, primary_key=True, nullable=False)
     customer_birthdate = Column(Date, nullable=True)
@@ -99,7 +99,6 @@ class User(Base):
     email_id = Column(String, nullable=True)
     wallet = Column(Float, nullable=False)
     prev_pay_mode = Column(String, nullable=False)
-    firebase_id = Column(String, nullable=False)
 
     @validates('customer_name', 'customer_contact', 'customer_id')
     def empty_string_to_null(self, key, value):
@@ -110,12 +109,12 @@ class User(Base):
 
 
 class CompositeKey:
-    def __init__(self, company_id, user_contact):
-        self.company_id = company_id
+    def __init__(self, company_name, user_contact):
+        self.company_name = company_name
         self.user_contact = user_contact
 
     def __composite_values__(self):
-        return self.company_id, self.company_id
+        return self.company_name, self.user_contact
 
 
 class UserCompany(Base):
@@ -130,7 +129,7 @@ class UserCompany(Base):
     customer = relationship("User")
     company = relationship("Companies")
 
-    @validates('company_id', 'user_contact')
+    @validates('company_name', 'user_contact')
     def empty_string_to_null(self, key, value):
         if isinstance(value, str) and value == '':
             return None
@@ -154,11 +153,10 @@ class Addresses(Base):
     customer = relationship("User")
 
 
-    @validates('address_type', 'address_name', 'city', 'pincode', 'state', 'phone_no')
+    @validates( 'address_name', 'city', 'pincode', 'state', 'phone_no')
     def empty_string_to_null(self, key, value):
         if isinstance(value, str) and value == '':
-            if key == 'address_type' and self.address_type == 'Home':
-                return None
+            return None
         else:
             return value
 

@@ -5,7 +5,7 @@ from fastapi import FastAPI, Response, Depends, UploadFile, File, Request, HTTPE
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from starlette.responses import FileResponse
-
+import logging
 from . import models, schemas
 from .models import Image
 from .database import engine, get_db
@@ -26,7 +26,7 @@ app.add_middleware(
 
 UPLOAD_DIR = "app/images"
 
-
+logging.basicConfig(filename='app.log', level=logging.DEBUG)
 def save_image_to_db(db, filename, file_path):
     image = Image(filename=filename, file_path=file_path)
     db.add(image)
@@ -62,6 +62,7 @@ async def upload_image(request: Request, file: UploadFile = File(...), db: Sessi
 async def get_image(filename: str):
     image_path = os.path.join(UPLOAD_DIR, filename)
     if not os.path.exists(image_path):
+        logging.error(f"Image not found: {filename}")
         raise HTTPException(status_code=404, detail="Image not found")
     return FileResponse(image_path)
 
@@ -82,6 +83,9 @@ async def upload_image(request: Request, files: List[UploadFile] = File(...), db
             db.add(image)
             db.commit()
             db.refresh(image)
+        except Exception as e:
+            logging.error(f"Error storing image {filename}: {e}")
+            db.rollback()
         finally:
             db.close()
         base_url = request.base_url
@@ -93,16 +97,16 @@ async def upload_image(request: Request, files: List[UploadFile] = File(...), db
 
 @app.post('/userAuthenticate')
 def create_user(loginSignupAuth: schemas.UserData, response: Response,
-                db: Session = Depends(get_db), companyId=str):
+                db: Session = Depends(get_db), companyName=str):
     try:
         user_data = db.query(models.User).get(
             loginSignupAuth.customer_contact)
 
         if not user_data:
-            try:
+            # try:
                 new_user_data = models.User(
                     **loginSignupAuth.model_dump())
-                new_user_added = models.UserCompany(
+                new_user_added = models.UserCompany(  #composite table
                     company_name=companyName,
                     user_contact=loginSignupAuth.customer_contact)
                 db.add(new_user_data)
@@ -110,11 +114,11 @@ def create_user(loginSignupAuth: schemas.UserData, response: Response,
                 db.commit()
                 db.refresh(new_user_data)
                 return {"status": 200, "message": "New user successfully created!", "data": new_user_data}
-            except IntegrityError:
-                response.status_code = 200
-                return {"status": 204, "message": "User is not registered please Sing up", "data": {}}
+            # except IntegrityError:
+            #     response.status_code = 200
+            #     return {"status": 204, "message": "User is not registered please Sing up", "data": {}}
 
-        user_exists = db.query(models.UserCompany).filter(models.UserCompany.company_id == companyId).filter(
+        user_exists = db.query(models.UserCompany).filter(models.UserCompany.company_name == companyName).filter(
             models.UserCompany.user_contact == loginSignupAuth.customer_contact).first()
         print(user_exists)
         if not user_exists:
@@ -365,16 +369,15 @@ def create_categories():
     try:
         # Create 20 different categories and add them to the database
         categories_to_create = [
-            {"category_name": "Fruits & Vegetables", "category_image": "electronics.jpg"},
-            {"category_name": "Staples", "category_image": "clothing.jpg"},
-            {"category_name": "Dairy & Bakery", "category_image" : ".jpg"},
-            {"category_name": "Snaks & Branded Fruits", "category_image" : ".jpg"},
-            {"category_name": "Beverages", "category_image" : ".jpg"},
-            {"category_name": "Premium Fruits", "category_image": ".jpg"},
-            {"category_name": "Home Care", "category_image": ".jpg"},
-            {"category_name": "Personal Care", "category_image": ".jpg"},
-            {"category_name": "Breakfast & Instant Food", "category_image": ".jpg"},
-            {"category_name": "Home Care", "category_image": ".jpg"}
+            {"category_name": "Fruits & Vegetables", "category_image": "https://oneart.onrender.com/images/Fruit_and_vegetables.jpg"},
+            {"category_name": "Dairy & Bakery", "category_image": "https://oneart.onrender.com/images/bakery-dairy.jpg"},
+            {"category_name": "Staples", "category_image" : "https://oneart.onrender.com/images/staples.jpg"},
+            {"category_name": "Premium Fruits", "category_image" : "https://oneart.onrender.com/images/premium-fruits.jpeg"},
+            {"category_name": "Beverages", "category_image" : "https://oneart.onrender.com/images/beverages.jpg"},
+            {"category_name": "Personal Care", "category_image": "https://oneart.onrender.com/images/personal-care.png"},
+            {"category_name": "Home Care", "category_image": "https://oneart.onrender.com/images/home-care.jpeg"},
+            {"category_name": "Mom & Baby Care", "category_image": "https://oneart.onrender.com/images/baby-care.jpg"},
+            {"category_name": "Home & Kitchen", "category_image": "https://oneart.onrender.com/images/home-kitchen.jpg"}
 
 
         ]

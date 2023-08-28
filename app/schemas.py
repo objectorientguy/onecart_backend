@@ -77,14 +77,14 @@ class EditProduct(Product):
 
 
 class UserData(BaseModel):
-    customer_id: int
+    customer_id: str
     customer_name: str | None = None
     customer_contact: int
     customer_birthdate: date | None = None
     email_id: EmailStr
     wallet: float
     prev_pay_mode: str
-    firebase_id: str
+
 
 
 class EditUserData(UserData):
@@ -100,7 +100,7 @@ class EditUserData(UserData):
 class Address(BaseModel):
     address_id: int | None = None
     user_contact: int
-    address_type: str
+    address_type: str | None = "Home"
     address_name: str
     phone_no: int
     city: str
