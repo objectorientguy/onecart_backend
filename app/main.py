@@ -612,27 +612,21 @@ def delete_multiple_products(product_ids: List[int], response: Response, db: Ses
 def search_products(response: Response, search_term: str, db: Session = Depends(get_db)):
     try:
 
-        if not search_term:
-            raise ValueError("Search term cannot be empty.")
         for char in search_term:
             if not char.isalnum():
                 raise ValueError(f"Search term cannot contain invalid characters: {char}.")
 
         search_results = db.query(models.Products).filter(
-            (models.Products.product_name.ilike(f"%{search_term}%")) |
-            (models.Products.brand_name.ilike(f"%{search_term}%"))
-        ).all()
+            (models.Products.product_name.ilike(f"%{search_term}%"))).all()
+        search_categories = db.query(models.Categories).filter(
+            (models.Categories.category_name.ilike(f"%{search_term}%"))).all()
+        search_brand = db.query(models.Brand).filter(
+            (models.Brand.brand_name.ilike(f"%{search_term}%"))).all()
 
         if not search_results:
             return {"status": 204, "message": "No product or brand found", "data": {}}
 
-        return {
-            "status": 200,
-            "message": "Products and Brand names fetched",
-            "data": {
-                "search_results": search_results
-            }
-        }
+        return {"status": 200, "message": "Products and Brand names fetched", "data": { "Categories": search_categories, "Brands": search_brand, "search_results": search_results}}
 
 
     except ValueError as e:
