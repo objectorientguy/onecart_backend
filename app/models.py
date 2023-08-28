@@ -50,6 +50,8 @@ class Products(Base):
         "companies.company_name", ondelete="CASCADE"), nullable=False)
     category_id = Column(BIGINT, ForeignKey(
         "categories.category_id", ondelete="CASCADE"), nullable=False)
+    brand_id = Column(BIGINT, ForeignKey(
+        "brands.brand_id", ondelete="CASCADE"), nullable=False)
     product_name = Column(String, nullable=False)
     brand_id = Column(BIGINT, nullable=False)
     image = Column(JSON, nullable=False)
@@ -61,6 +63,7 @@ class Products(Base):
     details = Column(String, nullable=False)
 
     company = relationship("Companies")
+    brand = relationship("Brand")
     category = relationship("Categories")
 
 class ProductVariant(Base):
