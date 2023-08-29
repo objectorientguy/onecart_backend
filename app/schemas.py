@@ -66,6 +66,7 @@ class Product(BaseModel):
     discount: int
     discounted_cost: float
     details: str
+    description: str
     category_id: int
 
     class Config:

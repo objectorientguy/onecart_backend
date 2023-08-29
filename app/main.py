@@ -616,12 +616,13 @@ def search_products(response: Response, search_term: str, db: Session = Depends(
             if not char.isalnum():
                 raise ValueError(f"Search term cannot contain invalid characters: {char}.")
 
-        search_results = db.query(models.Products).filter(
-            (models.Products.product_name.ilike(f"%{search_term}%"))).all()
+
         search_categories = db.query(models.Categories).filter(
             (models.Categories.category_name.ilike(f"%{search_term}%"))).all()
         search_brand = db.query(models.Brand).filter(
             (models.Brand.brand_name.ilike(f"%{search_term}%"))).all()
+        search_results = db.query(models.Products).filter(
+            (models.Products.product_name.ilike(f"%{search_term}%"))).all()
 
         if not search_results:
             return {"status": 204, "message": "No product or brand found", "data": {}}
