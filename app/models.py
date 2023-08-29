@@ -61,6 +61,7 @@ class Products(Base):
     discounted_cost = Column(Float, nullable=True)
     details = Column(String, nullable=False)
     description = Column(String, nullable=True)
+    weight = Column(String, nullable=False)
 
     company = relationship("Companies")
     brand = relationship("Brand")

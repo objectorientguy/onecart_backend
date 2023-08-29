@@ -68,6 +68,7 @@ class Product(BaseModel):
     details: str
     description: str
     category_id: int
+    weight: str
 
     class Config:
         from_attributes = True
@@ -145,7 +146,7 @@ class CartSchema(BaseModel):
 class CartItemSchema(BaseModel):
     cartItemId: int
     product_id: int
-    variant_id: int
+    variant_id: int #this should accept null values as well
     cart_id: int
     item_count: int
 
