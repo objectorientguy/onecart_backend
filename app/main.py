@@ -737,6 +737,7 @@ def get_cart_item_count_with_price_and_discount_sum(response: Response, cart_id:
         discount_sum = 0
         coupon_applied = None
         delivery_charges = 40.50
+        total_bill = 0
 
         if models.Cart.coupon_id:
             applied_coupon = db.query(models.Coupon).filter(models.Coupon.coupon_id == models.Cart.coupon_id).first()
@@ -767,7 +768,7 @@ def get_cart_item_count_with_price_and_discount_sum(response: Response, cart_id:
         #
         # discount_sum = cart_total - discount_sum
 
-        return {"status": 200, "message": "CHECKOUT SCREEN fetched", "data": {"cart_item_count": cart_item_count, "cart_total": cart_total, "discount_sum": discount_sum, "coupon_applied": coupon_applied, "delivery_charges": delivery_charges}}
+        return {"status": 200, "message": "CHECKOUT SCREEN fetched", "data": {"cart_item_count": cart_item_count, "cart_total": cart_total, "discount_sum": discount_sum, "coupon_applied": coupon_applied, "delivery_charges": delivery_charges, "total_bill": total_bill}}
     except IntegrityError as e:
         print(repr(e))
         response.status_code = 500
