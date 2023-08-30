@@ -1,11 +1,9 @@
-from sqlalchemy import Column, String, BIGINT, Date, JSON, ForeignKey, Time, Boolean, Float,Integer, DateTime
+from sqlalchemy import Column, String, BIGINT, Date, JSON, ForeignKey, Time, Boolean, Float, Integer, DateTime
 from sqlalchemy.orm import validates, relationship
 from sqlalchemy.sql.expression import text
 from sqlalchemy.sql.sqltypes import TIMESTAMP
 from .database import Base
 from sqlalchemy.orm import composite
-
-
 
 
 class Companies(Base):
@@ -67,6 +65,7 @@ class Products(Base):
     brand = relationship("Brand")
     category = relationship("Categories")
 
+
 class ProductVariant(Base):
     __tablename__ = "product_variants"
 
@@ -81,7 +80,6 @@ class ProductVariant(Base):
     weight = Column(String, nullable=False)
     product_id = Column(BIGINT, ForeignKey(
         "products.product_id", ondelete="CASCADE"), nullable=False)
-
 
 
 class Image(Base):
@@ -156,8 +154,7 @@ class Addresses(Base):
 
     customer = relationship("User")
 
-
-    @validates( 'address_name', 'city', 'pincode', 'state', 'phone_no')
+    @validates('address_name', 'city', 'pincode', 'state', 'phone_no')
     def empty_string_to_null(self, key, value):
         if isinstance(value, str) and value == '':
             return None
@@ -167,57 +164,41 @@ class Addresses(Base):
 
 class Cart(Base):
     __tablename__ = "carts"
-    id = Column(Integer, primary_key=True, index=True,autoincrement=True)
+    cart_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     company_id = Column(BIGINT, ForeignKey("companies.company_id", ondelete="CASCADE"), nullable=False)
     customer_contact = Column(BIGINT, ForeignKey("customers.customer_contact", ondelete="CASCADE"), nullable=False)
     coupon_id = Column(Integer, ForeignKey("coupons.coupon_id", ondelete="CASCADE"), nullable=True)
-    #creation_time = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text("now()"))
+    products = Column(JSON, nullable=True)
+    # creation_time = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text("now()"))
 
     company = relationship("Companies")
     user = relationship("User")
     coupon = relationship("Coupon")
 
-    @validates('id', 'company_id', 'customer_contact')
+    @validates( 'company_id', 'customer_contact')
     def empty_string_to_null(self, key, value):
         if isinstance(value, str) and value == '':
             return None
         else:
             return value
 
-class CartItem(Base):
-    __tablename__ = "cart_items"
-    cartItemId = Column(Integer, primary_key=True, index=True)
-    product_id = Column(Integer, ForeignKey("products.product_id", ondelete="CASCADE"), nullable=False)
-    variant_id = Column(Integer, ForeignKey("product_variants.variant_id", ondelete="CASCADE"), nullable=False)
-    cart_id = Column(Integer, ForeignKey("carts.id", ondelete="CASCADE"), nullable=False)
-    item_count = Column(Integer, nullable=False)
-
-    product = relationship("Products")
-    cart = relationship("Cart")
-    variant = relationship("ProductVariant")
-
-    @validates('id', 'product_id', 'cart_id', 'quantity')
-    def empty_string_to_null(self, key, value):
-        if isinstance(value, str) and value == '':
-            return None
-        else:
-            return value
 
 class PromotionalBanners(Base):
     __tablename__ = "banners"
     banner_id = Column(Integer, primary_key=True, index=True)
     banner_image = Column(JSON, nullable=False)
-    description = Column(String, nullable= True)
+    description = Column(String, nullable=True)
     discount = Column(String, nullable=False)
     isActive = Column(Boolean, nullable=False)
     tAc = Column(String, nullable=False)
+
 
 class Bookings(Base):
     __tablename__ = "bookings"
 
     order_id = Column(BIGINT, nullable=False, primary_key=True, autoincrement=True)
-    cartItemId = Column(Integer, ForeignKey(
-        "cart_items.cartItemId", ondelete="CASCADE"), nullable=False)
+    cart_id = Column(Integer, ForeignKey(
+        "carts.cart_id", ondelete="CASCADE"), nullable=True)
     user_contact = Column(BIGINT, ForeignKey(
         "customers.customer_contact", ondelete="CASCADE"), nullable=False)
     address_id = Column(BIGINT, ForeignKey(
@@ -228,11 +209,12 @@ class Bookings(Base):
     order_shipped = Column(DateTime, nullable=True)
     total_price = Column(String, nullable=False)
     payment_type = Column(String, nullable=False)
-
+    products = Column(JSON, nullable=False)
 
     customer = relationship("User")
-    cartItems = relationship("CartItem")
     address = relationship('Addresses')
+    cart = relationship("Cart")
+
     # company = relationship("Companies")
 
     @validates('user_contact', 'address_id')
@@ -241,6 +223,7 @@ class Bookings(Base):
             return None
         else:
             return value
+
 
 class Coupon(Base):
     __tablename__ = "coupons"
@@ -251,6 +234,7 @@ class Coupon(Base):
     discount_amount = Column(Float, nullable=False)
     isActive = Column(Boolean, nullable=False)
     description = Column(String, nullable=False)
+
 
 class Brand(Base):
     __tablename__ = "brands"

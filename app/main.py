@@ -512,7 +512,7 @@ def get_products_by_category_id(response: Response, category_id: int, db: Sessio
         response.status_code = 200
         return {"status": 204, "message": "Error", "data": {}}
 
-@app.post("/carts/")
+@app.post("/carts")
 async def create_cart(cart: schemas.CartSchema, response: Response, db: Session = Depends(get_db)):
 
     try:
@@ -522,35 +522,10 @@ async def create_cart(cart: schemas.CartSchema, response: Response, db: Session 
         db.refresh(new_cart)
 
         return {"status": "200", "message": "New cart created successfully!", "data": new_cart}
-    except IntegrityError:
+    except IntegrityError as e:
+        print(repr(e))
         response.status_code = 400
         return {"status": "400","data": {}}
-
-@app.post("/carts/Items")
-async def create_cart(items: schemas.CartItemSchema, response: Response, db: Session = Depends(get_db)):
-
-    try:
-        new_items = models.CartItem(**items.model_dump())
-        db.add(new_items)
-        db.commit()
-        db.refresh(new_items)
-
-        return {"status": "200", "message": "New Items added to the cart successfully!", "data": new_items}
-    except IntegrityError:
-        response.status_code = 400
-        return {"status": "400","data": {}}
-
-@app.get("/getCartItem/{cart_id}")
-def get_cart_items_by_cart_id(response: Response, cart_id: int, db: Session = Depends(get_db)):
-    try:
-        fetch_cart_items = db.query(models.CartItem).filter(models.CartItem.cart_id == cart_id).all()
-        if not fetch_cart_items:
-            return {"status": 204, "message": "No cart items found", "data": {}}
-
-        return {"status": 200, "message": "Cart items fetched", "data": fetch_cart_items}
-    except IntegrityError:
-        response.status_code = 200
-        return {"status": 204, "message": "Error", "data": {}}
 
 
 @app.post('/deleteCart')
@@ -570,22 +545,7 @@ def delete_cart(id: int, response: Response, db: Session = Depends(get_db)):
         response.status_code = 500
         return {"status": "500", "message": "Internal server error"}
 
-@app.post('/deleteCartItem')
-def delete_cart_item(id: int, response: Response, db: Session = Depends(get_db)):
-    try:
-        cartItem = db.query(models.CartItem).get(id)
 
-        if not cartItem:
-            raise HTTPException(status_code=404, detail="Cart Item not found")
-
-        db.delete(cartItem)
-        db.commit()
-
-        return {"status": "200", "message": "Cart Item deleted successfully!"}
-    except Exception as e:
-        print(repr(e))
-        response.status_code = 500
-        return {"status": "500", "message": "Internal server error"}
 
 @app.post('/deleteMultipleProduct')
 def delete_multiple_products(product_ids: List[int], response: Response, db: Session = Depends(get_db)):
@@ -688,10 +648,18 @@ def get_categories_and_banners_and_deals(response: Response, db: Session = Depen
         return {"status": 204, "message": "Error", "data": {}}
 
 
-@app.post('/bookOrder')
+@app.post('/bookOrder/')
 def add_booking(response: Response, bookOrder: schemas.BookingsCreate, db: Session = Depends(get_db)):
     try:
         new_booking = models.Bookings(**bookOrder.model_dump())
+
+        # Fetch the products from the cart associated with the provided cart_id
+        cart = db.query(models.Cart).filter(models.Cart.cart_id == bookOrder.cart_id).first()
+        if cart:
+            new_booking.products = cart.products
+
+            cart.products = []
+
         db.add(new_booking)
         db.commit()
         db.refresh(new_booking)
@@ -700,7 +668,6 @@ def add_booking(response: Response, bookOrder: schemas.BookingsCreate, db: Sessi
     except IntegrityError:
         response.status_code = 400
         return {"status": 400, "message": "Error creating booking order", "data": {}}
-
 
 @app.get("/getOrders")
 def get_Orders(response: Response, db: Session = Depends(get_db)):
@@ -806,14 +773,3 @@ def get_cart_item_count_with_price_and_discount_sum(response: Response, cart_id:
         response.status_code = 500
         return {"status": 500, "message": "Error", "data": {}}
 
-@app.get("/products/{product_id}")
-def get_product_by_product_id(response: Response, product_id: int, db: Session = Depends(get_db)):
-    try:
-        fetch_product = db.query(models.Products).filter(models.Products.product_id == product_id).first()
-        if not fetch_product:
-            return {"status": 204, "message": "Product not found", "data": {}}
-
-        return {"status": 200, "message": "Product fetched", "data": fetch_product}
-    except IntegrityError:
-        response.status_code = 200
-        return {"status": 204, "message": "Error", "data": {}}

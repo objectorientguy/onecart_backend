@@ -1,4 +1,3 @@
-
 from typing import Optional, List
 from pydantic import BaseModel, EmailStr
 from datetime import date, time, datetime
@@ -39,6 +38,7 @@ class EditCategory(Category):
 
 
 class ProductVariant(BaseModel):
+    variant_id: Optional[int] | None = None
     variant_price: float
     variant_name: str
     brand_name: str
@@ -48,7 +48,6 @@ class ProductVariant(BaseModel):
     discount: str
     discounted_cost: float
     image: List[str]
-
 
     class Config:
         from_attributes = True
@@ -88,13 +87,13 @@ class UserData(BaseModel):
     prev_pay_mode: str
 
 
-
 class EditUserData(UserData):
     customer_name: str | None = None
     customer_contact: int
     customer_birthdate: date | None = None
     email_id: EmailStr
     pass
+
     class Config:
         from_attributes = True
 
@@ -124,6 +123,7 @@ class AddAddress(Address):
     class Config:
         from_attributes = True
 
+
 class EditAddress(Address):
     address_name: str
     address_type: str
@@ -135,25 +135,26 @@ class EditAddress(Address):
     class Config:
         from_attributes = True
 
+class OrderItems(BaseModel):
+    product_id: int
+    variant: int
+
+    class Config:
+        from_attributes = True
+
 class CartSchema(BaseModel):
-    id: int
+    # id: int
     company_id: int
     customer_contact: int
     coupon_id: int
-    #creation_time: datetime
-
-
-class CartItemSchema(BaseModel):
-    cartItemId: int
-    product_id: int
-    variant_id: int #this should accept null values as well
-    cart_id: int
-    item_count: int
+    products: List[OrderItems]
+    # creation_time: datetime
 
 
 class CompanyLogin(BaseModel):
     email: str
     password: str
+
 
 class Banners(BaseModel):
     banner_id: int
@@ -163,9 +164,10 @@ class Banners(BaseModel):
     isActive: bool
     tAc: str
 
+
 class Bookings(BaseModel):
     order_id: int | None = None
-    cartItemId: int
+    cart_id: int | None = None
     user_contact: int
     address_id: int
     item_count: int
@@ -174,12 +176,15 @@ class Bookings(BaseModel):
     order_shipped: datetime | None = None
     total_price: str
     payment_type: str
+    products: List[OrderItems]
 
     class Config:
         from_attributes = True
 
+
 class BookingsCreate(Bookings):
     pass
+
 
 class Coupons(BaseModel):
     coupon_id: int
@@ -189,6 +194,7 @@ class Coupons(BaseModel):
     isActive: bool
     description: str
 
+
 class CheckoutScreen(BaseModel):
     bill_details: int
     cart_total: float
@@ -196,6 +202,7 @@ class CheckoutScreen(BaseModel):
     coupon_applied: str
     delivery_charges: float = 45.50
     total_bill: float
+
 
 class Brand(BaseModel):
     brand_id: int
