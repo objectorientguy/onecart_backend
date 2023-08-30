@@ -728,7 +728,7 @@ def get_cart_items_with_product_ids(response: Response, cart_id: int, db: Sessio
 def get_cart_item_count_with_price_and_discount_sum(response: Response, cart_id: int, db: Session = Depends(get_db)):
 
     try:
-        fetch_cart_items = db.query(models.CartItem).filter(models.CartItem.cart_id == cart_id).all()
+        fetch_cart_items = db.query(models.Cart).filter(models.Cart.cart_id == cart_id).all()
         if not fetch_cart_items:
             return {"status": 404, "message": "No cart items found", "data": {}}
 
@@ -742,32 +742,32 @@ def get_cart_item_count_with_price_and_discount_sum(response: Response, cart_id:
             applied_coupon = db.query(models.Coupon).filter(models.Coupon.coupon_id == models.Cart.coupon_id).first()
             if applied_coupon:
                 coupon_applied = applied_coupon.coupon_name
+        #
+        # for cart_item in fetch_cart_items:
+        #     product_id = cart_item.product_id
+        #     variant_id = cart_item.variant_id
+        #
+        #     product = db.query(models.Products).filter(models.Products.product_id == product_id).first()
+        #     variant = db.query(models.ProductVariant).filter(models.ProductVariant.variant_id == variant_id).first()
+        #
+        #     if variant:
+        #         price = variant.variant_price
+        #         discount_amount = variant.discounted_cost
+        #     else:
+        #         price = product.price
+        #         discount_amount = product.discounted_cost
+        #
+        #     discount_sum += variant.discounted_cost * cart_item.item_count
+        #     discount_sum += product.discounted_cost * cart_item.item_count
+        #
+        #     cart_item_count += cart_item.item_count
+        #     cart_total += price * cart_item.item_count
+        #
+        # total_bill = cart_total - discount_sum + delivery_charges
+        #
+        # discount_sum = cart_total - discount_sum
 
-        for cart_item in fetch_cart_items:
-            product_id = cart_item.product_id
-            variant_id = cart_item.variant_id
-
-            product = db.query(models.Products).filter(models.Products.product_id == product_id).first()
-            variant = db.query(models.ProductVariant).filter(models.ProductVariant.variant_id == variant_id).first()
-
-            if variant:
-                price = variant.variant_price
-                discount_amount = variant.discounted_cost
-            else:
-                price = product.price
-                discount_amount = product.discounted_cost
-
-            discount_sum += variant.discounted_cost * cart_item.item_count
-            discount_sum += product.discounted_cost * cart_item.item_count
-
-            cart_item_count += cart_item.item_count
-            cart_total += price * cart_item.item_count
-
-        total_bill = cart_total - discount_sum + delivery_charges
-
-        discount_sum = cart_total - discount_sum
-
-        return {"status": 200, "message": "CHECKOUT SCREEN fetched", "data": {"cart_item_count": cart_item_count, "cart_total": cart_total, "discount_sum": discount_sum, "coupon_applied": coupon_applied, "delivery_charges": delivery_charges, "total_bill": total_bill}}
+        return {"status": 200, "message": "CHECKOUT SCREEN fetched", "data": {"cart_item_count": cart_item_count, "cart_total": cart_total, "discount_sum": discount_sum, "coupon_applied": coupon_applied, "delivery_charges": delivery_charges}}
     except IntegrityError as e:
         print(repr(e))
         response.status_code = 500
