@@ -23,6 +23,14 @@ class UserCompany(BaseModel):
     class Config:
         from_attributes = True
 
+class Shop(BaseModel):
+    shop_name: str
+    shop_description: str
+    shop_image: str
+    shop_contact: int
+    is_available: bool
+    product_id: int
+    variant_id: int
 
 class Category(BaseModel):
     category_id: Optional[int] | None = None

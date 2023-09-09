@@ -774,3 +774,131 @@ def get_cart_item_count_with_price_and_discount_sum(response: Response, cart_id:
         response.status_code = 500
         return {"status": 500, "message": "Error", "data": {}}
 
+@app.get("/getAllCategoriesProducts")
+async def get_all_products_in_categories(response: Response, db: Session = Depends(get_db)):
+    try:
+        fetch_categories = db.query(models.Categories).all()
+
+        category_details_with_products = []
+        for category in fetch_categories:
+            # category_products = db.query(models.Products).filter(models.Products.category_id == category.category_id).all()
+            category_products = db.query(models.Products).join(
+            models.ProductVariant, models.Products.product_id == models.ProductVariant.product_id
+            ).all()
+            category_details = {
+                "category_id": category.category_id,
+                "category_name": category.category_name,
+                "category_image": category.category_image,
+                "products": category_products,
+            }
+            category_details_with_products.append(category_details)
+
+        return category_details_with_products
+    except IntegrityError as e:
+        print(repr(e))
+        response.status_code = 200
+        return {"status": 204, "message": "Error", "data": []}
+
+@app.get("/getAllCategoriesProductsVariants")
+def get_all_products_variants_in_categories(response: Response, db: Session = Depends(get_db)):
+    try:
+        fetch_categories = db.query(models.Categories).all()
+
+        category_details_with_products = []
+
+        for category in fetch_categories:
+            category_products = db.query(models.Products).filter(
+                models.Products.category_id == category.category_id).all()
+
+            product_details = []
+
+            for product in category_products:
+                product_variants = db.query(models.ProductVariant).filter(
+                    models.ProductVariant.product_id == product.product_id).all()
+
+                variant_details = []
+
+                for variant in product_variants:
+                    variant_detail = {
+                        "variant_id": variant.variant_id,
+                        "variant_name": variant.variant_name,
+                        "variant_price": variant.variant_price,
+                        "item_count": variant.item_count,
+                        "weight": variant.weight,
+                        "discount": variant.discount,
+                        "discounted_cost": variant.discounted_cost,
+                        "image": variant.image
+                    }
+                    variant_details.append(variant_detail)
+                product_detail = {
+                    "product_id": product.product_id,
+                    "product_name": product.product_name,
+                    "image": product.image,
+                    "item_count": product.item_count,
+                    "deal": product.deal,
+                    "price": product.price,
+                    "discount": product.discount,
+                    "discounted_cost": product.discounted_cost,
+                    "details": product.details,
+                    "description": product.description,
+                    "weight": product.weight,
+                    "product_variants": variant_details
+
+                }
+                product_details.append(product_detail)
+            category_detail = {
+                "category_id": category.category_id,
+                "category_name": category.category_name,
+                "category_image": category.category_image,
+                "products": product_details,
+            }
+            category_details_with_products.append(category_detail)
+
+        return category_details_with_products
+    except IntegrityError as e:
+        print(repr(e))
+        response.status_code = 200
+        return {"status": 204, "message": "Error", "data": []}
+
+@app.get("/shops/products")
+async def get_products_by_shop_and_category(shop_id: int, response: Response, db: Session = Depends(get_db)):
+    shop = db.query(models.Shops).filter(models.Shops.shop_id == shop_id).first()
+    if shop is None:
+        db.close()
+        raise HTTPException(status_code=404, detail="Shop not found")
+
+    products = (
+        db.query(models.Products)
+        .join(models.Categories, models.Products.category_id == models.Categories.category_id)
+        .join(models.Shops, models.Shops.product_id == models.Products.product_id)
+        .filter(models.Shops.shop_id == shop_id)
+        .all()
+    )
+
+    result = []
+
+    for product in products:
+        product_data = {
+            "product_id": product.product_id,
+            "product_name": product.product_name
+        }
+        result.append(product_data)
+
+    for product in products:
+        product_variants = db.query(models.ProductVariant).filter(
+            models.ProductVariant.product_id == product.product_id).all()
+
+    for variant in product_variants:
+        variant_detail = {
+            "variant_id": variant.variant_id,
+            "variant_name": variant.variant_name,
+            "variant_price": variant.variant_price,
+            "item_count": variant.item_count,
+            "weight": variant.weight,
+            "discount": variant.discount,
+            "discounted_cost": variant.discounted_cost,
+            "image": variant.image
+        }
+        result.append(variant_detail)
+
+    return result

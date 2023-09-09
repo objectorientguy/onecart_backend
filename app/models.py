@@ -39,6 +39,20 @@ class Categories(Base):
         else:
             return value
 
+class Shops(Base):
+    __tablename__ = "shops"
+    shop_id = Column(BIGINT, nullable=False, primary_key=True, autoincrement=True)
+    shop_name = Column(String, nullable=False)
+    shop_description = Column(String, nullable=True)
+    shop_image = Column(String, nullable=True)
+    shop_contact = Column(BIGINT, nullable=False)
+    is_available = Column(Boolean, nullable=False)
+    product_id = Column(BIGINT, ForeignKey("products.product_id", ondelete="CASCADE"), nullable=False)
+    variant_id = Column(BIGINT, ForeignKey("product_variants.variant_id", ondelete="CASCADE"), nullable=True)
+
+    product = relationship("Products")
+    variants = relationship("ProductVariant")
+
 
 class Products(Base):
     __tablename__ = "products"
