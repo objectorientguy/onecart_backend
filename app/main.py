@@ -353,48 +353,6 @@ def get_categories(response: Response, db: Session = Depends(get_db)):
         response.status_code = 200
         return {"status": 204, "message": "Error", "data": {}}
 
-@contextmanager
-def session_scope():
-    session = Session(bind=engine)
-    try:
-        yield session
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
-    finally:
-        session.close()
-@app.post("/create_categories/")
-def create_categories():
-    try:
-        # Create 20 different categories and add them to the database
-        categories_to_create = [
-            {"category_name": "Fruits & Vegetables", "category_image": "https://oneart.onrender.com/images/Fruit_and_vegetables.jpg"},
-            {"category_name": "Dairy & Bakery", "category_image": "https://oneart.onrender.com/images/bakery-dairy.jpg"},
-            {"category_name": "Staples", "category_image" : "https://oneart.onrender.com/images/staples.jpg"},
-            {"category_name": "Premium Fruits", "category_image" : "https://oneart.onrender.com/images/premium-fruits.jpeg"},
-            {"category_name": "Beverages", "category_image" : "https://oneart.onrender.com/images/beverages.jpg"},
-            {"category_name": "Personal Care", "category_image": "https://oneart.onrender.com/images/personal-care.png"},
-            {"category_name": "Home Care", "category_image": "https://oneart.onrender.com/images/home-care.jpeg"},
-            {"category_name": "Mom & Baby Care", "category_image": "https://oneart.onrender.com/images/baby-care.jpg"},
-            {"category_name": "Home & Kitchen", "category_image": "https://oneart.onrender.com/images/home-kitchen.jpg"}
-
-
-        ]
-
-        with session_scope() as session:
-            for category_data in categories_to_create:
-                category = models.Categories(**category_data)
-                session.add(category)
-                session.commit()
-                session.refresh(category)
-
-        return {"message": "Categories created successfully", "data" : {} }
-
-    except Exception as e:
-        print(repr(e))
-        raise HTTPException(status_code=500, detail=str(e))
-
 @app.post('/addProducts')
 def add_products(products: List[schemas.Product], response: Response, db: Session = Depends(get_db)):
     try:
@@ -405,7 +363,6 @@ def add_products(products: List[schemas.Product], response: Response, db: Sessio
             ).first()
 
             if existing_product:
-                # Check if the company ID and categories match
                 return {"status": "200", "message": "Product already exists!"}
                 continue
 
@@ -426,17 +383,30 @@ def add_products(products: List[schemas.Product], response: Response, db: Sessio
             raise
 
 @app.post('/addProductVariants/{product_id}')
-def add_product_variants(product_id: int, variants: schemas.ProductVariant, response: Response, db: Session = Depends(get_db)):
+def add_product_variants(product_id: int, variants: List[schemas.ProductVariant], response: Response, db: Session = Depends(get_db)):
     try:
-        new_product_variant = models.ProductVariant(**variants.model_dump())
-        db.add(new_product_variant)
+
+        product = db.query(models.Products).filter(models.Products.product_id == product_id).first()
+        if not product:
+            raise HTTPException(status_code=404, detail="Product not found")
+
+        # Create and add each product variant to the database
+        new_variants = []
+        for variant in variants:
+            new_product_variant = models.ProductVariant(**variant.model_dump())
+            db.add(new_product_variant)
+            new_variants.append(new_product_variant)
+
         db.commit()
-        db.refresh(new_product_variant)
+        for variant in new_variants:
+            db.refresh(variant)
 
         return {"status": "200", "message": "New product variants added successfully!", "data": variants}
-    except IntegrityError:
-        response.status_code = 200
-        return {"status": "404", "message": "Error", "data": {}}
+    except IntegrityError as e:
+        print(repr(e))
+        response.status_code = 400
+        return {"status": "400", "message": "Error", "data": {}}
+
 
 
 @app.get("/getProducts")
@@ -499,18 +469,54 @@ def edit_product(editProduct: schemas.EditProduct,response: Response,product_id:
 @app.get("/products/categories/{category_id}")
 def get_products_by_category_id(response: Response, category_id: int, db: Session = Depends(get_db)):
     try:
-        fetch_category = db.query(models.Categories).filter(models.Categories.category_id == category_id).first()
-        if not fetch_category:
-            raise HTTPException(status_code=404, detail="Category not found")
+        product_details = []
+        products_in_category = (
+            db.query(models.Products)
+            .join(models.CategoryProduct, models.Products.product_id == models.CategoryProduct.product_id)
+            .filter(models.CategoryProduct.category_id == category_id)
+            .all()
+        )
 
-        fetch_product_category = db.query(models.Products).filter(models.Products.category_id == category_id).all()
-        if not fetch_product_category:
-            return {"status": 204, "message": "No product of this category available", "data": {}}
+        for product in products_in_category:
+            product_details_dict = {
+                "product_id": product.product_id,
+                "product_name": product.product_name,
+                "details": product.details,
+                "variants": [],
+            }
 
-        return {"status": 200, "message": "Product by category Fetched", "category": fetch_category, "data": fetch_product_category}
-    except IntegrityError:
+            # Fetch variants for each product
+            variants = (
+                db.query(models.ProductVariant)
+                .filter(models.ProductVariant.product_id == product.product_id)
+                .all()
+            )
+
+            for variant in variants:
+                variant_details = {
+                    "variant_id": variant.variant_id,
+                    "variant_cost": variant.variant_cost,
+                    "count": variant.count,
+                    "brand_name": variant.brand_name,
+                    "discounted_cost": variant.discounted_cost,
+                    "discount": variant.discount,
+                    "quantity": variant.quantity,
+                    "description": variant.description,
+                    "image": variant.image,
+                    "ratings": variant.ratings
+                }
+
+                product_details_dict["variants"].append(variant_details)
+
+            product_details.append(product_details_dict)
+
+        return {"status": 200, "message": "Products by category fetched", "products": product_details}
+    except IntegrityError as e:
+        print(repr(e))
         response.status_code = 200
         return {"status": 204, "message": "Error", "data": {}}
+
+
 
 @app.post("/carts")
 async def create_cart(cart: schemas.CartSchema, response: Response, db: Session = Depends(get_db)):
@@ -599,29 +605,7 @@ def search_products(response: Response, search_term: str, db: Session = Depends(
         return {"status": 500, "message": "Error", "data": {}}
 
 
-@app.get("/getBanners")
-def get_all_banners(response: Response, db: Session = Depends(get_db)):
-    try:
-        fetch_banners = db.query(models.PromotionalBanners).all()
-        if not fetch_banners:
-            return {"status": 204, "message": "No Banners available please add", "data": {}}
 
-        return {"status": 200, "message": "Banners Fetched", "data": fetch_banners}
-    except IntegrityError:
-        response.status_code = 200
-        return {"status": 204, "message": "Error", "data": {}}
-
-@app.get("/getDeals")
-def get_deal_products(response: Response, db: Session = Depends(get_db)):
-    try:
-        deal_products = db.query(models.Products).filter(models.Products.deal == True).all()
-        if not deal_products:
-            return {"status": 204, "message": "No deal products available", "data": []}
-
-        return {"status": 200, "message": "Deal products fetched", "data": deal_products}
-    except IntegrityError:
-        response.status_code = 200
-        return {"status": 204, "message": "Error", "data": []}
 
 
 @app.get("/getCategoriesAndBannersAndDeals")
@@ -777,128 +761,160 @@ def get_cart_item_count_with_price_and_discount_sum(response: Response, cart_id:
 @app.get("/getAllCategoriesProducts")
 async def get_all_products_in_categories(response: Response, db: Session = Depends(get_db)):
     try:
-        fetch_categories = db.query(models.Categories).all()
+        product_categories = db.query(models.Categories).all()
 
         category_details_with_products = []
-        for category in fetch_categories:
-            # category_products = db.query(models.Products).filter(models.Products.category_id == category.category_id).all()
-            category_products = db.query(models.Products).join(
-            models.ProductVariant, models.Products.product_id == models.ProductVariant.product_id
-            ).all()
+        for category in product_categories:
+            products = db.query(models.Products).join(models.CategoryProduct,
+                models.Products.product_id == models.CategoryProduct.product_id
+            ).filter(models.CategoryProduct.category_id == category.category_id).all()
+
             category_details = {
                 "category_id": category.category_id,
                 "category_name": category.category_name,
                 "category_image": category.category_image,
-                "products": category_products,
+                "products": [],
             }
+            for product in products:
+                product_details = {
+                    "product_id": product.product_id,
+                    "product_name": product.product_name,
+                    "details": product.details,
+                    "variants": [],
+                }
+
+                product_variants = db.query(models.ProductVariant).filter(models.ProductVariant.product_id == product.product_id).all()
+                for variant in product_variants:
+                    variant_details = {
+                        "variant_id": variant.variant_id,
+                        "variant_cost": variant.variant_cost,
+                        "count": variant.count,
+                        "brand_name": variant.brand_name,
+                        "discounted_cost": variant.discounted_cost,
+                        "discount": variant.discount,
+                        "quantity": variant.quantity,
+                        "description": variant.description,
+                        "image": variant.image,
+                        "ratings": variant.ratings
+                    }
+
+                    product_details["variants"].append(variant_details)
+                category_details["products"].append(product_details)
             category_details_with_products.append(category_details)
 
         return category_details_with_products
-    except IntegrityError as e:
+    except Exception as e:
         print(repr(e))
-        response.status_code = 200
-        return {"status": 204, "message": "Error", "data": []}
+        response.status_code = 500
+        return {"status": 500, "message": "Internal Server Error", "data": []}
 
-@app.get("/getAllCategoriesProductsVariants")
-def get_all_products_variants_in_categories(response: Response, db: Session = Depends(get_db)):
+@app.get("/getAllCategoriesVariants") #for fetch products with category
+async def get_all_products_in_categories(response: Response, db: Session = Depends(get_db)):
     try:
-        fetch_categories = db.query(models.Categories).all()
+        feature = db.query(models.FreatureList).all()
+        product_categories = db.query(models.Categories).all()
 
-        category_details_with_products = []
+        recomended_products = []
+        category_details_variants = []
+        for category in product_categories:
+            products = db.query(models.Products).join(models.CategoryProduct,
+                models.Products.product_id == models.CategoryProduct.product_id
+            ).filter(models.CategoryProduct.category_id == category.category_id).all()
 
-        for category in fetch_categories:
-            category_products = db.query(models.Products).filter(
-                models.Products.category_id == category.category_id).all()
-
-            product_details = []
-
-            for product in category_products:
-                product_variants = db.query(models.ProductVariant).filter(
-                    models.ProductVariant.product_id == product.product_id).all()
-
-                variant_details = []
-
-                for variant in product_variants:
-                    variant_detail = {
-                        "variant_id": variant.variant_id,
-                        "variant_name": variant.variant_name,
-                        "variant_price": variant.variant_price,
-                        "item_count": variant.item_count,
-                        "weight": variant.weight,
-                        "discount": variant.discount,
-                        "discounted_cost": variant.discounted_cost,
-                        "image": variant.image
-                    }
-                    variant_details.append(variant_detail)
-                product_detail = {
-                    "product_id": product.product_id,
-                    "product_name": product.product_name,
-                    "image": product.image,
-                    "item_count": product.item_count,
-                    "deal": product.deal,
-                    "price": product.price,
-                    "discount": product.discount,
-                    "discounted_cost": product.discounted_cost,
-                    "details": product.details,
-                    "description": product.description,
-                    "weight": product.weight,
-                    "product_variants": variant_details
-
-                }
-                product_details.append(product_detail)
-            category_detail = {
+            category_details = {
                 "category_id": category.category_id,
                 "category_name": category.category_name,
                 "category_image": category.category_image,
-                "products": product_details,
+                "products": [],
             }
-            category_details_with_products.append(category_detail)
+            for product in products:
+                product_details = {
+                    "product_id": product.product_id,
+                    "product_name": product.product_name,
+                    "details": product.details,
+                    "variants": [],
+                }
 
-        return category_details_with_products
-    except IntegrityError as e:
+                product_variant = db.query(models.ProductVariant).filter(models.ProductVariant.product_id == product.product_id).first()
+                if product_variant:
+                    variant_details = {
+                        "variant_id": product_variant.variant_id,
+                        "variant_cost": product_variant.variant_cost,
+                        "count": product_variant.count,
+                        "brand_name": product_variant.brand_name,
+                        "discounted_cost": product_variant.discounted_cost,
+                        "discount": product_variant.discount,
+                        "quantity": product_variant.quantity,
+                        "description": product_variant.description,
+                        "image": product_variant.image,
+                        "ratings": product_variant.ratings
+                    }
+
+                    product_details["variants"].append(variant_details)
+                category_details["products"].append(product_details)
+            category_details_variants.append(category_details)
+
+        return {"feature":feature,"category details":category_details_variants,"recomended products":recomended_products}
+    except Exception as e:
         print(repr(e))
+        response.status_code = 500
+        return {"status": 500, "message": "Internal Server Error", "data": []}
+
+@app.get("/homescreen")
+def get_categories_and_banners_and_deals(response: Response, db: Session = Depends(get_db)):
+    try:
+        fetch_categories = db.query(models.Categories).all()
+        fetch_shop_banner = db.query(models.Shops).all()
+        fetch_deals = db.query(models.Products).limit(3).all()
+
+        shop_deals = []
+        shop_details = []
+        for shop in fetch_shop_banner:
+            shop_images = {
+                "shop_id": shop.shop_id,
+                "shop_name": shop.shop_name,
+                "shop_image": shop.shop_image
+            }
+            shop_details.append(shop_images)
+
+        for deal in fetch_deals:
+            deal_products = {
+                "product_id": deal.product_id,
+                "product_name": deal.product_name,
+                "details": deal.details,
+                "variants": [],
+            }
+
+            product_variant = db.query(models.ProductVariant).filter(
+                models.ProductVariant.product_id == deal.product_id).first()
+            if product_variant:
+                variant_details = {
+                    "variant_id": product_variant.variant_id,
+                    "variant_cost": product_variant.variant_cost,
+                    "count": product_variant.count,
+                    "brand_name": product_variant.brand_name,
+                    "discounted_cost": product_variant.discounted_cost,
+                    "discount": product_variant.discount,
+                    "quantity": product_variant.quantity,
+                    "description": product_variant.description,
+                    "image": product_variant.image,
+                    "ratings": product_variant.ratings
+                }
+
+                deal_products["variants"].append(variant_details)
+
+            shop_deals.append(deal_products)
+
+        return {
+            "status": 200,
+            "message": "Categories, banners, and deals fetched",
+            "data": {
+                "categories": fetch_categories,
+                "popular shops": shop_details,
+                "today's deals": shop_deals
+            },
+        }
+    except IntegrityError:
         response.status_code = 200
-        return {"status": 204, "message": "Error", "data": []}
+        return {"status": 204, "message": "Error", "data": {}}
 
-@app.get("/shops/products")
-async def get_products_by_shop_and_category(shop_id: int, response: Response, db: Session = Depends(get_db)):
-    shop = db.query(models.Shops).filter(models.Shops.shop_id == shop_id).first()
-    if shop is None:
-        db.close()
-        raise HTTPException(status_code=404, detail="Shop not found")
-
-    products = (
-        db.query(models.Products)
-        .join(models.Categories, models.Products.category_id == models.Categories.category_id)
-        .join(models.Shops, models.Shops.product_id == models.Products.product_id)
-        .filter(models.Shops.shop_id == shop_id)
-        .all()
-    )
-
-    result = []
-
-    for product in products:
-        product_data = {
-            "product_id": product.product_id,
-            "product_name": product.product_name
-        }
-        result.append(product_data)
-
-    for product in products:
-        product_variants = db.query(models.ProductVariant).filter(
-            models.ProductVariant.product_id == product.product_id).all()
-
-    for variant in product_variants:
-        variant_detail = {
-            "variant_id": variant.variant_id,
-            "variant_name": variant.variant_name,
-            "variant_price": variant.variant_price,
-            "item_count": variant.item_count,
-            "weight": variant.weight,
-            "discount": variant.discount,
-            "discounted_cost": variant.discounted_cost,
-            "image": variant.image
-        }
-        result.append(variant_detail)
-
-    return result

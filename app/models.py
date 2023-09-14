@@ -39,65 +39,61 @@ class Categories(Base):
         else:
             return value
 
+
 class Shops(Base):
     __tablename__ = "shops"
+
     shop_id = Column(BIGINT, nullable=False, primary_key=True, autoincrement=True)
     shop_name = Column(String, nullable=False)
     shop_description = Column(String, nullable=True)
     shop_image = Column(String, nullable=True)
     shop_contact = Column(BIGINT, nullable=False)
+    shop_address = Column(String, nullable=True)
+    shop_coordinates = Column(String, nullable=True)
+    shop_mok = Column(String, nullable=True)
+    shop_service = Column(String, nullable=True)
     is_available = Column(Boolean, nullable=False)
-    product_id = Column(BIGINT, ForeignKey("products.product_id", ondelete="CASCADE"), nullable=False)
-    variant_id = Column(BIGINT, ForeignKey("product_variants.variant_id", ondelete="CASCADE"), nullable=True)
+    company_name = Column(String, ForeignKey(
+        "companies.company_name", ondelete="CASCADE"), nullable=False)
 
-    product = relationship("Products")
-    variants = relationship("ProductVariant")
+    company = relationship("Companies")
 
 
 class Products(Base):
     __tablename__ = "products"
 
     product_id = Column(BIGINT, nullable=False, primary_key=True, autoincrement=True, unique=True, index=True)
-    company_name = Column(String, ForeignKey(
-        "companies.company_name", ondelete="CASCADE"), nullable=False)
-    category_id = Column(BIGINT, ForeignKey(
-        "categories.category_id", ondelete="CASCADE"), nullable=False)
     brand_id = Column(BIGINT, ForeignKey(
         "brands.brand_id", ondelete="CASCADE"), nullable=False)
     product_name = Column(String, nullable=False)
-    image = Column(JSON, nullable=False)
-    deal = Column(Boolean, nullable=False)
-    item_count = Column(Integer, nullable=False)
-    price = Column(Float, nullable=False)
-    discount = Column(Integer, nullable=False)
-    discounted_cost = Column(Float, nullable=True)
     details = Column(String, nullable=False)
-    description = Column(String, nullable=True)
-    weight = Column(String, nullable=False)
 
-    company = relationship("Companies")
     brand = relationship("Brand")
-    category = relationship("Categories")
 
 
 class ProductVariant(Base):
     __tablename__ = "product_variants"
 
     variant_id = Column(BIGINT, primary_key=True, index=True, autoincrement=True)
-    variant_price = Column(Float, nullable=False)
-    variant_name = Column(String, nullable=False)
+    variant_cost = Column(Float, nullable=False)
+    # variant_name = Column(String, nullable=False)
     brand_name = Column(String, nullable=False)
-    image = Column(JSON, nullable=False)
+    count = Column(Integer, nullable=False)
     discounted_cost = Column(Float, nullable=True)
-    discount = Column(String, nullable=True)
-    item_count = Column(Integer, nullable=False)
-    weight = Column(String, nullable=False)
+    discount = Column(BIGINT, nullable=True)
+    quantity = Column(String, nullable=False)
+    description = Column(String, nullable=False)
+    image = Column(JSON, nullable=False)
+    ratings = Column(Integer, nullable=True)
     product_id = Column(BIGINT, ForeignKey(
         "products.product_id", ondelete="CASCADE"), nullable=False)
+
+    product = relationship("Products")
 
 
 class Image(Base):
     __tablename__ = "images"
+
     id = Column(BIGINT, primary_key=True, index=True)
     filename = Column(String)
     file_path = Column(String)
@@ -111,7 +107,7 @@ class User(Base):
     customer_contact = Column(BIGINT, primary_key=True, nullable=False)
     customer_birthdate = Column(Date, nullable=True)
     created_at = Column(TIMESTAMP(timezone=True),
-                        nullable=False, server_default=text('now()'))
+                        nullable=False, server_default=text('now()'))  # PROFILE IMAGE
     email_id = Column(String, nullable=True)
     wallet = Column(Float, nullable=False)
     prev_pay_mode = Column(String, nullable=False)
@@ -175,21 +171,38 @@ class Addresses(Base):
         else:
             return value
 
+class CartItem(Base):
+    __tablename__ = "cart_items"
+    cartItem_id = Column(Integer, primary_key=True, autoincrement=True)
+    cart_id = Column(Integer, ForeignKey(
+        "carts.cart_id", ondelete="CASCADE"), nullable=False)
+    product_id = Column(BIGINT, ForeignKey(
+        "products.product_id", ondelete="CASCADE"), nullable=False)
+    variant_id = Column(BIGINT, ForeignKey(
+        "product_variants.variant_id", ondelete="CASCADE"), nullable=False)
+    count = Column(BIGINT, nullable=False)
+
+    product = relationship("Products")
+    variant = relationship("ProductVariant")
+    cart = relationship("Cart")
+
+
+
 
 class Cart(Base):
     __tablename__ = "carts"
     cart_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     company_id = Column(BIGINT, ForeignKey("companies.company_id", ondelete="CASCADE"), nullable=False)
     customer_contact = Column(BIGINT, ForeignKey("customers.customer_contact", ondelete="CASCADE"), nullable=False)
-    coupon_id = Column(Integer, ForeignKey("coupons.coupon_id", ondelete="CASCADE"), nullable=True)
+    # coupon_id = Column(Integer, ForeignKey("coupons.coupon_id", ondelete="CASCADE"), nullable=True)
     products = Column(JSON, nullable=True)
     # creation_time = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text("now()"))
 
     company = relationship("Companies")
     user = relationship("User")
-    coupon = relationship("Coupon")
+    # coupon = relationship("Coupon")
 
-    @validates( 'company_id', 'customer_contact')
+    @validates('company_id', 'customer_contact')
     def empty_string_to_null(self, key, value):
         if isinstance(value, str) and value == '':
             return None
@@ -256,3 +269,77 @@ class Brand(Base):
     brand_id = Column(BIGINT, autoincrement=True, primary_key=True)
     brand_name = Column(String, nullable=False)
     brand_image = Column(String, nullable=False)
+
+
+class CompositeKey:
+    def __init__(self, product_id, category_id):
+        self.product_id = product_id
+        self.category_id = category_id
+
+    def __composite_values__(self):
+        return self.product_id, self.category_id
+
+
+class CategoryProduct(Base):
+    __tablename__ = "product_categories"
+
+    product_id = Column(BIGINT, ForeignKey(
+        "products.product_id", ondelete="CASCADE"), nullable=False, primary_key=True)
+    category_id = Column(BIGINT, ForeignKey(
+        "categories.category_id", ondelete="CASCADE"), nullable=False, primary_key=True)
+    composite_key = composite(CompositeKey, product_id, category_id)
+
+    customer = relationship("Products")
+    company = relationship("Categories")
+
+    @validates('company_name', 'user_contact')
+    def empty_string_to_null(self, key, value):
+        if isinstance(value, str) and value == '':
+            return None
+        else:
+            return value
+
+
+class Deals(Base):
+    __tablename__ = "deals"
+
+    deal_id = Column(Integer, primary_key=True, autoincrement=True)
+    shop_id = Column(Integer, ForeignKey(
+        "shops.shop_id", ondelete="CASCADE"), nullable=False)
+    product_id = Column(BIGINT, ForeignKey(
+        "products.product_id", ondelete="CASCADE"), nullable=False)
+    deal_name = Column(String, nullable=False)
+    deal_type = Column(String, nullable=False)
+    deal_description = Column(String, nullable=False)
+    deal_discount = Column(Integer, nullable=False)
+    deal_start = Column(DateTime, nullable=False)
+    deal_end = Column(DateTime, nullable=False)
+
+    product = relationship("Products")
+    shop = relationship("Shops")
+
+
+# class ShopAssociation(Base):
+#     __tablename__ = "shop_variants"
+#
+#     shop_ass_id = Column(Integer, nullable=False, primary_key=True)
+#     product_id = Column(BIGINT, ForeignKey(
+#         "products.product_id", ondelete="CASCADE"))
+#     variant_id = Column(BIGINT, ForeignKey(
+#         "product_variants.variant_id", ondelete="CASCADE"), nullable=True)
+#     shop_id = Column(BIGINT, ForeignKey(
+#         "shops.shop_id", ondelete="CASCADE"), nullable=True)
+#
+#     variant = relationship("ProductVariant")
+#     product = relationship("Products")
+#     shop = relationship("Shops")
+
+class FreatureList(Base):
+    __tablename__ = "feature"
+
+    feature_id = Column(Integer, primary_key=True, autoincrement=True)
+    shop_id = Column(Integer, ForeignKey(
+        "shops.shop_id", ondelete="CASCADE"), nullable=False)
+    feature_image = Column(JSON, nullable=False)
+
+    shop = relationship("Shops")

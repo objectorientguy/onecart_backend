@@ -28,9 +28,13 @@ class Shop(BaseModel):
     shop_description: str
     shop_image: str
     shop_contact: int
+    shop_address: str
+    shop_coordinates: str
+    shop_mok: str
+    shop_service: str
     is_available: bool
-    product_id: int
-    variant_id: int
+    company_name: str
+
 
 class Category(BaseModel):
     category_id: Optional[int] | None = None
@@ -44,38 +48,37 @@ class Category(BaseModel):
 class EditCategory(Category):
     pass
 
-
-class ProductVariant(BaseModel):
-    variant_id: Optional[int] | None = None
-    variant_price: float
-    variant_name: str
-    brand_name: str
-    item_count: int
+class ProductCategory(BaseModel):
     product_id: int
-    weight: str
-    discount: str
-    discounted_cost: float
-    image: List[str]
+    category_id: int
+
 
     class Config:
         from_attributes = True
 
-
 class Product(BaseModel):
     product_id: int | None = None
-    company_name: str
-    product_name: str
     brand_id: int
-    image: List[str]
-    item_count: int
-    deal: bool
-    price: float
-    discount: int
-    discounted_cost: float
+    product_name: str
     details: str
+
+
+    class Config:
+        from_attributes = True
+
+class ProductVariant(BaseModel):
+    variant_id: Optional[int] | None = None
+    variant_cost: float
+    count: int
+    brand_name: str
+    discounted_cost: float
+    discount: int
+    quantity: str
     description: str
-    category_id: int
-    weight: str
+    discounted_cost: float
+    image: List[str]
+    ratings: int
+    product_id: int
 
     class Config:
         from_attributes = True
@@ -150,6 +153,13 @@ class OrderItems(BaseModel):
     class Config:
         from_attributes = True
 
+class CartItem(BaseModel):
+    cartItem_id: int
+    cart_id: int
+    product_id: int
+    variant_id: int
+    count: int
+
 class CartSchema(BaseModel):
     # id: int
     company_id: int
@@ -216,3 +226,23 @@ class Brand(BaseModel):
     brand_id: int
     brand_name: str
     brand_image: str
+
+class Deals(BaseModel):
+    shop_id: int
+    product_id: int
+    deal_name: str
+    deal_type: str
+    deal_description: str
+    deal_discount: int
+    deal_start: str
+    deal_end: str
+
+# class ShopASSociation(BaseModel):
+#
+#     product_id: int
+#     variant_id: int
+#     shop_id: int
+
+class Feature(BaseModel):
+    shop_id: int
+    feature_image: List[str]
