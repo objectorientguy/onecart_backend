@@ -161,6 +161,7 @@ class Addresses(Base):
     city = Column(String, nullable=False)
     state = Column(String, nullable=False)
     pincode = Column(BIGINT, nullable=False)
+    name = Column(String, nullable=True)
 
     customer = relationship("User")
 

@@ -21,8 +21,9 @@ def session_scope():
         session.close()
 
 
+
 @app.post("/addShop/")
-def create_shop():
+def create_shop(response: Response, db: Session = Depends(get_db)):
     try:
         shops_data = [
             {
@@ -89,7 +90,7 @@ def create_shop():
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/create_categories/")
-def create_categories():
+def create_categories(response: Response, db: Session = Depends(get_db)):
     try:
         # Create 20 different categories and add them to the database
         categories_to_create = [
@@ -120,7 +121,7 @@ def create_categories():
 
 
 @app.post("/addProducts/")
-def add_products():
+def add_products(response: Response, db: Session = Depends(get_db)):
     try:
         products_data = [
             {"brand_id": 2, "product_name": "Parachute Coconut Oil", "details": "Premium Coconut Oil"},
@@ -158,7 +159,7 @@ def add_products():
              "details": "Nature-inspired scents, Lasts up to 30 days"},
         ]
 
-        with SessionLocal() as session:
+        with session_scope() as session:
             for product_data in products_data:
                 product = models.Products(**product_data)
                 session.add(product)
@@ -174,8 +175,8 @@ def add_products():
 
 # ... (previous code remains the same)
 
-@app.post("/addProducts/")
-def add_products():
+@app.post("/addVariants/")
+def add_products(response: Response, db: Session = Depends(get_db)):
     try:
         products_data = [
             {"variant_cost": 99, "brand_name": "Pepsi", "count": 100, "discounted_cost": 66, "discount": 33,
@@ -581,8 +582,16 @@ def add_products():
 
         ]
 
-        return {"success": True, "message": "Products added successfully!"}
-    except Exception as e:
-        return {"success": False, "message": str(e)}
+        with session_scope() as session:
+            for product_data in products_data:
+                product = models.ProductVariant(**product_data)
+                session.add(product)
+                session.commit()
+                session.refresh(product)
 
+        return {"message": "Products added successfully", "data":{}}
+
+    except Exception as e:
+        print(repr(e))
+        raise HTTPException(status_code=500, detail=str(e))
 

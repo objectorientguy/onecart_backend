@@ -118,6 +118,7 @@ class Address(BaseModel):
     city: str
     state: str
     pincode: int
+    name: str
 
     class Config:
         from_attributes = True
@@ -154,11 +155,12 @@ class OrderItems(BaseModel):
         from_attributes = True
 
 class CartItem(BaseModel):
-    cartItem_id: int
-    cart_id: int
     product_id: int
     variant_id: int
     count: int
+
+    class Config:
+        from_attributes = True
 
 class CartSchema(BaseModel):
     # id: int
@@ -167,6 +169,9 @@ class CartSchema(BaseModel):
     coupon_id: int
     products: List[OrderItems]
     # creation_time: datetime
+
+    class Config:
+        from_attributes = True
 
 
 class CompanyLogin(BaseModel):
