@@ -147,12 +147,12 @@ class EditAddress(Address):
     class Config:
         from_attributes = True
 
-class OrderItems(BaseModel):
-    product_id: int
-    variant: int
-
-    class Config:
-        from_attributes = True
+# class OrderItems(BaseModel):
+#     product_id: int
+#     variant: int
+#
+#     class Config:
+#         from_attributes = True
 
 class CartItem(BaseModel):
     cart_id: int

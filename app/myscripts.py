@@ -595,3 +595,4 @@ def add_products(response: Response, db: Session = Depends(get_db)):
         print(repr(e))
         raise HTTPException(status_code=500, detail=str(e))
 
+

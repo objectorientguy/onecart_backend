@@ -2,7 +2,7 @@ from typing import List
 from contextlib import contextmanager
 import bcrypt
 from fastapi import FastAPI, Response, Depends, UploadFile, File, Request, HTTPException, Body
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import IntegrityError
 from starlette.responses import FileResponse
 import logging
@@ -789,14 +789,24 @@ def get_categories_and_banners_and_deals(response: Response, db: Session = Depen
         return {"status": 204, "message": "Error", "data": {}}
 
 @app.get("/getProductswithCartId/{cart_id}")
-def get_cart_items_with_product_ids(response: Response, cart_id: int, db: Session = Depends(get_db)):
+def get_cart_items_with_product_ids(response: Response, cart_id: int,customer_contact:int, db: Session = Depends(get_db)):
 
     try:
+        cart = db.query(models.Cart).filter_by(customer_contact=customer_contact).first()
+        if cart:
+            cart_items = (
+                            db.query(models.CartItem, models.ProductVariant.variant_cost)
+                            .join(models.ProductVariant, models.CartItem.variant_id == models.ProductVariant.variant_id)
+                            .filter(models.CartItem.cart_id == cart.cart_id)
+                            .all()
+                        )
+
         fetch_cart_items = db.query(models.CartItem).filter(models.CartItem.cart_id == cart_id).all()
         if not fetch_cart_items:
             return {"status": 404, "message": "No cart items found", "data": {}}
 
         cart_items_with_product_ids = []
+
         for cart_item in fetch_cart_items:
             product_id = cart_item.product_id
             variant_id = cart_item.variant_id
@@ -809,12 +819,14 @@ def get_cart_items_with_product_ids(response: Response, cart_id: int, db: Sessio
                 "product": product,
                 "variant": variant
             })
+            cart_item_count = len(cart_items)
 
-        return {"status": 200, "message": "Cart items fetched", "data": cart_items_with_product_ids}
+        return {"status": 200, "message": "Cart items fetched", "data": {"cart_items": cart_items_with_product_ids,"item_count": cart_item_count}}
     except IntegrityError as e:
         print(repr(e))
         response.status_code = 500
         return {"status": 500, "message": "Error", "data": {}}
+
 # @app.post("/add_to_cart/")
 # def add_to_cart(cart_item: schemas.CartItem, cart_id: int,response: Response,db: Session = Depends(get_db)):
 #     try:
@@ -928,9 +940,6 @@ def add_to_cart(customer_contact: int, cart_Item: dict = Body(...), db: Session 
 #         response.status_code = 200
 #         return {"status": 204, "message": "Error", "data": {}}
 
-
-
-
 # @app.get("/checkoutScreen/{cart_id}")
 # def get_cart_item_count_with_price_and_discount_sum(response: Response, cart_id: int, db: Session = Depends(get_db)):
 #
@@ -980,3 +989,48 @@ def add_to_cart(customer_contact: int, cart_Item: dict = Body(...), db: Session 
 #         print(repr(e))
 #         response.status_code = 500
 #         return {"status": 500, "message": "Error", "data": {}}
+
+@app.get("/your_cart/{customer_contact}")
+def get_your_cart(response: Response, customer_contact: int, db: Session = Depends(get_db)):
+    try:
+        cart = db.query(models.Cart).filter_by(customer_contact=customer_contact).first()
+
+        if cart:
+            cart_items = (
+                db.query(models.CartItem)
+                .filter_by(cart_id=cart.cart_id)
+                .options(joinedload(models.CartItem.variant))
+                .all()
+            )
+
+        cart_items_with_customer_contact = []
+        total_cost = 0.0
+        variant_costs = {}
+
+        for cart_item in cart_items:
+            product_id = cart_item.product_id
+            variant_id = cart_item.variant_id
+
+            product = db.query(models.Products).filter(models.Products.product_id == product_id).first()
+            variant = db.query(models.ProductVariant).filter(models.ProductVariant.variant_id == variant_id).first()
+
+            cart_items_with_customer_contact.append({
+                "cartItemId": cart_item.cartItem_id,
+                "product": product,
+                "variant": variant
+            })
+
+            variant_cost = cart_item.variant.variant_cost
+            if variant_id in variant_costs:
+                variant_costs[variant_id] += variant_cost
+            else:
+                variant_costs[variant_id] = variant_cost
+            # for variant_id, total_cost in variant_costs.items():
+            #     print(f"Variant ID: {variant_id}, Total Cost: {total_cost}")
+            total_cost = sum(variant_costs.values())
+
+        return {"status": 200, "message": "Cart items fetched", "data": { "cart_items": cart_items_with_customer_contact, "cart_item_count": len(cart_items), "total_price": total_cost} }
+    except IntegrityError as e:
+        print(repr(e))
+        response.status_code = 500
+        return {"status": 500, "message": "Error", "data": {}}
