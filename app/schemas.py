@@ -155,6 +155,7 @@ class OrderItems(BaseModel):
         from_attributes = True
 
 class CartItem(BaseModel):
+    cart_id: int
     product_id: int
     variant_id: int
     count: int
@@ -167,7 +168,7 @@ class CartSchema(BaseModel):
     company_id: int
     customer_contact: int
     coupon_id: int
-    products: List[OrderItems]
+    products: str
     # creation_time: datetime
 
     class Config:
@@ -193,13 +194,22 @@ class Bookings(BaseModel):
     cart_id: int | None = None
     user_contact: int
     address_id: int
-    item_count: int
-    order_placed: datetime | None = None
-    order_confirmation: datetime | None = None
-    order_shipped: datetime | None = None
-    total_price: str
-    payment_type: str
-    products: List[OrderItems]
+    # item_count: int
+    # order_placed: datetime | None = None
+    # order_confirmation: datetime | None = None
+    # order_shipped: datetime | None = None
+    # total_price: str
+    # payment_type: str
+    # products: List[OrderItems]
+    order_number: str
+    order_date: date
+    product_total: float
+    order_amount: float
+    delivery_fees: float
+    invoice_number: str
+    invoice_amount: float
+    products: List[str]
+
 
     class Config:
         from_attributes = True

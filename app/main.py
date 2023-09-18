@@ -1,7 +1,7 @@
 from typing import List
 from contextlib import contextmanager
 import bcrypt
-from fastapi import FastAPI, Response, Depends, UploadFile, File, Request, HTTPException
+from fastapi import FastAPI, Response, Depends, UploadFile, File, Request, HTTPException, Body
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from starlette.responses import FileResponse
@@ -815,32 +815,19 @@ def get_cart_items_with_product_ids(response: Response, cart_id: int, db: Sessio
         print(repr(e))
         response.status_code = 500
         return {"status": 500, "message": "Error", "data": {}}
-
 # @app.post("/add_to_cart/")
-# def add_to_cart(cart_item: schemas.CartItem, response: Response,db: Session = Depends(get_db)):
+# def add_to_cart(cart_item: schemas.CartItem, cart_id: int,response: Response,db: Session = Depends(get_db)):
 #     try:
+#
+#         # user_cart = (db.query(models.Cart).options(joinedload(models.CartItem)).join(models.CartItem)
+#         #              ).filter(models.Cart.customer_contact == user_contact)
+#
 #         product_variant = db.query(models.ProductVariant).filter_by(variant_id=cart_item.variant_id).first()
 #         if not product_variant:
 #             raise HTTPException(status_code=404, detail="Product variant not found")
 #
-#         # cart = db.query(models.Cart).filter(
-#         #     models.Cart.company_id == cart_item.company_id, models.Cart.user_id == cart_item.user_id).first()
-#         #
-#         # if cart is None:
-#         #     cart = models.Cart(company_id=cart_item.company_id, user_id=cart_item.user_id)
-#         #     db.add(cart)
-#         #     db.commit()
-#         #     db.refresh(cart)
-#         #
-#         # new_cart_item = models.CartItem(
-#         #     product_id=product_variant.product_id,
-#         #     variant_id=cart_item.variant_id,
-#         #     count=cart_item.count
-#         # )
-#         #
-#         # db.add(new_cart_item)
-#         # db.commit()
-#         # db.refresh(new_cart_item)
+#
+#
 #
 #         new_cart_item = models.CartItem(**cart_item.model_dump())
 #
@@ -853,143 +840,143 @@ def get_cart_items_with_product_ids(response: Response, cart_id: int, db: Sessio
 #         print(repr(e))
 #         response.status_code = 500
 #         return {"status": 500, "message": "Error", "data": {}}
+@app.post("/add_to_cart")
+def add_to_cart(customer_contact: int, cart_Item: dict = Body(...), db: Session = Depends(get_db)):
+    try:
+        cart = db.query(models.Cart).filter_by(customer_contact=customer_contact).first()
 
-# @app.post("/add_to_cart", response_model=schemas.CartResponse)
-# def add_to_cart(cart_data: schemas.CartCreate, db: Session = Depends(get_db)):
-#     cart = db.query(models.Cart).filter(models.Cart.company_id == cart_data.company_id,
-#                                         models.Cart.user_id == cart_data.user_id).first()
-#
-#     if cart is None:
-#         cart = models.Cart(**cart_data.model_dump())
-#         db.add(cart)
+        if cart is None:
+            cart = Cart(customer_contact=customer_contact)
+            db.add(cart)
+            db.commit()
+            db.refresh(cart)
+
+        # cart_id = cart_Item.pop('cart_id', None)
+
+        cart_item = models.CartItem(**cart_Item, cart_id=cart.cart_id)
+        db.add(cart_item)
+        db.commit()
+        db.refresh(cart_item)
+
+        return {"status": 200, "message": "Items Successfully Added to the Cart", "data": cart_item}
+    except IntegrityError as e:
+                print(repr(e))
+                response.status_code = 500
+                return {"status": 500, "message": "Error", "data": {}}
+
+
+
+# @app.post('/bookOrder')
+# def add_bookings(bookOrder: schemas.Bookings, response: Response, db: Session = Depends(get_db)):
+#     try:
+#         new_booking = models.Bookings(**bookOrder.model_dump())
+#         db.add(new_booking)
 #         db.commit()
-#     else:
-#         cart_items = db.query(models.CartItem).filter(cart.id).all()
-#         existing_product_ids = set(item.product_id for item in cart_items)
-#         for item in cart_data.items:
-#             if item.product_id not in existing_product_ids:
-#                 new_cart_item = models.CartItem(cart_id=cart.id, product_id=item.product_id)
-#                 db.add(new_cart_item)
+#         db.refresh(new_booking)
 #
-#         db.flush()
+#         return {"status": "200", "message": "New booking successful!", "data": new_booking}
+#     except IntegrityError:
+#         response.status_code = 200
+#         return {"status": "404", "message": "Error", "data": {}}
+
+
+
+# @app.post('/bookOrder/')
+# def add_booking(response: Response, bookOrder: schemas.BookingsCreate, db: Session = Depends(get_db)):
+#     try:
+#         new_booking = models.Bookings(**bookOrder.model_dump())
 #
-#     db.commit()
-#     db.refresh(cart)
+#         # Fetch the products from the cart associated with the provided cart_id
+#         cart = db.query(models.Cart).filter(models.Cart.cart_id == bookOrder.cart_id).first()
+#         if cart:
+#             new_booking.products = cart.products
 #
-#     return cart
+#             cart.products = []
+#
+#         db.add(new_booking)
+#         db.commit()
+#         db.refresh(new_booking)
+#
+#         return {"status": 200, "message": "Booking order created successfully!", "data": new_booking}
+#     except IntegrityError:
+#         response.status_code = 400
+#         return {"status": 400, "message": "Error creating booking order", "data": {}}
 
-
-@app.post('/bookOrder')
-def add_bookings(bookOrder: schemas.Bookings, response: Response, db: Session = Depends(get_db)):
-    try:
-        new_booking = models.Bookings(**bookOrder.model_dump())
-        db.add(new_booking)
-        db.commit()
-        db.refresh(new_booking)
-
-        return {"status": "200", "message": "New booking successful!", "data": new_booking}
-    except IntegrityError:
-        response.status_code = 200
-        return {"status": "404", "message": "Error", "data": {}}
-
-
-
-@app.post('/bookOrder/')
-def add_booking(response: Response, bookOrder: schemas.BookingsCreate, db: Session = Depends(get_db)):
-    try:
-        new_booking = models.Bookings(**bookOrder.model_dump())
-
-        # Fetch the products from the cart associated with the provided cart_id
-        cart = db.query(models.Cart).filter(models.Cart.cart_id == bookOrder.cart_id).first()
-        if cart:
-            new_booking.products = cart.products
-
-            cart.products = []
-
-        db.add(new_booking)
-        db.commit()
-        db.refresh(new_booking)
-
-        return {"status": 200, "message": "Booking order created successfully!", "data": new_booking}
-    except IntegrityError:
-        response.status_code = 400
-        return {"status": 400, "message": "Error creating booking order", "data": {}}
-
-@app.get("/getOrders")
-def get_Orders(response: Response, db: Session = Depends(get_db)):
-    try:
-        orders = db.query(models.Bookings).all()
-        if not orders:
-            return {"status": 204, "message": "No Booking Orders available", "data": []}
-
-        return {"status": 200, "message": "Booking Orders  fetched", "data": orders}
-    except IntegrityError as e:
-        print(repr(e))
-        response.status_code = 200
-        return {"status": 204, "message": "Error", "data": []}
-
-
-@app.get("/getOrders/{order_id}")
-def get_oreders_by_order_id(response: Response, order_id: int, db: Session = Depends(get_db)):
-    try:
-        fetch_orders_id = db.query(models.Bookings).filter(models.Bookings.order_id == order_id).all()
-        if not fetch_orders_id:
-            return {"status": 204, "message": "No Booking Orders found", "data": {}}
-
-        return {"status": 200, "message": "Booking Orders fetched", "data": fetch_orders_id}
-    except IntegrityError:
-        response.status_code = 200
-        return {"status": 204, "message": "Error", "data": {}}
+# @app.get("/getOrders")
+# def get_Orders(response: Response, db: Session = Depends(get_db)):
+#     try:
+#         orders = db.query(models.Bookings).all()
+#         if not orders:
+#             return {"status": 204, "message": "No Booking Orders available", "data": []}
+#
+#         return {"status": 200, "message": "Booking Orders  fetched", "data": orders}
+#     except IntegrityError as e:
+#         print(repr(e))
+#         response.status_code = 200
+#         return {"status": 204, "message": "Error", "data": []}
+#
+#
+# @app.get("/getOrders/{order_id}")
+# def get_oreders_by_order_id(response: Response, order_id: int, db: Session = Depends(get_db)):
+#     try:
+#         fetch_orders_id = db.query(models.Bookings).filter(models.Bookings.order_id == order_id).all()
+#         if not fetch_orders_id:
+#             return {"status": 204, "message": "No Booking Orders found", "data": {}}
+#
+#         return {"status": 200, "message": "Booking Orders fetched", "data": fetch_orders_id}
+#     except IntegrityError:
+#         response.status_code = 200
+#         return {"status": 204, "message": "Error", "data": {}}
 
 
 
 
-@app.get("/checkoutScreen/{cart_id}")
-def get_cart_item_count_with_price_and_discount_sum(response: Response, cart_id: int, db: Session = Depends(get_db)):
-
-    try:
-        fetch_cart_items = db.query(models.Cart).filter(models.Cart.cart_id == cart_id).all()
-        if not fetch_cart_items:
-            return {"status": 404, "message": "No cart items found", "data": {}}
-
-        cart_item_count = 0
-        cart_total = 0
-        discount_sum = 0
-        coupon_applied = None
-        delivery_charges = 40.50
-        total_bill = 0
-
-        if models.Cart.coupon_id:
-            applied_coupon = db.query(models.Coupon).filter(models.Coupon.coupon_id == models.Cart.coupon_id).first()
-            if applied_coupon:
-                coupon_applied = applied_coupon.coupon_name
-        #
-        # for cart_item in fetch_cart_items:
-        #     product_id = cart_item.product_id
-        #     variant_id = cart_item.variant_id
-        #
-        #     product = db.query(models.Products).filter(models.Products.product_id == product_id).first()
-        #     variant = db.query(models.ProductVariant).filter(models.ProductVariant.variant_id == variant_id).first()
-        #
-        #     if variant:
-        #         price = variant.variant_price
-        #         discount_amount = variant.discounted_cost
-        #     else:
-        #         price = product.price
-        #         discount_amount = product.discounted_cost
-        #
-        #     discount_sum += variant.discounted_cost * cart_item.item_count
-        #     discount_sum += product.discounted_cost * cart_item.item_count
-        #
-        #     cart_item_count += cart_item.item_count
-        #     cart_total += price * cart_item.item_count
-        #
-        # total_bill = cart_total - discount_sum + delivery_charges
-        #
-        # discount_sum = cart_total - discount_sum
-
-        return {"status": 200, "message": "CHECKOUT SCREEN fetched", "data": {"cart_item_count": cart_item_count, "cart_total": cart_total, "discount_sum": discount_sum, "coupon_applied": coupon_applied, "delivery_charges": delivery_charges, "total_bill": total_bill}}
-    except IntegrityError as e:
-        print(repr(e))
-        response.status_code = 500
-        return {"status": 500, "message": "Error", "data": {}}
+# @app.get("/checkoutScreen/{cart_id}")
+# def get_cart_item_count_with_price_and_discount_sum(response: Response, cart_id: int, db: Session = Depends(get_db)):
+#
+#     try:
+#         fetch_cart_items = db.query(models.Cart).filter(models.Cart.cart_id == cart_id).all()
+#         if not fetch_cart_items:
+#             return {"status": 404, "message": "No cart items found", "data": {}}
+#
+#         cart_item_count = 0
+#         cart_total = 0
+#         discount_sum = 0
+#         coupon_applied = None
+#         delivery_charges = 40.50
+#         total_bill = 0
+#
+#         if models.Cart.coupon_id:
+#             applied_coupon = db.query(models.Coupon).filter(models.Coupon.coupon_id == models.Cart.coupon_id).first()
+#             if applied_coupon:
+#                 coupon_applied = applied_coupon.coupon_name
+#         #
+#         # for cart_item in fetch_cart_items:
+#         #     product_id = cart_item.product_id
+#         #     variant_id = cart_item.variant_id
+#         #
+#         #     product = db.query(models.Products).filter(models.Products.product_id == product_id).first()
+#         #     variant = db.query(models.ProductVariant).filter(models.ProductVariant.variant_id == variant_id).first()
+#         #
+#         #     if variant:
+#         #         price = variant.variant_price
+#         #         discount_amount = variant.discounted_cost
+#         #     else:
+#         #         price = product.price
+#         #         discount_amount = product.discounted_cost
+#         #
+#         #     discount_sum += variant.discounted_cost * cart_item.item_count
+#         #     discount_sum += product.discounted_cost * cart_item.item_count
+#         #
+#         #     cart_item_count += cart_item.item_count
+#         #     cart_total += price * cart_item.item_count
+#         #
+#         # total_bill = cart_total - discount_sum + delivery_charges
+#         #
+#         # discount_sum = cart_total - discount_sum
+#
+#         return {"status": 200, "message": "CHECKOUT SCREEN fetched", "data": {"cart_item_count": cart_item_count, "cart_total": cart_total, "discount_sum": discount_sum, "coupon_applied": coupon_applied, "delivery_charges": delivery_charges, "total_bill": total_bill}}
+#     except IntegrityError as e:
+#         print(repr(e))
+#         response.status_code = 500
+#         return {"status": 500, "message": "Error", "data": {}}

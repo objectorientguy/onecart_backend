@@ -185,7 +185,7 @@ class CartItem(Base):
 
     product = relationship("Products")
     variant = relationship("ProductVariant")
-    cart = relationship("Cart")
+    cart = relationship('Cart')
 
 
 
@@ -201,6 +201,9 @@ class Cart(Base):
 
     company = relationship("Companies")
     user = relationship("User")
+    cart_items = relationship('CartItem', back_populates='cart')
+
+
     # coupon = relationship("Coupon")
 
     @validates('company_id', 'customer_contact')
@@ -231,12 +234,20 @@ class Bookings(Base):
         "customers.customer_contact", ondelete="CASCADE"), nullable=False)
     address_id = Column(BIGINT, ForeignKey(
         "address.address_id", ondelete="CASCADE"), nullable=False)
-    item_count = Column(BIGINT, nullable=False)
-    order_placed = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('now()'))
-    order_confirmation = Column(DateTime, nullable=True)
-    order_shipped = Column(DateTime, nullable=True)
-    total_price = Column(String, nullable=False)
-    payment_type = Column(String, nullable=False)
+    # item_count = Column(BIGINT, nullable=False)
+    # order_placed = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('now()'))
+    # order_confirmation = Column(DateTime, nullable=True)
+    # order_shipped = Column(DateTime, nullable=True)
+    # total_price = Column(String, nullable=False)
+    # payment_type = Column(String, nullable=False)
+    # products = Column(JSON, nullable=False)
+    order_number = Column(String, nullable=False, unique=True)
+    order_date = Column(Date, nullable=False)
+    product_total = Column(Float, nullable=False)
+    order_amount = Column(Float, nullable=False)
+    delivery_fees = Column(Float, nullable=False)
+    invoice_number = Column(String, nullable=False, unique=True)
+    invoice_amount = Column(Float, nullable=False)
     products = Column(JSON, nullable=False)
 
     customer = relationship("User")
@@ -245,7 +256,7 @@ class Bookings(Base):
 
     # company = relationship("Companies")
 
-    @validates('user_contact', 'address_id')
+    @validates('user_contact', 'address_id','order_date')
     def empty_string_to_null(self, key, value):
         if isinstance(value, str) and value == '':
             return None
