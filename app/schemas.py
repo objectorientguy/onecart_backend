@@ -192,15 +192,12 @@ class Banners(BaseModel):
 class Bookings(BaseModel):
     order_id: int | None = None
     cart_id: int | None = None
+    user_name: str
     user_contact: int
     address_id: int
-    # item_count: int
-    # order_placed: datetime | None = None
-    # order_confirmation: datetime | None = None
-    # order_shipped: datetime | None = None
-    # total_price: str
-    # payment_type: str
-    # products: List[OrderItems]
+    # track_id: int
+    order_status: str
+    image_status: str
     order_number: str
     order_date: date
     product_total: float
@@ -215,9 +212,14 @@ class Bookings(BaseModel):
         from_attributes = True
 
 
-class BookingsCreate(Bookings):
-    pass
+class TrackingStageSchema(BaseModel):
+    ordered: datetime
+    under_process: datetime
+    shipped: datetime
+    delivered: datetime
 
+    class Config:
+        orm_mode = True
 
 class Coupons(BaseModel):
     coupon_id: int

@@ -231,16 +231,14 @@ class Bookings(Base):
     cart_id = Column(Integer, ForeignKey(
         "carts.cart_id", ondelete="CASCADE"), nullable=True)
     user_contact = Column(BIGINT, ForeignKey(
-        "customers.customer_contact", ondelete="CASCADE"), nullable=False)
+        "customers.customer_contact", ondelete="CASCADE"), nullable=True)
     address_id = Column(BIGINT, ForeignKey(
-        "address.address_id", ondelete="CASCADE"), nullable=False)
-    # item_count = Column(BIGINT, nullable=False)
-    # order_placed = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('now()'))
-    # order_confirmation = Column(DateTime, nullable=True)
-    # order_shipped = Column(DateTime, nullable=True)
-    # total_price = Column(String, nullable=False)
-    # payment_type = Column(String, nullable=False)
-    # products = Column(JSON, nullable=False)
+        "address.address_id", ondelete="CASCADE"), nullable=True)
+    # track_id = Column(BIGINT, ForeignKey(
+    #     "tracking_stages.track_id", ondelete="CASCADE"), nullable=True)
+    user_name = Column(String, nullable=False)
+    order_status = Column(String, nullable=True)
+    image_status = Column(String, nullable=True)
     order_number = Column(String, nullable=False, unique=True)
     order_date = Column(Date, nullable=False)
     product_total = Column(Float, nullable=False)
@@ -253,16 +251,26 @@ class Bookings(Base):
     customer = relationship("User")
     address = relationship('Addresses')
     cart = relationship("Cart")
+    # track = relationship("TrackingStage")
 
-    # company = relationship("Companies")
+class TrackingStage(Base):
+    __tablename__ = "tracking_stages"
 
-    @validates('user_contact', 'address_id','order_date')
+    track_id = Column(Integer, primary_key=True, index=True)
+    booking_id = Column(Integer, ForeignKey("bookings.order_id", ondelete="CASCADE"), nullable=True)
+    ordered = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('now()'))
+    under_process = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('now()'))
+    shipped = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('now()'))
+    delivered = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('now()'))
+
+    booking = relationship("Bookings")
+
+    @validates('track_id')
     def empty_string_to_null(self, key, value):
         if isinstance(value, str) and value == '':
             return None
         else:
             return value
-
 
 class Coupon(Base):
     __tablename__ = "coupons"

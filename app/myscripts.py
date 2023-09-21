@@ -595,4 +595,96 @@ def add_products(response: Response, db: Session = Depends(get_db)):
         print(repr(e))
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/create_orders/")
+def create_orders(response: Response, db: Session = Depends(get_db)):
+    try:
+        orders_to_create = [
+            {
+                "user_name": "sakshi",
+                "order_date": "2023-09-15",
+                "product_total": 190.0,
+                "order_amount": 290.0,
+                "delivery_fees": 40.0,
+                "invoice_amount": 220.0,
+                "products": ["chips"],
+                "order_status": "delivered"
+            },
+            {
+                "user_name": "jiya",
+                "order_date": "2023-09-16",
+                "product_total": 180.0,
+                "order_amount": 270.0,
+                "delivery_fees": 35.0,
+                "invoice_amount": 210.0,
+                "products": ["soda"],
+                "order_status": "pending payment"
+            },
+            {
+                "user_name": "riddhi",
+                "order_date": "2023-09-17",
+                "product_total": 210.0,
+                "order_amount": 310.0,
+                "delivery_fees": 45.0,
+                "invoice_amount": 230.0,
+                "products": ["cookies"],
+                "order_status": "delivered"
+            },
+            {
+                "user_name": "mithila",
+                "order_date": "2023-09-18",
+                "product_total": 160.0,
+                "order_amount": 260.0,
+                "delivery_fees": 30.0,
+                "invoice_amount": 200.0,
+                "products": ["juice"],
+                "order_status": "cancelled"
+            },
+            {
+                "user_name": "mansi",
+                "order_date": "2023-09-19",
+                "product_total": 220.0,
+                "order_amount": 320.0,
+                "delivery_fees": 50.0,
+                "invoice_amount": 240.0,
+                "products": ["chocolate"],
+                "order_status": "pending payment"
+            },
+            {
+                "user_name": "vishal",
+                "order_date": "2023-09-20",
+                "product_total": 200.0,
+                "order_amount": 300.0,
+                "delivery_fees": 45.0,
+                "invoice_amount": 230.0,
+                "products": ["popcorn"],
+                "order_status": "delivered"
+            }
+        ]
+
+        with Session() as session:
+            for order_data in orders_to_create:
+                import uuid
+                import time
+
+                def generate_new_order_number():
+                    return str(uuid.uuid4())
+
+                order_number = str(uuid.uuid4())
+
+                invoice_number = f"{int(time.time())}-{order_number}"
+
+                order_data["order_number"] = order_number
+                order_data["invoice_number"] = invoice_number
+
+                order = models.Bookings(**order_data)
+                db.add(order)
+                db.commit()
+                db.refresh(order)
+
+        return {"status": 200, "message": "Orders created successfully", "data": order}
+
+    except Exception as e:
+        print(repr(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
 

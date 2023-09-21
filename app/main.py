@@ -1062,3 +1062,166 @@ def get_variant_info(fav_item: schemas.FavItem, user_id: int, response: Response
         print(repr(e))
         response.status_code = 400
         return {"status": "400", "data": {}}
+
+
+
+@app.post('/bookOrder')
+def add_booking(
+        response: Response,
+        bookOrder: schemas.Bookings,
+        db: Session = Depends(get_db)
+):
+    try:
+        import uuid
+        import time
+
+        def generate_new_order_number():
+            # Generate a unique order number (e.g., using UUID)
+            return str(uuid.uuid4())
+
+        def generate_new_invoice_number():
+            # Generate a unique invoice number using Unix timestamp
+            return str(int(time.time()))
+        # Generate unique order and invoice numbers
+        order_number = generate_new_order_number()
+        invoice_number = generate_new_invoice_number()
+
+        # Create a new booking object with generated numbers and other parameters
+        new_booking = models.Bookings(
+            user_name=bookOrder.user_name,
+            order_date=bookOrder.order_date,
+            product_total=bookOrder.product_total,
+            order_amount=bookOrder.order_amount,
+            delivery_fees=bookOrder.delivery_fees,
+            invoice_amount=bookOrder.invoice_amount,
+            order_number=order_number,
+            invoice_number=invoice_number,
+            products=bookOrder.products,
+        )
+
+        db.add(new_booking)
+        db.commit()
+        db.refresh(new_booking)
+
+        return {"status": 200, "message": "Booking order created successfully!", "data": new_booking}
+    except IntegrityError as e:
+        db.rollback()
+        response.status_code = 400
+        return {"status": 400, "message": "Error creating booking order - IntegrityError", "data": {}}
+    except Exception as e:
+        db.rollback()
+        response.status_code = 500
+        return {"status": 500, "message": "Internal server error", "data": {}}
+
+# @app.get("/getOrder/{order_id}")
+# def get_order_by_id(order_id: int = Path(..., title="Order ID"), db: Session = Depends(get_db)):
+#     try:
+#         order = db.query(models.Bookings).filter(models.Bookings.order_id == order_id).first()
+#
+#         if not order:
+#             response.status_code = 404
+#             return {"status": 404, "message": "Booking Order not found", "data": None}
+
+
+    #
+    #     return {"status": 200, "message": "Booking Order fetched", "data": order}
+    # except IntegrityError as e:
+    #     print(repr(e))
+    #     response.status_code = 500
+    #     return {"status": 500, "message": "Internal server error", "data": None}
+
+
+
+# @app.post('/reorder/{order_id}', response_model=schemas.Bookings)
+# def reorder_booking(
+#     order_id: int,c
+#     response: Response,
+#     db: Session = Depends(get_db)
+# ):
+#     try:
+#         # Check if the original booking exists
+#         original_booking = db.query(models.Bookings).filter(models.Bookings.order_id == order_id).first()
+#         if not original_booking:
+#             raise HTTPException(status_code=404, detail="Original booking not found")
+#
+#         # Create a new booking by copying data from the original booking
+#         new_booking_data = original_booking.__dict__
+#         del new_booking_data['_sa_instance_state']  # Remove SQLAlchemy internal state
+#
+#         import uuid
+#         import time
+#
+#         def generate_new_order_number():
+#             # Generate a unique order number (e.g., using UUID)
+#             return str(uuid.uuid4())
+#
+#         def generate_new_invoice_number():
+#             # Generate a unique invoice number using Unix timestamp
+#             return str(int(time.time()))
+#
+#         # Set new values for the copied data (e.g., update the order_number, invoice_number, etc.)
+#         new_booking_data['order_id'] = None  # Generate a new order_id
+#         new_booking_data['order_number'] = generate_new_order_number()
+#         new_booking_data['invoice_number'] = generate_new_invoice_number()
+#
+#         # Create and add the new booking to the database
+#         new_booking = models.Bookings(**new_booking_data)
+#         db.add(new_booking)
+#         db.commit()
+#         db.refresh(new_booking)
+#
+#         return new_booking
+#     except Exception as e:
+#         db.rollback()
+#         response.status_code = 500
+#         return {"status": 500, "message": "Internal server error", "data": {}}
+
+@app.get("/orderdetails")
+def get_tracking_by_booking_id(booking_id: int, db: Session = Depends(get_db)):
+    try:
+        order = db.query(models.Bookings).filter(models.Bookings.order_id == booking_id).first()
+        tracking = db.query(models.TrackingStage).filter(models.TrackingStage.booking_id == booking_id).first()
+
+        product_list = []
+
+        if order:
+            products = order.products
+        # tracking_data = {
+        #     key: getattr(tracking, key)
+        #     for key in ["ordered", "under_process", "shipped", "delivered"]
+        # }
+
+        return {"status": 200, "message": "Tracking Stage fetched", "data": {"tracking_data":tracking,"order":order, "products":products}}
+    except Exception as e:
+        print(repr(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@app.get("/orderlist")
+def get_tracking_by_booking_id(customer_contact: int, db: Session = Depends(get_db)):
+    try:
+        orders = db.query(models.Bookings).filter(models.Bookings.user_contact == customer_contact).all()
+        # category = []
+        # item_count = []
+        if orders:
+            order_list = []
+
+            for order in orders:
+                # Extract order details
+                order_details = {
+                    "order_id": order.order_id,
+                    "order_status": order.order_status,
+                    "image": order.image_status
+                }
+                order_details["category"] = []
+                order_details["item_count"] = []
+
+                order_list.append(order_details)
+
+            return {"status": 200, "message": "Orders fetched", "data": {"orders": order_list}}
+        else:
+            return {"status": 404, "message": "No orders found for the specified customer_contact"}
+
+    except Exception as e:
+        print(repr(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
+
