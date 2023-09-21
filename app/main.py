@@ -1214,19 +1214,200 @@ butter_paneer_recipe = {
 }
 
 
+# import json
+#
+# def fetch_all_recipes():
+#     # Load all the JSON files from the code
+#     recipes = []
+#     for recipe_json in [butter_chicken_recipe, gajar_ka_halwa_recipe, gulab_jamun_recipe, egg_biryani_recipe, butter_paneer_recipe]:
+#         recipes.append(recipe_json)
+#
+#     return recipes
+#
+
+# def search_recipe(recipes, keyword):
+#     # Search all the recipes for the given keyword
+#     found_recipes = []
+#     for recipe in recipes:
+#         found_ingredients = [ingredient for ingredient in recipe.get("ingredients", []) if keyword in ingredient]
+#         found_steps = [step for step in recipe.get("steps", []) if keyword in step]
+#
+#         if found_ingredients or found_steps:
+#             found_recipes.append({
+#                 "name": recipe.get("name"),
+#                 "found_ingredients": found_ingredients,
+#                 "found_steps": found_steps,
+#             })
+#
+#     return found_recipes
+
+# @app.post("/voice_input")
+# async def get_voice_input(response: Response, db: Session = Depends(get_db)):
+#     voice_input = capture_voice_input()
+#
+#     if voice_input:
+#         recipes = fetch_all_recipes()
+#         words = voice_input.split()
+#
+#         found_recipes_set = set()
+#         found_recipes = []
+#         matched_recipe_ingredients = []
+#
+#         for word in words:
+#             word_found_recipes = search_recipe(recipes, word)
+#             for recipe in word_found_recipes:
+#                 recipe_name = recipe["name"]
+#                 matched_recipe_ingredients.extend(recipe.get("found_ingredients", []))
+#
+#                 if recipe_name not in found_recipes_set:
+#                     found_recipes_set.add(recipe_name)
+#                     found_recipes.append(recipe)
+#                     # matched_ingredients_set.update(recipe["found_ingredients"])
+#
+#         # matched_ingredients = list(matched_ingredients_set)
+#
+#         # matched_recipe_ingredients = []
+#         # for recipe in found_recipes:
+#         #     matched_recipe_ingredients.extend(recipe.get("found_ingredients", []))
+#         unique_matched_recipe_ingredients = set(matched_recipe_ingredients)
+#
+#         return {
+#             "data": {
+#                 "voice_input": voice_input,
+#                 "found_recipes": found_recipes,
+#                 # "matched_ingredients": matched_ingredients,
+#                 "matched_recipe_ingredients": unique_matched_recipe_ingredients
+#
+#             }
+#         }
+#     else:
+#         return {"message": "Failed to capture voice input"}
+
+# def get_ingredients_from_recipes(recipes):
+#     # Get all the ingredients from the given recipes
+#     ingredients = []
+#     for recipe in recipes:
+#         ingredients.extend(recipe.get("found_ingredients", []))
+#
+#     # Return the unique ingredients
+#     unique_ingredients = set(ingredients)
+#     return unique_ingredients
+#
+# @app.post("/voice_input")
+# async def get_voice_input(response: Response, db: Session = Depends(get_db)):
+#     voice_input = capture_voice_input()
+#
+#     if voice_input:
+#         recipes = fetch_all_recipes()
+#         words = voice_input.split()
+#
+#         found_recipes_set = set()
+#         found_recipes = []
+#         matched_recipe_ingredients = []
+#
+#         for word in words:
+#             word_found_recipes = search_recipe(recipes, word)
+#             for recipe in word_found_recipes:
+#                 recipe_name = recipe["name"]
+#                 matched_recipe_ingredients.extend(recipe.get("found_ingredients", []))
+#
+#                 if recipe_name not in found_recipes_set:
+#                     found_recipes_set.add(recipe_name)
+#                     found_recipes.append(recipe)
+#
+#
+#         all_recipe_ingredients = get_ingredients_from_recipes(found_recipes)
+#
+#         return {
+#             "data": {
+#                 "voice_input": voice_input,
+#                 "found_recipes": found_recipes,
+#                 "all_recipe_ingredients": all_recipe_ingredients
+#             }
+#         }
+#     else:
+#         return {"message": "Failed to capture voice input"}
+
+# import json
+# import re
+#
+# def fetch_all_recipes():
+#     # Load all the JSON files from the code
+#     recipes = []
+#     for recipe_json in [butter_chicken_recipe, gajar_ka_halwa_recipe, gulab_jamun_recipe, egg_biryani_recipe, butter_paneer_recipe]:
+#         recipes.append(recipe_json)
+#
+#     return recipes
+#
+# def search_recipe(recipes, keyword):
+#     # Search all the recipes for the given keyword
+#     found_recipes = []
+#     for recipe in recipes:
+#         found_ingredients = [ingredient for ingredient in recipe.get("ingredients", []) if keyword in ingredient]
+#         found_steps = [step for step in recipe.get("steps", []) if keyword in step]
+#
+#         if found_ingredients or found_steps:
+#             found_recipes.append({
+#                 "name": recipe.get("name"),
+#                 "found_ingredients": found_ingredients,
+#                 "found_steps": found_steps,
+#             })
+#
+#     return found_recipes
+#
+# def get_ingredients_from_recipe_name(recipes, recipe_name):
+#     # Get all the ingredients from the recipe with the given name
+#     for recipe in recipes:
+#         if recipe["name"] == recipe_name:
+#             return recipe.get("ingredients", [])
+#
+#     return []
+# @app.post("/voice_input")
+# async def get_voice_input(response: Response, db: Session = Depends(get_db)):
+#     voice_input = capture_voice_input()
+#
+#     if voice_input:
+#         recipes = fetch_all_recipes()
+#         words = voice_input.split()
+#
+#         found_recipes_set = set()
+#         found_recipes = []
+#
+#         for word in words:
+#             word_found_recipes = search_recipe(recipes, word)
+#             for recipe in word_found_recipes:
+#                 recipe_name = recipe["name"]
+#
+#                 if recipe_name not in found_recipes_set:
+#                     found_recipes_set.add(recipe_name)
+#                     found_recipes.append(recipe)
+#
+#         recipe_ingredients = []
+#         for recipe in found_recipes:
+#             recipe_ingredients.extend(get_ingredients_from_recipe_name(recipes, recipe["name"]))
+#
+#         return {
+#             "data": {
+#                 "voice_input": voice_input,
+#                 "found_recipes": found_recipes,
+#                 "recipe_ingredients": recipe_ingredients,
+#                 "keywords": keywords
+#             }
+#         }
+#     else:
+#         return {"message": "Failed to capture voice input"}
+
 import json
+import re
 
 def fetch_all_recipes():
-    # Load all the JSON files from the code
     recipes = []
     for recipe_json in [butter_chicken_recipe, gajar_ka_halwa_recipe, gulab_jamun_recipe, egg_biryani_recipe, butter_paneer_recipe]:
         recipes.append(recipe_json)
 
     return recipes
 
-
 def search_recipe(recipes, keyword):
-    # Search all the recipes for the given keyword
     found_recipes = []
     for recipe in recipes:
         found_ingredients = [ingredient for ingredient in recipe.get("ingredients", []) if keyword in ingredient]
@@ -1241,7 +1422,42 @@ def search_recipe(recipes, keyword):
 
     return found_recipes
 
-@app.post("/voice_input")
+def get_ingredients_from_recipe_name(recipes, recipe_name):
+    # Get all the ingredients from the recipe with the given name
+    for recipe in recipes:
+        if recipe["name"] == recipe_name:
+            return recipe.get("ingredients", [])
+
+    return []
+
+def split_ingredients_into_keywords(recipe_ingredients):
+
+    keywords = []
+    for ingredient in recipe_ingredients:
+        # Remove any punctuation from the ingredient name.
+        ingredient = re.sub(r"[^\w\s]", "", ingredient)
+
+        # Convert the ingredient name to lowercase.
+        ingredient = ingredient.lower()
+
+        # Split the ingredient name into words.
+        words = ingredient.split()
+
+        # Add the words to the list of keywords.
+        keywords.extend(words)
+
+    # Return the list of keywords.
+    return keywords
+
+def remove_numbers_and_unnecessary_words(keywords):
+    keywords = [re.sub(r"\d+", "", keyword) for keyword in keywords]
+
+    unnecessary_words = ["cup", "ounce", "teaspoon", "tablespoon", "cloves", "piece", "can", "bunch", "package","for","into"]
+    keywords = [keyword for keyword in keywords if keyword not in unnecessary_words]
+
+    return keywords
+
+@app.get("/voice_input")
 async def get_voice_input(response: Response, db: Session = Depends(get_db)):
     voice_input = capture_voice_input()
 
@@ -1251,34 +1467,37 @@ async def get_voice_input(response: Response, db: Session = Depends(get_db)):
 
         found_recipes_set = set()
         found_recipes = []
-        matched_recipe_ingredients = []
 
         for word in words:
             word_found_recipes = search_recipe(recipes, word)
             for recipe in word_found_recipes:
                 recipe_name = recipe["name"]
-                matched_recipe_ingredients.extend(recipe.get("found_ingredients", []))
 
                 if recipe_name not in found_recipes_set:
                     found_recipes_set.add(recipe_name)
                     found_recipes.append(recipe)
-                    # matched_ingredients_set.update(recipe["found_ingredients"])
 
-        # matched_ingredients = list(matched_ingredients_set)
 
-        # matched_recipe_ingredients = []
-        # for recipe in found_recipes:
-        #     matched_recipe_ingredients.extend(recipe.get("found_ingredients", []))
-        unique_matched_recipe_ingredients = set(matched_recipe_ingredients)
+        recipe_ingredients = []
+        for recipe in found_recipes:
+            recipe_ingredients.extend(get_ingredients_from_recipe_name(recipes, recipe["name"]))
+
+        keywords = split_ingredients_into_keywords(recipe_ingredients)
+        keywords = remove_numbers_and_unnecessary_words(keywords)
+
+        matching_products = db.query(models.Products).filter(models.Products.tags.in_(keywords)).all()
 
         return {
             "data": {
                 "voice_input": voice_input,
                 "found_recipes": found_recipes,
-                # "matched_ingredients": matched_ingredients,
-                "matched_recipe_ingredients": unique_matched_recipe_ingredients
-
+                "recipe_ingredients": recipe_ingredients,
+                "keywords": keywords,
+                "matching_products": [product.product_name for product in matching_products],
             }
         }
     else:
         return {"message": "Failed to capture voice input"}
+
+
+

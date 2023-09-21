@@ -61,7 +61,7 @@ class Product(BaseModel):
     brand_id: int
     product_name: str
     details: str
-    # tags: str
+    tags: str
 
 
     class Config:

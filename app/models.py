@@ -67,7 +67,7 @@ class Products(Base):
         "brands.brand_id", ondelete="CASCADE"), nullable=False)
     product_name = Column(String, nullable=False)
     details = Column(String, nullable=False)
-    # tags = Column(String, nullable=True)
+    tags = Column(String, nullable=True)
 
     brand = relationship("Brand")
 
