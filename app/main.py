@@ -1034,3 +1034,31 @@ def get_your_cart(response: Response, customer_contact: int, db: Session = Depen
         print(repr(e))
         response.status_code = 500
         return {"status": 500, "message": "Error", "data": {}}
+
+@app.post("/favitem")
+def get_variant_info(fav_item: schemas.FavItem, user_id: int, response: Response, db: Session = Depends(get_db)):
+    try:
+        # Query the database to retrieve the user's favorite item
+        item = db.query(models.FavItem).filter_by(user_id=user_id).first()
+
+        # if item is None:
+        #     item = models.FavItem(user_id=user_id)
+        #     db.add(item)
+        #     db.commit()
+        #     db.refresh(item)
+        #     # Handle the case where no favorite item was found for the user
+        #     response.status_code = 404
+        #     return {"status": "404", "message": "Favorite item not found", "data": {}}
+
+        # Create a new FavItem based on the found item
+        new_item = models.FavItem(**fav_item.model_dump())
+        db.add(new_item)
+        db.commit()
+        db.refresh(new_item)
+
+        return {"status": "200", "message": "New fav_item added successfully!", "data": new_item}
+
+    except IntegrityError as e:
+        print(repr(e))
+        response.status_code = 400
+        return {"status": "400", "data": {}}

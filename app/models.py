@@ -355,3 +355,26 @@ class FreatureList(Base):
     feature_image = Column(JSON, nullable=False)
 
     shop = relationship("Shops")
+
+class FavItem(Base):
+    __tablename__ = "favitems"
+
+    fav_item_id = Column(Integer, nullable=False, primary_key=True, autoincrement=True)
+    user_id = Column(BIGINT, ForeignKey("customers.customer_contact", ondelete="CASCADE"), nullable=True)
+    variant_id = Column(Integer, ForeignKey("product_variants.variant_id", ondelete="CASCADE"), nullable=True)
+    product_id = Column(Integer, ForeignKey("products.product_id", ondelete="CASCADE"), nullable=True)
+    shop_id = Column(Integer, ForeignKey("shops.shop_id", ondelete="CASCADE"), nullable=True)
+
+
+    # Establish a relationship with the ProductVariant table
+    variant = relationship("ProductVariant")
+    product = relationship("Products")
+    shop = relationship("Shops")
+    customer = relationship("User")
+
+    @validates('user_id')
+    def empty_string_to_null(self, key, value):
+        if isinstance(value, str) and value == '':
+            return None
+        else:
+            return value

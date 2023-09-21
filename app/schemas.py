@@ -261,3 +261,11 @@ class Deals(BaseModel):
 class Feature(BaseModel):
     shop_id: int
     feature_image: List[str]
+
+class FavItem(BaseModel):
+    product_id: int
+    variant_id: int
+    shop_id: int
+    user_id: int
+    class Config:
+        from_attributes = True
