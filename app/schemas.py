@@ -61,6 +61,7 @@ class Product(BaseModel):
     brand_id: int
     product_name: str
     details: str
+    # tags: str
 
 
     class Config:
@@ -261,3 +262,7 @@ class Deals(BaseModel):
 class Feature(BaseModel):
     shop_id: int
     feature_image: List[str]
+
+class Speech(BaseModel):
+    speech_id: int
+    voice_text: str

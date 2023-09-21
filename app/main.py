@@ -650,6 +650,7 @@ async def get_all_products_in_categories(response: Response, db: Session = Depen
                     "product_id": product.product_id,
                     "product_name": product.product_name,
                     "details": product.details,
+                    # "tags":product.tags,
                     "variants": [],
                 }
 
@@ -752,6 +753,7 @@ def get_categories_and_banners_and_deals(response: Response, db: Session = Depen
                 "product_id": deal.product_id,
                 "product_name": deal.product_name,
                 "details": deal.details,
+                # " products_tags": deal.tags,
                 "variants": [],
             }
 
@@ -1034,3 +1036,249 @@ def get_your_cart(response: Response, customer_contact: int, db: Session = Depen
         print(repr(e))
         response.status_code = 500
         return {"status": 500, "message": "Error", "data": {}}
+
+import pyaudio
+# from . import speech  # This assumes the `speech.py` file is in the same directory
+import speech_recognition as sr
+
+# def capture_voice_input():
+#     recognizer = sr.Recognizer()
+#     microphone = sr.Microphone()
+#
+#     with microphone as source:
+#         print("Please say the recipe name...")
+#         recognizer.adjust_for_ambient_noise(source)
+#         audio = recognizer.listen(source)
+#
+#     try:
+#         recognized_text = recognizer.recognize_google(audio)
+#         return recognized_text
+#     except sr.UnknownValueError:
+#         print("Sorry, I could not understand your voice input.")
+#         return None
+
+
+def capture_voice_input():
+    recognizer = sr.Recognizer()
+    microphone = sr.Microphone()
+
+    with microphone as source:
+        print("Please say the recipe name...")
+        recognizer.adjust_for_ambient_noise(source)
+        audio = recognizer.listen(source)
+
+    try:
+        recognized_text = recognizer.recognize_google(audio)
+        print(recognized_text)
+        return recognized_text
+    except sr.UnknownValueError:
+        print("Sorry, I could not understand your voice input.")
+        return None
+
+
+# @app.post("/voice_input")
+# async def get_voice_input():
+#     voice_input = capture_voice_input()
+#
+#     if voice_input:
+#         return {"message": "Voice input captured successfully", "voice_text": voice_input}
+#     else:
+#         return {"message": "Failed to capture voice input"}
+
+butter_chicken_recipe = {
+"name": "Butter Chicken",
+"description": "A delicious and creamy Indian chicken curry dish",
+"ingredients": [
+"1 pound boneless, skinless chicken breasts, cut into bite-sized pieces",
+"1 tablespoon tandoori masala",
+"1/2 teaspoon ground cumin",
+"1/4 teaspoon salt",
+"1/4 teaspoon black pepper",
+"1/4 cup yogurt",
+"1 tablespoon lemon juice",
+"1 tablespoon butter",
+"1 tablespoon oil",
+"1 onion, chopped",
+"2 cloves garlic, minced",
+"1 gingerroot (1-inch piece), minced",
+"1 (14.5 ounce) can diced tomatoes",
+"1/2 cup heavy cream",
+"1/4 cup cilantro, chopped"
+],
+"steps": [
+"In a large bowl, combine the chicken, tandoori masala, cumin, salt, pepper, yogurt, and lemon juice. Mix well and marinate for at least 30 minutes, or up to overnight.",
+"Heat the butter and oil in a large skillet over medium heat. Add the chicken and cook until browned on all sides.",
+"Add the onion, garlic, and ginger to the skillet and cook until softened, about 5 minutes.",
+"Add the diced tomatoes and bring to a boil. Reduce heat to low and simmer for 15 minutes, or until the chicken is cooked through.",
+"Stir in the heavy cream and cilantro. Serve with rice or naan bread."
+]
+}
+gajar_ka_halwa_recipe = {
+    "name": "Gajar ka Halwa",
+    "description": "A delicious and creamy Indian carrot dessert",
+    "ingredients": [
+        "1 kg carrots, peeled and grated",
+        "1 cup milk",
+        "1/2 cup sugar",
+        "1/4 cup ghee",
+        "1/4 cup chopped almonds",
+        "1/4 cup chopped cashews",
+        "1/4 teaspoon cardamom powder"
+    ],
+    "steps": [
+        "Heat the ghee in a heavy bottomed pan over medium heat. Add the grated carrots and cook until softened, about 10 minutes.",
+        "Add the milk and sugar to the pan and bring to a boil. Reduce heat to low and simmer until the carrots are tender and the milk has thickened, about 30 minutes.",
+        "Stir in the cardamom powder and nuts. Serve warm or at room temperature."
+    ]
+}
+gulab_jamun_recipe = {
+    "name": "Gulab Jamun",
+    "description": "A delicious and syrupy Indian dessert",
+    "ingredients": [
+        "1 cup milk powder",
+        "1/4 cup all-purpose flour",
+        "1/4 teaspoon baking powder",
+        "1/4 teaspoon baking soda",
+        "1/4 teaspoon cardamom powder",
+        "1/4 cup ghee, melted",
+        "1/4 cup sugar",
+        "1/4 cup water",
+        "1/4 teaspoon saffron threads, soaked in 1 tablespoon of milk",
+        "1/4 cup chopped pistachios"
+    ],
+    "steps": [
+        "In a large bowl, combine the milk powder, flour, baking powder, baking soda, and cardamom powder.",
+        "Add the melted ghee and mix well.",
+        "Add enough water to make a soft dough.",
+        "Divide the dough into small balls, about 1 inch in diameter.",
+        "Heat the ghee in a deep frying pan over medium heat.",
+        "Fry the gulab jamuns in the hot ghee until golden brown, about 10 minutes.",
+        "In a separate pan, combine the sugar and water and bring to a boil. Reduce heat to low and simmer for 5 minutes.",
+        "Add the fried gulab jamuns and saffron milk to the sugar syrup and simmer for another 5 minutes.",
+        "Serve warm or at room temperature, garnished with chopped pistachios."
+    ]
+}
+egg_biryani_recipe = {
+    "name": "Egg Biryani",
+    "description": "A delicious and flavorful Indian rice dish with eggs",
+    "ingredients": [
+        "1 cup basmati rice, soaked in water for 30 minutes",
+        "1 pound boneless, skinless chicken breasts, cut into bite-sized pieces",
+        "1/2 cup chopped onions",
+        "1/2 cup chopped tomatoes",
+        "1/4 cup chopped cilantro",
+        "1/4 teaspoon ground cumin",
+        "1/4 teaspoon ground coriander",
+        "1/4 teaspoon turmeric powder",
+        "1/4 teaspoon red chili powder",
+        "1/4 teaspoon garam masala powder",
+        "1/4 teaspoon salt",
+        "1/4 cup oil",
+        "6 hard-boiled eggs, peeled and halved"
+    ],
+    "steps": [
+        "Drain the rice and rinse it well.",
+        "Heat the oil in a large pot over medium heat. Add the onions and cook until softened, about 5 minutes.",
+        "Add the chicken and cook until browned on all sides.",
+        "Add the tomatoes, cilantro, cumin, coriander, turmeric, chili powder, garam masala, and salt. Mix well and cook for 2 minutes.",
+        "Add the rice and 4 cups of water to the pot. Bring to a boil, then reduce heat to low and simmer for 20 minutes, or until the rice is cooked through.",
+        "Stir in the hard-boiled eggs and cook for another 2 minutes.",
+        "Serve hot."
+    ]
+}
+butter_paneer_recipe = {
+    "name": "Butter Paneer",
+    "description": "A delicious and creamy Indian paneer curry dish",
+    "ingredients": [
+        "1 pound paneer, cut into cubes",
+        "1 tablespoon butter",
+        "1 tablespoon oil",
+        "1 onion, chopped",
+        "2 cloves garlic, minced",
+        "1 gingerroot (1-inch piece), minced",
+        "1 (14.5 ounce) can diced tomatoes",
+        "1/2 cup heavy cream",
+        "1/4 cup cilantro, chopped",
+        "1/4 teaspoon garam masala powder",
+        "1/4 teaspoon turmeric powder",
+        "1/4 teaspoon red chili powder",
+        "1/4 teaspoon salt"
+    ],
+    "steps": [
+        "Heat the butter and oil in a large skillet over medium heat. Add the onions and cook until softened, about 5 minutes.",
+        "Add the garlic and ginger and cook for another minute.",
+        "Add the diced tomatoes, heavy cream, cilantro, garam masala, turmeric, chili powder, and salt. Mix well and bring to a boil. Reduce heat to low and simmer for 10 minutes.",
+        "Add the paneer cubes and cook for another 2 minutes, or until heated through.",
+        "Serve hot."
+    ]
+}
+
+
+import json
+
+def fetch_all_recipes():
+    # Load all the JSON files from the code
+    recipes = []
+    for recipe_json in [butter_chicken_recipe, gajar_ka_halwa_recipe, gulab_jamun_recipe, egg_biryani_recipe, butter_paneer_recipe]:
+        recipes.append(recipe_json)
+
+    return recipes
+
+
+def search_recipe(recipes, keyword):
+    # Search all the recipes for the given keyword
+    found_recipes = []
+    for recipe in recipes:
+        found_ingredients = [ingredient for ingredient in recipe.get("ingredients", []) if keyword in ingredient]
+        found_steps = [step for step in recipe.get("steps", []) if keyword in step]
+
+        if found_ingredients or found_steps:
+            found_recipes.append({
+                "name": recipe.get("name"),
+                "found_ingredients": found_ingredients,
+                "found_steps": found_steps,
+            })
+
+    return found_recipes
+
+@app.post("/voice_input")
+async def get_voice_input(response: Response, db: Session = Depends(get_db)):
+    voice_input = capture_voice_input()
+
+    if voice_input:
+        recipes = fetch_all_recipes()
+        words = voice_input.split()
+
+        found_recipes_set = set()
+        found_recipes = []
+        matched_recipe_ingredients = []
+
+        for word in words:
+            word_found_recipes = search_recipe(recipes, word)
+            for recipe in word_found_recipes:
+                recipe_name = recipe["name"]
+                matched_recipe_ingredients.extend(recipe.get("found_ingredients", []))
+
+                if recipe_name not in found_recipes_set:
+                    found_recipes_set.add(recipe_name)
+                    found_recipes.append(recipe)
+                    # matched_ingredients_set.update(recipe["found_ingredients"])
+
+        # matched_ingredients = list(matched_ingredients_set)
+
+        # matched_recipe_ingredients = []
+        # for recipe in found_recipes:
+        #     matched_recipe_ingredients.extend(recipe.get("found_ingredients", []))
+        unique_matched_recipe_ingredients = set(matched_recipe_ingredients)
+
+        return {
+            "data": {
+                "voice_input": voice_input,
+                "found_recipes": found_recipes,
+                # "matched_ingredients": matched_ingredients,
+                "matched_recipe_ingredients": unique_matched_recipe_ingredients
+
+            }
+        }
+    else:
+        return {"message": "Failed to capture voice input"}

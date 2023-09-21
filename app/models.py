@@ -67,6 +67,7 @@ class Products(Base):
         "brands.brand_id", ondelete="CASCADE"), nullable=False)
     product_name = Column(String, nullable=False)
     details = Column(String, nullable=False)
+    # tags = Column(String, nullable=True)
 
     brand = relationship("Brand")
 
@@ -355,3 +356,9 @@ class FreatureList(Base):
     feature_image = Column(JSON, nullable=False)
 
     shop = relationship("Shops")
+
+class Speech(Base):
+    __tablename__ = 'speech'
+    speech_id = Column(Integer, primary_key=True, autoincrement=True)
+    # user_id = Column()
+    voice_text = Column(String, nullable=True)
