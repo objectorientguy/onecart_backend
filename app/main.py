@@ -1212,8 +1212,8 @@ def get_tracking_by_booking_id(customer_contact: int, db: Session = Depends(get_
                     "order_status": order.order_status,
                     "image": order.image_status
                 }
-                order_details["category"] = []
-                order_details["item_count"] = []
+                order_details["category"] = "groceries"
+                order_details["item_count"] = 12
 
                 order_list.append(order_details)
 
