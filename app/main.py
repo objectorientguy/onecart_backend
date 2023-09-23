@@ -1,4 +1,4 @@
-from typing import List
+from typing import List,Optional
 from contextlib import contextmanager
 import bcrypt
 from fastapi import FastAPI, Response, Depends, UploadFile, File, Request, HTTPException, Body
@@ -1225,3 +1225,68 @@ def get_tracking_by_booking_id(customer_contact: int, db: Session = Depends(get_
         print(repr(e))
         raise HTTPException(status_code=500, detail="Internal server error")
 
+
+@app.get("/getall_favitem/{user_id}")
+def get_customer_favorites(
+    user_id: int,
+    db: Session = Depends(get_db),
+    include_variant_details: Optional[bool] = False  # Optional parameter to include variant details
+):
+    try:
+        # Query the database to retrieve the customer's favorite items
+        fav_items = db.query(models.FavItem).filter_by(user_id=user_id).all()
+
+        if not fav_items:
+            # Handle the case where no favorite items were found for the customer
+            raise HTTPException(status_code=404, detail="Favorite items not found")
+
+        # Create a list to store the results
+        results = []
+
+        # Loop through the favorite items and retrieve the required data
+        for fav_item in fav_items:
+            # Query the product and product_variant tables based on fav_item data
+            product = db.query(models.Products).filter_by(product_id=fav_item.product_id).first()
+            variant = db.query(models.ProductVariant).filter_by(variant_id=fav_item.variant_id).first()
+
+            if product and variant:
+                # Create a dictionary with the required columns
+                item_data = {
+                    "product_id": product.product_id,
+                    "product_name": product.product_name,
+                    "image": variant.image,
+                    "variant_cost": variant.variant_cost,
+                    "discounted_cost": variant.discounted_cost,
+                    "discount": variant.discount,
+                    "quantity": variant.quantity,
+                    "variant_id": variant.variant_id,
+
+                }
+
+                results.append(item_data)
+
+        return {"status": "200", "message": "Customer's favorite items retrieved successfully", "data": results}
+
+    except Exception as e:
+        print(repr(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@app.delete("/favitem/{fav_item_id}")
+def remove_favorite_item(fav_item_id: int, db: Session = Depends(get_db)):
+    try:
+        # Query the database to retrieve the favorite item by its ID
+        item = db.query(models.FavItem).filter_by(fav_item_id=fav_item_id).first()
+
+        if item is None:
+            raise HTTPException(status_code=404, detail="Favorite item not found")
+
+        # Delete the item from the wishlist
+        db.delete(item)
+        db.commit()
+
+        return {"status": "200", "message": "Favorite item removed successfully!", "data": {}}
+
+    except Exception as e:
+        print(repr(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
