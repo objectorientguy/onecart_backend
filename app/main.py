@@ -6,6 +6,8 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import IntegrityError
 from starlette.responses import FileResponse
 import logging
+from sqlalchemy import select, func
+
 from . import models, schemas
 from .models import Image
 from .database import engine, get_db
@@ -398,8 +400,27 @@ def get_product_by_product_id(response: Response, product_id: int, db: Session =
 @app.get("/getProductVariants/{product_id}")
 def get_product_variants(response: Response, product_id: int, db: Session = Depends(get_db)):
     try:
+        count_query = db.query(func.count('*')).select_from(models.CartItem)
+        total_count = count_query.scalar()
+
+
         feature = db.query(models.FreatureList).all()
-        recomended_products = []
+        recomended_products = [
+            {       "variant_id": 9, "variant_cost": 90.0, "count": 100, "brand_name": "Amul","discounted_cost": 84.0, "discount": 8,"quantity": "250 ml",
+                    "description": "Amul Lassi is a refreshing milk-based natural drink. It refreshes you immediately with the goodness of nature.",
+                    "image": [
+                        "https://oneart.onrender.com/images/amul-lassi-1-l-tetra-pak-product-side.jpeg"
+                    ],
+                    "ratings": 4
+                },
+                {
+                    "variant_id": 10,"variant_cost": 14.7,  "count": 100, "brand_name": "Amul",   "discounted_cost": 14.7,   "discount": 0, "quantity": "180 ml",
+                    "description": "Amul Lassi is a refreshing milk-based natural drink. It refreshes you immediately with the goodness of nature.",
+                    "image": [
+                        "https://oneart.onrender.com/images/amul-rose-flavoured-probiotic-la.jpeg"
+                    ],
+                    "ratings": 4
+                }]
         product = db.query(models.Products).filter(models.Products.product_id == product_id).first()
 
         if product:
@@ -432,7 +453,7 @@ def get_product_variants(response: Response, product_id: int, db: Session = Depe
             return {
                 "status": 200,
                 "message": "Product and its variants fetched successfully",
-                "data": {"product_data": product_data, "feature": feature, "recommended_products":recomended_products}
+                "data": {"product_data": product_data, "feature": feature, "recommended_products":recomended_products,"items": total_count}
             }
         else:
             return {
@@ -1212,8 +1233,8 @@ def get_tracking_by_booking_id(customer_contact: int, db: Session = Depends(get_
                     "order_status": order.order_status,
                     "image": order.image_status
                 }
-                order_details["category"] = []
-                order_details["item_count"] = []
+                order_details["category"] = "groceries"
+                order_details["item_count"] = 10
 
                 order_list.append(order_details)
 
