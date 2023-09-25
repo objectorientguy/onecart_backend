@@ -102,7 +102,7 @@ class Image(Base):
 class User(Base):
     __tablename__ = "customers"
 
-    customer_id = Column(String, nullable=False, unique=True)
+    firebase_id = Column(String, nullable=False, unique=True)
     customer_name = Column(String, nullable=False)
     customer_contact = Column(BIGINT, primary_key=True, nullable=False)
     customer_birthdate = Column(Date, nullable=True)

@@ -89,7 +89,7 @@ class EditProduct(Product):
 
 
 class UserData(BaseModel):
-    customer_id: str
+    firebase_id: str
     customer_name: str | None = None
     customer_contact: int
     customer_birthdate: date | None = None

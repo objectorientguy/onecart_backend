@@ -871,8 +871,32 @@ def get_cart_items_with_product_ids(response: Response, cart_id: int,customer_co
 #         print(repr(e))
 #         response.status_code = 500
 #         return {"status": 500, "message": "Error", "data": {}}
+
+# @app.post("/add_to_cart")
+# def add_to_cart(customer_contact: int, cart_Item: dict = Body(...), db: Session = Depends(get_db)):
+#     try:
+#         cart = db.query(models.Cart).filter_by(customer_contact=customer_contact).first()
+#
+#         if cart is None:
+#             cart = Cart(customer_contact=customer_contact)
+#             db.add(cart)
+#             db.commit()
+#             db.refresh(cart)
+#
+#
+#         cart_item = models.CartItem(**cart_Item, cart_id=cart.cart_id)
+#         db.add(cart_item)
+#         db.commit()
+#         db.refresh(cart_item)
+#
+#         return {"status": 200, "message": "Items Successfully Added to the Cart", "data": cart_item}
+#     except IntegrityError as e:
+#                 print(repr(e))
+#                 response.status_code = 500
+#                 return {"status": 500, "message": "Error", "data": {}}
+
 @app.post("/add_to_cart")
-def add_to_cart(customer_contact: int, cart_Item: dict = Body(...), db: Session = Depends(get_db)):
+def add_to_cart(customer_contact: int, cart_Item: schemas.CartItem, db: Session = Depends(get_db)):
     try:
         cart = db.query(models.Cart).filter_by(customer_contact=customer_contact).first()
 
@@ -882,9 +906,8 @@ def add_to_cart(customer_contact: int, cart_Item: dict = Body(...), db: Session 
             db.commit()
             db.refresh(cart)
 
-        # cart_id = cart_Item.pop('cart_id', None)
 
-        cart_item = models.CartItem(**cart_Item, cart_id=cart.cart_id)
+        cart_item = models.CartItem(**cart_Item.model_dump(), cart_id=cart.cart_id)
         db.add(cart_item)
         db.commit()
         db.refresh(cart_item)
@@ -1205,6 +1228,7 @@ def get_tracking_by_booking_id(booking_id: int, db: Session = Depends(get_db)):
 
         if order:
             products = order.products
+
         # tracking_data = {
         #     key: getattr(tracking, key)
         #     for key in ["ordered", "under_process", "shipped", "delivered"]
@@ -1327,11 +1351,27 @@ async def new_review(product_id: int, user_id: int, response: Response, review: 
         return {"status": "404", "message": "Error", "data": {}}
 
 @app.get("/getReview")
-async def get_review(product_id: int, response: Response, db: Session = Depends(get_db)):
+async def get_review(product_id: int, user_id: int, response: Response, db: Session = Depends(get_db)):
     try:
-        review = db.query(models.Review).filter_by(product_id=product_id).all()
+        reviews = (
+            db.query(models.Review, models.User)
+            .join(models.User, models.Review.user_id == models.User.customer_contact)
+            .filter(models.Review.product_id == product_id)
+            .all()
+        )
 
-        return {"status": "200", "message": "Product review fetched!", "data": review}
+        review_data = []
+        for review, user in reviews:
+            review_dict = {
+                "review_id": review.review_id,
+                "rating": review.rating,
+                "review_text": review.review_text,
+                "customer_name": user.customer_name
+            }
+            review_data.append(review_dict)
+
+
+        return {"status": "200", "message": "Product review fetched!", "data": review_data}
     except Exception as e:
         print(repr(e))
         response.status_code = 500
