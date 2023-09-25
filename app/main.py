@@ -1251,10 +1251,8 @@ def get_tracking_by_booking_id(customer_contact: int, db: Session = Depends(get_
 def get_customer_favorites(
     user_id: int,
     db: Session = Depends(get_db),
-
 ):
     try:
-
         fav_items = db.query(models.FavItem).filter_by(user_id=user_id).all()
 
         if not fav_items:
@@ -1271,9 +1269,20 @@ def get_customer_favorites(
             variant = db.query(models.ProductVariant).filter_by(variant_id=fav_item.variant_id).first()
 
             if product and variant:
+                # Query the CategoryProduct table to fetch category_id for the product
+                category_product = db.query(models.CategoryProduct).filter_by(product_id=product.product_id).first()
+
+                if category_product:
+                    category_id = category_product.category_id
+                else:
+                    category_id = None
+
+                # Query the Categories table to fetch category_name based on category_id
+                category = db.query(models.Categories).filter_by(category_id=category_id).first()
+
                 # Create a dictionary with the required columns
                 item_data = {
-                    "fav_item_id": fav_item.fav_item_id,  # Include fav_item_id in the response
+                    "fav_item_id": fav_item.fav_item_id,
                     "product_id": product.product_id,
                     "product_name": product.product_name,
                     "image": variant.image,
@@ -1282,6 +1291,8 @@ def get_customer_favorites(
                     "discount": variant.discount,
                     "quantity": variant.quantity,
                     "variant_id": variant.variant_id,
+                    "category_id": category.category_id,
+                    "category_name": category.category_name if category else None,
                 }
 
                 results.append(item_data)
@@ -1291,7 +1302,6 @@ def get_customer_favorites(
     except Exception as e:
         print(repr(e))
         raise HTTPException(status_code=500, detail="Internal server error")
-
 
 
 @app.delete("/favitem/{fav_item_id}")
@@ -1312,3 +1322,53 @@ def remove_favorite_item(fav_item_id: int, db: Session = Depends(get_db)):
     except Exception as e:
         print(repr(e))
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@app.get("/wishlist_by_category/{category_id}", response_model=dict)
+def get_items_by_category(
+    category_id: int = Path(..., title="Category ID", description="The ID of the category to filter by."),
+    db: Session = Depends(get_db)
+):
+    try:
+        # Query the database to retrieve wishlist items in the specified category
+        items = db.query(FavItem).join(FavItem.product).join(CategoryProduct).filter(CategoryProduct.category_id == category_id).all()
+
+        if not items:
+            raise HTTPException(status_code=404, detail="No items found in the specified category")
+
+
+        results = []
+
+
+        for item in items:
+            # Query additional data related to the item (e.g., product and variant details)
+            product = db.query(Products).filter_by(product_id=item.product_id).first()
+            variant = db.query(ProductVariant).filter_by(variant_id=item.variant_id).first()
+
+            if product and variant:
+                # Create a dictionary with the required columns
+                item_data = {
+                    "product_id": product.product_id,
+                    "product_name": product.product_name,
+                    "image": variant.image,
+                    "variant_cost": variant.variant_cost,
+                    "discounted_cost": variant.discounted_cost,
+                    "discount": variant.discount,
+                    "quantity": variant.quantity,
+                    "variant_id": variant.variant_id,
+
+                }
+
+                results.append(item_data)
+
+        response_data = {
+            "status": "200",
+            "message": "Items in the specified category retrieved successfully",
+            "data": results,
+        }
+
+        return response_data
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Internal server error")
+
