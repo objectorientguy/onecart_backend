@@ -1,7 +1,7 @@
-from typing import List,Optional
+from typing import List, Optional
 from contextlib import contextmanager
 import bcrypt
-from fastapi import FastAPI, Response, Depends, UploadFile, File, Request, HTTPException, Body
+from fastapi import FastAPI, Response, Depends, UploadFile, File, Request, HTTPException, Body, Path 
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import IntegrityError
 from starlette.responses import FileResponse
@@ -9,7 +9,7 @@ import logging
 from sqlalchemy import select, func
 
 from . import models, schemas
-from .models import Image
+from .models import Image, Products, ProductVariant, FavItem, CategoryProduct
 from .database import engine, get_db
 from fastapi.middleware.cors import CORSMiddleware
 import os
@@ -166,7 +166,7 @@ def edit_user(userDetail: schemas.EditUserData, response: Response, db: Session 
 
 
 @app.post("/addAddress")
-def add_address( user_contact: int, createAddress: schemas.AddAddress, response: Response, db: Session = Depends(get_db)):
+def add_address(user_contact: int, createAddress: schemas.AddAddress, response: Response, db: Session = Depends(get_db)):
     try:
 
             new_address = models.Addresses(**createAddress.model_dump())
@@ -745,7 +745,7 @@ async def get_all_products_in_categories(response: Response, db: Session = Depen
                 category_details["products"].append(product_details)
             category_details_variants.append(category_details)
 
-        return {"feature":feature,"category details":category_details_variants,"recomended products":recomended_products}
+        return {"feature": feature, "category details": category_details_variants, "recomended products": recomended_products}
     except Exception as e:
         print(repr(e))
         response.status_code = 500
@@ -1251,10 +1251,10 @@ def get_tracking_by_booking_id(customer_contact: int, db: Session = Depends(get_
 def get_customer_favorites(
     user_id: int,
     db: Session = Depends(get_db),
-    include_variant_details: Optional[bool] = False  # Optional parameter to include variant details
+
 ):
     try:
-        # Query the database to retrieve the customer's favorite items
+
         fav_items = db.query(models.FavItem).filter_by(user_id=user_id).all()
 
         if not fav_items:
@@ -1273,6 +1273,7 @@ def get_customer_favorites(
             if product and variant:
                 # Create a dictionary with the required columns
                 item_data = {
+                    "fav_item_id": fav_item.fav_item_id,  # Include fav_item_id in the response
                     "product_id": product.product_id,
                     "product_name": product.product_name,
                     "image": variant.image,
@@ -1281,7 +1282,6 @@ def get_customer_favorites(
                     "discount": variant.discount,
                     "quantity": variant.quantity,
                     "variant_id": variant.variant_id,
-
                 }
 
                 results.append(item_data)
@@ -1291,6 +1291,7 @@ def get_customer_favorites(
     except Exception as e:
         print(repr(e))
         raise HTTPException(status_code=500, detail="Internal server error")
+
 
 
 @app.delete("/favitem/{fav_item_id}")
