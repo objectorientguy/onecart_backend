@@ -882,7 +882,9 @@ def add_to_cart(customer_contact: int, cart_Item: dict = Body(...), db: Session 
             db.commit()
             db.refresh(cart)
 
-        # cart_id = cart_Item.pop('cart_id', None)
+        existing_item = db.query(models.CartItem).filter_by(cart_id=cart.cart_id, variant_id=cart_Item["variant_id"]).first()
+        if existing_item:
+            return {"status": 400, "message": "Variant already exists in the cart", "data": {}}
 
         cart_item = models.CartItem(**cart_Item, cart_id=cart.cart_id)
         db.add(cart_item)
@@ -1210,7 +1212,7 @@ def get_tracking_by_booking_id(booking_id: int, db: Session = Depends(get_db)):
         #     for key in ["ordered", "under_process", "shipped", "delivered"]
         # }
 
-        return {"status": 200, "message": "Tracking Stage fetched", "data": {"tracking_data":tracking,"order":order, "products":products}}
+        return {"status": 200, "message": "Tracking Stage fetched", "data": {"tracking_data":tracking,"order":order, "products_list":products}}
     except Exception as e:
         print(repr(e))
         raise HTTPException(status_code=500, detail="Internal server error")
