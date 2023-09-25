@@ -271,3 +271,10 @@ class FavItem(BaseModel):
     user_id: int
     class Config:
         from_attributes = True
+
+class Review(BaseModel):
+    rating: int
+    review_text: str
+
+    class Config:
+        from_attributes = True

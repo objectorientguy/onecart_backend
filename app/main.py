@@ -9,7 +9,7 @@ import logging
 from sqlalchemy import select, func
 
 from . import models, schemas
-from .models import Image, Products, ProductVariant, FavItem, CategoryProduct
+from .models import Image, Products, ProductVariant, FavItem, CategoryProduct, Review
 from .database import engine, get_db
 from fastapi.middleware.cors import CORSMiddleware
 import os
@@ -179,8 +179,6 @@ def add_address(user_contact: int, createAddress: schemas.AddAddress, response: 
         print(repr(e))
         response.status_code = 404
         return {"status": "404", "message": "Error", "data": {}}
-
-
 
 @app.get('/getAllAddresses')
 def get_address(response: Response, db: Session = Depends(get_db), userId=int):
@@ -1293,7 +1291,6 @@ def get_customer_favorites(
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-
 @app.delete("/favitem/{fav_item_id}")
 def remove_favorite_item(fav_item_id: int, db: Session = Depends(get_db)):
     try:
@@ -1312,3 +1309,30 @@ def remove_favorite_item(fav_item_id: int, db: Session = Depends(get_db)):
     except Exception as e:
         print(repr(e))
         raise HTTPException(status_code=500, detail="Internal server error")
+
+@app.post("/addReview")
+async def new_review(product_id: int, user_id: int, response: Response, review: schemas.Review, db: Session = Depends(get_db)):
+    try:
+        new_review = models.Review(**review.model_dump())
+        new_review.product_id = product_id
+        new_review.user_id = user_id
+        db.add(new_review)
+        db.commit()
+        db.refresh(new_review)
+
+        return {"status": "200", "message": "New review created!", "data": new_review}
+    except IntegrityError as e:
+        print(repr(e))
+        response.status_code = 404
+        return {"status": "404", "message": "Error", "data": {}}
+
+@app.get("/getReview")
+async def get_review(product_id: int, response: Response, db: Session = Depends(get_db)):
+    try:
+        review = db.query(models.Review).filter_by(product_id=product_id).all()
+
+        return {"status": "200", "message": "Product review fetched!", "data": review}
+    except Exception as e:
+        print(repr(e))
+        response.status_code = 500
+        return {"status": "500", "message": "Internal Server Error", "data": {}}

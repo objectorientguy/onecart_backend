@@ -386,3 +386,17 @@ class FavItem(Base):
             return None
         else:
             return value
+
+class Review(Base):
+    __tablename__ = "reviews"
+    review_id = Column(BIGINT, primary_key=True, autoincrement=True)
+    product_id = Column(BIGINT, ForeignKey("products.product_id", ondelete="CASCADE"), nullable=True)
+    user_id = Column(BIGINT, ForeignKey("customers.customer_contact", ondelete="CASCADE"), nullable=True)
+    rating = Column(Integer, nullable=False)
+    review_text = Column(String, nullable=False)
+    review_timestamp = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('now()'))
+
+    product = relationship("Products")
+    customer = relationship("User")
+
+
