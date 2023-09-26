@@ -1440,3 +1440,21 @@ def get_items_by_category(
     except Exception as e:
         raise HTTPException(status_code=500, detail="Internal server error")
 
+@app.post("/favitem")
+def add_to_wishlist(fav_item: schemas.FavItem, user_id: int, response: Response, db: Session = Depends(get_db)):
+    try:
+        # Check if the item is already in the user's wishlist
+        existing_item = db.query(models.FavItem).filter_by(user_id=user_id, product_id=fav_item.product_id).first()
+        if existing_item:
+            response.status_code = 400
+            return {"status": "400", "message": "Item already exists in wishlist", "data": {}}
+        # Create a new FavItem based on the input data
+        new_item = models.FavItem(**fav_item.model_dump(), user_id=user_id)
+        db.add(new_item)
+        db.commit()
+        db.refresh(new_item)
+        return {"status": "200", "message": "Item added to wishlist successfully", "data": new_item}
+    except IntegrityError as e:
+        print(repr(e))
+        response.status_code = 500
+        return {"status": "500", "message": "Internal server error", "data": {}}
