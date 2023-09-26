@@ -961,6 +961,8 @@ def add_to_cart(customer_contact: int, cart_Item: dict = Body(...), db: Session 
 #         response.status_code = 200
 #         return {"status": 204, "message": "Error", "data": {}}
 
+
+
 # @app.get("/checkoutScreen/{cart_id}")
 # def get_cart_item_count_with_price_and_discount_sum(response: Response, cart_id: int, db: Session = Depends(get_db)):
 #
@@ -1011,6 +1013,56 @@ def add_to_cart(customer_contact: int, cart_Item: dict = Body(...), db: Session 
 #         response.status_code = 500
 #         return {"status": 500, "message": "Error", "data": {}}
 
+@app.get("/checkoutScreen/{cart_id}")
+def get_cart_item_count_with_price_and_discount_sum(response: Response, cart_id: int, db: Session = Depends(get_db)):
+
+    try:
+        fetch_cart_items = db.query(models.Cart).filter(models.Cart.cart_id == cart_id).all()
+        if not fetch_cart_items:
+            return {"status": 404, "message": "No cart items found", "data": {}}
+
+        cart_item_count = 0
+        cart_total = 0
+        discount_sum = 0
+        coupon_applied = None
+        delivery_charges = 40.50
+        total_bill = 0
+
+        if models.Cart.coupon_id:
+            applied_coupon = db.query(models.Coupon).filter(models.Coupon.coupon_id == models.Cart.coupon_id).first()
+            if applied_coupon:
+                coupon_applied = applied_coupon.coupon_name
+        #
+        for cart_item in fetch_cart_items:
+            product_id = cart_item.product_id
+            variant_id = cart_item.variant_id
+
+            product = db.query(models.Products).filter(models.Products.product_id == product_id).first()
+            variant = db.query(models.ProductVariant).filter(models.ProductVariant.variant_id == variant_id).first()
+
+            if variant:
+                price = variant.variant_price
+                discount_amount = variant.discounted_cost
+            else:
+                price = product.price
+                discount_amount = product.discounted_cost
+
+            discount_sum += variant.discounted_cost * cart_item.item_count
+            discount_sum += product.discounted_cost * cart_item.item_count
+
+            cart_item_count += cart_item.item_count
+            cart_total += price * cart_item.item_count
+
+        total_bill = cart_total - discount_sum + delivery_charges
+
+        discount_sum = cart_total - discount_sum
+
+        return {"status": 200, "message": "CHECKOUT SCREEN fetched", "data": {"cart_item_count": cart_item_count, "cart_total": cart_total, "discount_sum": discount_sum, "coupon_applied": coupon_applied, "delivery_charges": delivery_charges, "total_bill": total_bill}}
+    except IntegrityError as e:
+        print(repr(e))
+        response.status_code = 500
+        return {"status": 500, "message": "Error", "data": {}}
+
 @app.get("/your_cart/{customer_contact}")
 def get_your_cart(response: Response, customer_contact: int, db: Session = Depends(get_db)):
     try:
@@ -1056,34 +1108,57 @@ def get_your_cart(response: Response, customer_contact: int, db: Session = Depen
         response.status_code = 500
         return {"status": 500, "message": "Error", "data": {}}
 
+# @app.post("/favitem")
+# def get_variant_info(fav_item: schemas.FavItem, user_id: int, response: Response, db: Session = Depends(get_db)):
+#     try:
+#         # Query the database to retrieve the user's favorite item
+#         item = db.query(models.FavItem).filter_by(user_id=user_id).first()
+#
+#         # if item is None:
+#         #     item = models.FavItem(user_id=user_id)
+#         #     db.add(item)
+#         #     db.commit()
+#         #     db.refresh(item)
+#         #     # Handle the case where no favorite item was found for the user
+#         #     response.status_code = 404
+#         #     return {"status": "404", "message": "Favorite item not found", "data": {}}
+#
+#         # Create a new FavItem based on the found item
+#         new_item = models.FavItem(**fav_item.model_dump())
+#         db.add(new_item)
+#         db.commit()
+#         db.refresh(new_item)
+#
+#         return {"status": "200", "message": "New fav_item added successfully!", "data": new_item}
+#
+#     except IntegrityError as e:
+#         print(repr(e))
+#         response.status_code = 400
+#         return {"status": "400", "data": {}}
+
+
 @app.post("/favitem")
-def get_variant_info(fav_item: schemas.FavItem, user_id: int, response: Response, db: Session = Depends(get_db)):
+def add_to_wishlist(fav_item: schemas.FavItem, user_id: int, response: Response, db: Session = Depends(get_db)):
     try:
-        # Query the database to retrieve the user's favorite item
-        item = db.query(models.FavItem).filter_by(user_id=user_id).first()
+        # Check if the item is already in the user's wishlist
+        existing_item = db.query(models.FavItem).filter_by(user_id=user_id, product_id=fav_item.product_id).first()
 
-        # if item is None:
-        #     item = models.FavItem(user_id=user_id)
-        #     db.add(item)
-        #     db.commit()
-        #     db.refresh(item)
-        #     # Handle the case where no favorite item was found for the user
-        #     response.status_code = 404
-        #     return {"status": "404", "message": "Favorite item not found", "data": {}}
+        if existing_item:
+            response.status_code = 400
+            return {"status": "400", "message": "Item already exists in wishlist", "data": {}}
 
-        # Create a new FavItem based on the found item
-        new_item = models.FavItem(**fav_item.model_dump())
+        # Create a new FavItem based on the input data
+        new_item = models.FavItem(**fav_item.model_dump(), user_id=user_id)
         db.add(new_item)
         db.commit()
         db.refresh(new_item)
 
-        return {"status": "200", "message": "New fav_item added successfully!", "data": new_item}
+        return {"status": "200", "message": "Item added to wishlist successfully", "data": new_item}
 
     except IntegrityError as e:
         print(repr(e))
-        response.status_code = 400
-        return {"status": "400", "data": {}}
-
+        response.status_code = 500
+        return {"status": "500", "message": "Internal server error", "data": {}}
 
 
 @app.post('/bookOrder')
@@ -1197,6 +1272,8 @@ def add_booking(
 #         response.status_code = 500
 #         return {"status": 500, "message": "Internal server error", "data": {}}
 
+
+
 @app.get("/orderdetails")
 def get_tracking_by_booking_id(booking_id: int, db: Session = Depends(get_db)):
     try:
@@ -1245,6 +1322,7 @@ def get_tracking_by_booking_id(customer_contact: int, db: Session = Depends(get_
     except Exception as e:
         print(repr(e))
         raise HTTPException(status_code=500, detail="Internal server error")
+
 
 
 @app.get("/getall_favitem/{user_id}")
@@ -1371,4 +1449,3 @@ def get_items_by_category(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail="Internal server error")
-
