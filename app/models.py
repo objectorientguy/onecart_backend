@@ -181,7 +181,7 @@ class CartItem(Base):
         "products.product_id", ondelete="CASCADE"), nullable=False)
     variant_id = Column(BIGINT, ForeignKey(
         "product_variants.variant_id", ondelete="CASCADE"), nullable=False)
-    count = Column(BIGINT, nullable=False)
+    count = Column(BIGINT, nullable=True)
 
     product = relationship("Products")
     variant = relationship("ProductVariant")

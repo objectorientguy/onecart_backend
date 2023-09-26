@@ -158,7 +158,6 @@ class CartItem(BaseModel):
     cart_id: int
     product_id: int
     variant_id: int
-    count: int
 
     class Config:
         from_attributes = True

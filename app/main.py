@@ -872,51 +872,96 @@ def get_cart_items_with_product_ids(response: Response, cart_id: int,customer_co
 #         response.status_code = 500
 #         return {"status": 500, "message": "Error", "data": {}}
 
-# @app.post("/add_to_cart")
-# def add_to_cart(customer_contact: int, cart_Item: dict = Body(...), db: Session = Depends(get_db)):
-#     try:
-#         cart = db.query(models.Cart).filter_by(customer_contact=customer_contact).first()
-#
-#         if cart is None:
-#             cart = Cart(customer_contact=customer_contact)
-#             db.add(cart)
-#             db.commit()
-#             db.refresh(cart)
-#
-#
-#         cart_item = models.CartItem(**cart_Item, cart_id=cart.cart_id)
-#         db.add(cart_item)
-#         db.commit()
-#         db.refresh(cart_item)
-#
-#         return {"status": 200, "message": "Items Successfully Added to the Cart", "data": cart_item}
-#     except IntegrityError as e:
-#                 print(repr(e))
-#                 response.status_code = 500
-#                 return {"status": 500, "message": "Error", "data": {}}
-
 @app.post("/add_to_cart")
-def add_to_cart(customer_contact: int, cart_Item: schemas.CartItem, db: Session = Depends(get_db)):
+def add_to_cart(response: Response,user_contact: int, cart_Item: dict = Body(...), db: Session = Depends(get_db)):
     try:
-        cart = db.query(models.Cart).filter_by(customer_contact=customer_contact).first()
+        product_id = cart_Item["product_id"]
+
+        cart = db.query(models.Cart).filter_by(customer_contact=user_contact).first()
 
         if cart is None:
-            cart = Cart(customer_contact=customer_contact)
+            cart = models.Cart(customer_contact=user_contact)
             db.add(cart)
             db.commit()
             db.refresh(cart)
 
+        existing_cart_item = db.query(models.CartItem).filter_by(cart_id=cart.cart_id, variant_id=cart_Item.get("variant_id")).first()
 
-        cart_item = models.CartItem(**cart_Item.model_dump(), cart_id=cart.cart_id)
-        db.add(cart_item)
-        db.commit()
-        db.refresh(cart_item)
+        if existing_cart_item:
+            return {"status": "200", "message": "Product already exists!"}
 
-        return {"status": 200, "message": "Items Successfully Added to the Cart", "data": cart_item}
+
+        else:
+            variant_id = cart_Item["variant_id"]
+            count = 1 if "count" not in cart_Item else cart_Item["count"]
+            cart_item = models.CartItem(cart_id=cart.cart_id, variant_id=variant_id, count=count, product_id=product_id)
+            db.add(cart_item)
+            db.commit()
+            db.refresh(cart_item)
+
+        return {"status": 200, "message": "Items Successfully Added to the Cart", "data": {"cart_data":cart_item}}
+
     except IntegrityError as e:
-                print(repr(e))
-                response.status_code = 500
-                return {"status": 500, "message": "Error", "data": {}}
+        print(repr(e))
+        response.status_code = 500
+        return {"status": 500, "message": "Error", "data": {}}
+
+@app.put("/increment_cart_item_count")
+def increment_cart_item_count(response : Response, cart_item_id: int, product_id: int, variant_id: int, db: Session = Depends(get_db)):
+    try:
+        cart_item = db.query(models.CartItem).filter_by(cartItem_id=cart_item_id, product_id=product_id, variant_id=variant_id).first()
+        if cart_item is None:
+            raise HTTPException(status_code=404, detail="Cart Item not found")
+
+        cart_item.count += 1
+        db.commit()
+
+        return {"status": 200, "message": "Cart Item count incremented successfully", "data": {"cart_item": cart_item}}
+    except IntegrityError as e:
+        db.rollback()
+        response.status_code = 500
+        return {"status": 500, "message": "Error", "data": {}}
+
+@app.put("/decrement_cart_item_count")
+def decrement_cart_item_count(response: Response, cart_item_id: int, product_id: int, variant_id: int, db: Session = Depends(get_db)):
+    try:
+        cart_item = db.query(models.CartItem).filter_by(cartItem_id=cart_item_id, product_id=product_id, variant_id=variant_id).first()
+        if cart_item is None:
+            raise HTTPException(status_code=404, detail="Cart Item not found")
+
+        if cart_item.count > 0:
+            cart_item.count -= 1
+            db.commit()
+        else:
+            raise HTTPException(status_code=400, detail="Count cannot be less than zero")
+
+        return {"status": 200, "message": "Cart Item count decremented successfully", "data": {"cart_item": cart_item}}
+    except IntegrityError as e:
+        db.rollback()
+        response.status_code = 500
+        return {"status": 500, "message": "Error", "data": {}}
+
+@app.delete("/delete_cart_item")
+def delete_cart_item(response: Response, cart_item_id: int, db: Session = Depends(get_db)):
+    try:
+        cart_item = db.query(models.CartItem).filter_by(cartItem_id=cart_item_id).first()
+
+        if cart_item is None:
+            raise HTTPException(status_code=404, detail="Cart Item not found")
+
+        if cart_item.count == 0:
+            db.delete(cart_item)
+            db.commit()
+            return {"status": 200, "message": "Cart Item deleted successfully"}
+        return {"status": 200, "message": "Cart Item count is not zero, cannot delete"}
+
+    except Exception as e:
+        db.rollback()
+        response.status_code = 500
+        return {"status": 500, "message": "Error", "data": {}}
+
+
+
 
 
 
@@ -1228,7 +1273,6 @@ def get_tracking_by_booking_id(booking_id: int, db: Session = Depends(get_db)):
 
         if order:
             products = order.products
-
         # tracking_data = {
         #     key: getattr(tracking, key)
         #     for key in ["ordered", "under_process", "shipped", "delivered"]
@@ -1351,27 +1395,11 @@ async def new_review(product_id: int, user_id: int, response: Response, review: 
         return {"status": "404", "message": "Error", "data": {}}
 
 @app.get("/getReview")
-async def get_review(product_id: int, user_id: int, response: Response, db: Session = Depends(get_db)):
+async def get_review(product_id: int, response: Response, db: Session = Depends(get_db)):
     try:
-        reviews = (
-            db.query(models.Review, models.User)
-            .join(models.User, models.Review.user_id == models.User.customer_contact)
-            .filter(models.Review.product_id == product_id)
-            .all()
-        )
+        review = db.query(models.Review).filter_by(product_id=product_id).all()
 
-        review_data = []
-        for review, user in reviews:
-            review_dict = {
-                "review_id": review.review_id,
-                "rating": review.rating,
-                "review_text": review.review_text,
-                "customer_name": user.customer_name
-            }
-            review_data.append(review_dict)
-
-
-        return {"status": "200", "message": "Product review fetched!", "data": review_data}
+        return {"status": "200", "message": "Product review fetched!", "data": review}
     except Exception as e:
         print(repr(e))
         response.status_code = 500
