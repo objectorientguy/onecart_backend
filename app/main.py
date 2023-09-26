@@ -9,7 +9,7 @@ import logging
 from sqlalchemy import select, func
 
 from . import models, schemas
-from .models import Image, Products, ProductVariant, FavItem, CategoryProduct, Review
+from .models import Image, Products, ProductVariant, FavItem, CategoryProduct
 from .database import engine, get_db
 from fastapi.middleware.cors import CORSMiddleware
 import os
@@ -179,6 +179,8 @@ def add_address(user_contact: int, createAddress: schemas.AddAddress, response: 
         print(repr(e))
         response.status_code = 404
         return {"status": "404", "message": "Error", "data": {}}
+
+
 
 @app.get('/getAllAddresses')
 def get_address(response: Response, db: Session = Depends(get_db), userId=int):
@@ -1317,10 +1319,8 @@ def get_tracking_by_booking_id(customer_contact: int, db: Session = Depends(get_
 def get_customer_favorites(
     user_id: int,
     db: Session = Depends(get_db),
-
 ):
     try:
-
         fav_items = db.query(models.FavItem).filter_by(user_id=user_id).all()
 
         if not fav_items:
@@ -1337,9 +1337,20 @@ def get_customer_favorites(
             variant = db.query(models.ProductVariant).filter_by(variant_id=fav_item.variant_id).first()
 
             if product and variant:
+                # Query the CategoryProduct table to fetch category_id for the product
+                category_product = db.query(models.CategoryProduct).filter_by(product_id=product.product_id).first()
+
+                if category_product:
+                    category_id = category_product.category_id
+                else:
+                    category_id = None
+
+                # Query the Categories table to fetch category_name based on category_id
+                category = db.query(models.Categories).filter_by(category_id=category_id).first()
+
                 # Create a dictionary with the required columns
                 item_data = {
-                    "fav_item_id": fav_item.fav_item_id,  # Include fav_item_id in the response
+                    "fav_item_id": fav_item.fav_item_id,
                     "product_id": product.product_id,
                     "product_name": product.product_name,
                     "image": variant.image,
@@ -1348,6 +1359,8 @@ def get_customer_favorites(
                     "discount": variant.discount,
                     "quantity": variant.quantity,
                     "variant_id": variant.variant_id,
+                    "category_id": category.category_id,
+                    "category_name": category.category_name if category else None,
                 }
 
                 results.append(item_data)
@@ -1378,29 +1391,52 @@ def remove_favorite_item(fav_item_id: int, db: Session = Depends(get_db)):
         print(repr(e))
         raise HTTPException(status_code=500, detail="Internal server error")
 
-@app.post("/addReview")
-async def new_review(product_id: int, user_id: int, response: Response, review: schemas.Review, db: Session = Depends(get_db)):
+
+@app.get("/wishlist_by_category/{category_id}", response_model=dict)
+def get_items_by_category(
+    category_id: int = Path(..., title="Category ID", description="The ID of the category to filter by."),
+    db: Session = Depends(get_db)
+):
     try:
-        new_review = models.Review(**review.model_dump())
-        new_review.product_id = product_id
-        new_review.user_id = user_id
-        db.add(new_review)
-        db.commit()
-        db.refresh(new_review)
+        # Query the database to retrieve wishlist items in the specified category
+        items = db.query(FavItem).join(FavItem.product).join(CategoryProduct).filter(CategoryProduct.category_id == category_id).all()
 
-        return {"status": "200", "message": "New review created!", "data": new_review}
-    except IntegrityError as e:
-        print(repr(e))
-        response.status_code = 404
-        return {"status": "404", "message": "Error", "data": {}}
+        if not items:
+            raise HTTPException(status_code=404, detail="No items found in the specified category")
 
-@app.get("/getReview")
-async def get_review(product_id: int, response: Response, db: Session = Depends(get_db)):
-    try:
-        review = db.query(models.Review).filter_by(product_id=product_id).all()
 
-        return {"status": "200", "message": "Product review fetched!", "data": review}
+        results = []
+
+
+        for item in items:
+            # Query additional data related to the item (e.g., product and variant details)
+            product = db.query(Products).filter_by(product_id=item.product_id).first()
+            variant = db.query(ProductVariant).filter_by(variant_id=item.variant_id).first()
+
+            if product and variant:
+                # Create a dictionary with the required columns
+                item_data = {
+                    "product_id": product.product_id,
+                    "product_name": product.product_name,
+                    "image": variant.image,
+                    "variant_cost": variant.variant_cost,
+                    "discounted_cost": variant.discounted_cost,
+                    "discount": variant.discount,
+                    "quantity": variant.quantity,
+                    "variant_id": variant.variant_id,
+
+                }
+
+                results.append(item_data)
+
+        response_data = {
+            "status": "200",
+            "message": "Items in the specified category retrieved successfully",
+            "data": results,
+        }
+
+        return response_data
+
     except Exception as e:
-        print(repr(e))
-        response.status_code = 500
-        return {"status": "500", "message": "Internal Server Error", "data": {}}
+        raise HTTPException(status_code=500, detail="Internal server error")
+
