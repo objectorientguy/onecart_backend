@@ -1122,35 +1122,6 @@ def get_your_cart(response: Response, customer_contact: int, db: Session = Depen
         response.status_code = 500
         return {"status": 500, "message": "Error", "data": {}}
 
-@app.post("/favitem")
-def get_variant_info(fav_item: schemas.FavItem, user_id: int, response: Response, db: Session = Depends(get_db)):
-    try:
-        # Query the database to retrieve the user's favorite item
-        item = db.query(models.FavItem).filter_by(user_id=user_id).first()
-
-        # if item is None:
-        #     item = models.FavItem(user_id=user_id)
-        #     db.add(item)
-        #     db.commit()
-        #     db.refresh(item)
-        #     # Handle the case where no favorite item was found for the user
-        #     response.status_code = 404
-        #     return {"status": "404", "message": "Favorite item not found", "data": {}}
-
-        # Create a new FavItem based on the found item
-        new_item = models.FavItem(**fav_item.model_dump())
-        db.add(new_item)
-        db.commit()
-        db.refresh(new_item)
-
-        return {"status": "200", "message": "New fav_item added successfully!", "data": new_item}
-
-    except IntegrityError as e:
-        print(repr(e))
-        response.status_code = 400
-        return {"status": "400", "data": {}}
-
-
 
 @app.post('/bookOrder')
 def add_booking(
@@ -1281,6 +1252,7 @@ def get_tracking_by_booking_id(booking_id: int, db: Session = Depends(get_db)):
         return {"status": 200, "message": "Tracking Stage fetched", "data": {"tracking_data":tracking,"order":order, "products":products}}
     except Exception as e:
         print(repr(e))
+        response.status_code = 500
         raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.get("/orderlist")
@@ -1310,36 +1282,76 @@ def get_tracking_by_booking_id(customer_contact: int, db: Session = Depends(get_
 
     except Exception as e:
         print(repr(e))
+        response.status_code = 500
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.get("/getall_favitem/{user_id}")
-def get_customer_favorites(
-    user_id: int,
-    db: Session = Depends(get_db),
-
-):
+def get_customer_favorites(response: Response, user_id: int, db: Session = Depends(get_db)):
     try:
-
         fav_items = db.query(models.FavItem).filter_by(user_id=user_id).all()
-
         if not fav_items:
-            # Handle the case where no favorite items were found for the customer
             raise HTTPException(status_code=404, detail="Favorite items not found")
-
-        # Create a list to store the results
         results = []
-
-        # Loop through the favorite items and retrieve the required data
         for fav_item in fav_items:
-            # Query the product and product_variant tables based on fav_item data
             product = db.query(models.Products).filter_by(product_id=fav_item.product_id).first()
             variant = db.query(models.ProductVariant).filter_by(variant_id=fav_item.variant_id).first()
+            category_product = db.query(models.CategoryProduct).filter_by(product_id=product.product_id).first()
+            category = None
+            if category_product:
+                category_id = category_product.category_id
+                category = db.query(models.Categories).filter_by(category_id=category_id).first()
+            item_data = {
+                "fav_item_id": fav_item.fav_item_id,
+                "product_id": product.product_id,
+                "product_name": product.product_name,
+                "image": variant.image,
+                "variant_cost": variant.variant_cost,
+                "discounted_cost": variant.discounted_cost,
+                "discount": variant.discount,
+                "quantity": variant.quantity,
+                "variant_id": variant.variant_id,
+                "category_id": category.category_id if category else None,  # Include category conditionally
+                "category_name": category.category_name if category else None,
+            }
+            results.append(item_data)
+
+        return {"status": "200", "message": "Customer's favorite items retrieved successfully", "data": results}
+    except Exception as e:
+        print(repr(e))
+        response.status_code = 500
+        return {"status": "500", "message": "Internal server error", "data": {}}
+
+
+@app.delete("/favitem/{fav_item_id}")
+def remove_favorite_item(fav_item_id: int, db: Session = Depends(get_db)):
+    try:
+        item = db.query(models.FavItem).filter_by(fav_item_id=fav_item_id).first()
+        if item is None:
+            raise HTTPException(status_code=404, detail="Favorite item not found")
+
+        db.delete(item)
+        db.commit()
+        return {"status": "200", "message": "Favorite item removed successfully!", "data": {}}
+    except Exception as e:
+        print(repr(e))
+        response.status_code = 500
+        return {"status": "500", "message": "Internal server error", "data": {}}
+
+
+@app.get("/wishlist_by_category/{category_id}", response_model=dict)
+def get_items_by_category(response: Response, category_id: int = Path(..., title="Category ID", description="The ID of the category to filter by."), db: Session = Depends(get_db)):
+    try:
+        items = db.query(FavItem).join(FavItem.product).join(CategoryProduct).filter(CategoryProduct.category_id == category_id).all()
+        if not items:
+            raise HTTPException(status_code=404, detail="No items found in the specified category")
+        results = []
+        for item in items:
+            product = db.query(Products).filter_by(product_id=item.product_id).first()
+            variant = db.query(ProductVariant).filter_by(variant_id=item.variant_id).first()
 
             if product and variant:
-                # Create a dictionary with the required columns
                 item_data = {
-                    "fav_item_id": fav_item.fav_item_id,  # Include fav_item_id in the response
                     "product_id": product.product_id,
                     "product_name": product.product_name,
                     "image": variant.image,
@@ -1349,34 +1361,41 @@ def get_customer_favorites(
                     "quantity": variant.quantity,
                     "variant_id": variant.variant_id,
                 }
-
                 results.append(item_data)
-
-        return {"status": "200", "message": "Customer's favorite items retrieved successfully", "data": results}
-
-    except Exception as e:
+        response_data = {
+            "status": "200",
+            "message": "Items in the specified category retrieved successfully",
+            "data": results
+        }
+        return response_data
+    except IntegrityError as e:
         print(repr(e))
-        raise HTTPException(status_code=500, detail="Internal server error")
+        response.status_code = 500
+        return {"status": 500, "message": "Error", "data": {}}
 
 
-@app.delete("/favitem/{fav_item_id}")
-def remove_favorite_item(fav_item_id: int, db: Session = Depends(get_db)):
+@app.post("/favitem")
+def add_to_wishlist(fav_item: schemas.FavItem, user_id: int, response: Response, db: Session = Depends(get_db)):
     try:
-        # Query the database to retrieve the favorite item by its ID
-        item = db.query(models.FavItem).filter_by(fav_item_id=fav_item_id).first()
+        # Check if the item is already in the user's wishlist
+        existing_item = db.query(models.FavItem).filter_by(user_id=user_id, product_id=fav_item.product_id).first()
 
-        if item is None:
-            raise HTTPException(status_code=404, detail="Favorite item not found")
+        if existing_item:
+            response.status_code = 400
+            return {"status": "400", "message": "Item already exists in wishlist", "data": {}}
 
-        # Delete the item from the wishlist
-        db.delete(item)
+        # Create a new FavItem based on the input data
+        new_item = models.FavItem(**fav_item.model_dump())
+        db.add(new_item)
         db.commit()
+        db.refresh(new_item)
 
-        return {"status": "200", "message": "Favorite item removed successfully!", "data": {}}
+        return {"status": "200", "message": "Item added to wishlist successfully", "data": new_item}
 
-    except Exception as e:
+    except IntegrityError as e:
         print(repr(e))
-        raise HTTPException(status_code=500, detail="Internal server error")
+        response.status_code = 500
+        return {"status": "500", "message": "Internal server error", "data": {}}
 
 @app.post("/addReview")
 async def new_review(product_id: int, user_id: int, response: Response, review: schemas.Review, db: Session = Depends(get_db)):
