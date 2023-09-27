@@ -906,7 +906,7 @@ def add_to_cart(response: Response, user_contact: int, cart_Item: dict = Body(..
         existing_cart_item = db.query(models.CartItem).filter_by(cart_id=cart.cart_id, variant_id=cart_Item.get("variant_id")).first()
 
         if existing_cart_item:
-            return {"status": "200", "message": "Product already exists!", "data":{}}
+            return {"status": 200, "message": "Product already exists!", "data":{}}
 
         else:
             variant_id = cart_Item["variant_id"]
