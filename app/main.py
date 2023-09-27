@@ -1,5 +1,7 @@
 from typing import List, Optional
 from contextlib import contextmanager
+from urllib import response
+
 import bcrypt
 from fastapi import FastAPI, Response, Depends, UploadFile, File, Request, HTTPException, Body, Path 
 from sqlalchemy.orm import Session, joinedload
@@ -10,7 +12,7 @@ from sqlalchemy import select, func
 
 from . import models, schemas
 from .models import Image, Products, ProductVariant, FavItem, CategoryProduct, Review
-from .database import engine, get_db
+from .database import engine, get_db, SessionLocal
 from fastapi.middleware.cors import CORSMiddleware
 import os
 
@@ -1122,7 +1124,7 @@ def get_your_cart(response: Response, customer_contact: int, db: Session = Depen
         response.status_code = 500
         return {"status": 500, "message": "Error", "data": {}}
 
-
+ 
 @app.post('/bookOrder')
 def add_booking(
         response: Response,
@@ -1286,41 +1288,41 @@ def get_tracking_by_booking_id(customer_contact: int, db: Session = Depends(get_
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@app.get("/getall_favitem/{user_id}")
-def get_customer_favorites(response: Response, user_id: int, db: Session = Depends(get_db)):
-    try:
-        fav_items = db.query(models.FavItem).filter_by(user_id=user_id).all()
-        if not fav_items:
-            raise HTTPException(status_code=404, detail="Favorite items not found")
-        results = []
-        for fav_item in fav_items:
-            product = db.query(models.Products).filter_by(product_id=fav_item.product_id).first()
-            variant = db.query(models.ProductVariant).filter_by(variant_id=fav_item.variant_id).first()
-            category_product = db.query(models.CategoryProduct).filter_by(product_id=product.product_id).first()
-            category = None
-            if category_product:
-                category_id = category_product.category_id
-                category = db.query(models.Categories).filter_by(category_id=category_id).first()
-            item_data = {
-                "fav_item_id": fav_item.fav_item_id,
-                "product_id": product.product_id,
-                "product_name": product.product_name,
-                "image": variant.image,
-                "variant_cost": variant.variant_cost,
-                "discounted_cost": variant.discounted_cost,
-                "discount": variant.discount,
-                "quantity": variant.quantity,
-                "variant_id": variant.variant_id,
-                "category_id": category.category_id if category else None,  # Include category conditionally
-                "category_name": category.category_name if category else None,
-            }
-            results.append(item_data)
-
-        return {"status": "200", "message": "Customer's favorite items retrieved successfully", "data": results}
-    except Exception as e:
-        print(repr(e))
-        response.status_code = 500
-        return {"status": "500", "message": "Internal server error", "data": {}}
+# @app.get("/getall_favitem/{user_id}")
+# def get_customer_favorites(response: Response, user_id: int, db: Session = Depends(get_db)):
+#     try:
+#         fav_items = db.query(models.FavItem).filter_by(user_id=user_id).all()
+#         if not fav_items:
+#             raise HTTPException(status_code=404, detail="Favorite items not found")
+#         results = []
+#         for fav_item in fav_items:
+#             product = db.query(models.Products).filter_by(product_id=fav_item.product_id).first()
+#             variant = db.query(models.ProductVariant).filter_by(variant_id=fav_item.variant_id).first()
+#             category_product = db.query(models.CategoryProduct).filter_by(product_id=product.product_id).first()
+#             category = None
+#             if category_product:
+#                 category_id = category_product.category_id
+#                 category = db.query(models.Categories).filter_by(category_id=category_id).first()
+#             item_data = {
+#                 "fav_item_id": fav_item.fav_item_id,
+#                 "product_id": product.product_id,
+#                 "product_name": product.product_name,
+#                 "image": variant.image,
+#                 "variant_cost": variant.variant_cost,
+#                 "discounted_cost": variant.discounted_cost,
+#                 "discount": variant.discount,
+#                 "quantity": variant.quantity,
+#                 "variant_id": variant.variant_id,
+#                 "category_id": category.category_id if category else None,  # Include category conditionally
+#                 "category_name": category.category_name if category else None,
+#             }
+#             results.append(item_data)
+#
+#         return {"status": "200", "message": "Customer's favorite items retrieved successfully", "data": results}
+#     except Exception as e:
+#         print(repr(e))
+#         response.status_code = 500
+#         return {"status": "500", "message": "Internal server error", "data": {}}
 
 
 @app.delete("/favitem/{fav_item_id}")
@@ -1328,7 +1330,7 @@ def remove_favorite_item(fav_item_id: int, db: Session = Depends(get_db)):
     try:
         item = db.query(models.FavItem).filter_by(fav_item_id=fav_item_id).first()
         if item is None:
-            raise HTTPException(status_code=404, detail="Favorite item not found")
+            return {"status": "500", "message": "This item doesn't exist in wishlist", "data": {}}
 
         db.delete(item)
         db.commit()
@@ -1339,40 +1341,40 @@ def remove_favorite_item(fav_item_id: int, db: Session = Depends(get_db)):
         return {"status": "500", "message": "Internal server error", "data": {}}
 
 
-@app.get("/wishlist_by_category/{category_id}", response_model=dict)
-def get_items_by_category(response: Response, category_id: int = Path(..., title="Category ID", description="The ID of the category to filter by."), db: Session = Depends(get_db)):
-    try:
-        items = db.query(FavItem).join(FavItem.product).join(CategoryProduct).filter(CategoryProduct.category_id == category_id).all()
-        if not items:
-            raise HTTPException(status_code=404, detail="No items found in the specified category")
-        results = []
-        for item in items:
-            product = db.query(Products).filter_by(product_id=item.product_id).first()
-            variant = db.query(ProductVariant).filter_by(variant_id=item.variant_id).first()
-
-            if product and variant:
-                item_data = {
-                    "product_id": product.product_id,
-                    "product_name": product.product_name,
-                    "image": variant.image,
-                    "variant_cost": variant.variant_cost,
-                    "discounted_cost": variant.discounted_cost,
-                    "discount": variant.discount,
-                    "quantity": variant.quantity,
-                    "variant_id": variant.variant_id,
-                }
-                results.append(item_data)
-        response_data = {
-            "status": "200",
-            "message": "Items in the specified category retrieved successfully",
-            "data": results
-        }
-        return response_data
-    except IntegrityError as e:
-        print(repr(e))
-        response.status_code = 500
-        return {"status": 500, "message": "Error", "data": {}}
-
+# @app.get("/wishlist_by_category/{category_id}", response_model=dict)
+# def get_items_by_category(response: Response, category_id: int = Path(..., title="Category ID", description="The ID of the category to filter by."), db: Session = Depends(get_db)):
+#     try:
+#         items = db.query(FavItem).join(FavItem.product).join(CategoryProduct).filter(CategoryProduct.category_id == category_id).all()
+#         if not items:
+#             raise HTTPException(status_code=404, detail="No items found in the specified category")
+#         results = []
+#         for item in items:
+#             product = db.query(Products).filter_by(product_id=item.product_id).first()
+#             variant = db.query(ProductVariant).filter_by(variant_id=item.variant_id).first()
+#
+#             if product and variant:
+#                 item_data = {
+#                     "product_id": product.product_id,
+#                     "product_name": product.product_name,
+#                     "image": variant.image,
+#                     "variant_cost": variant.variant_cost,
+#                     "discounted_cost": variant.discounted_cost,
+#                     "discount": variant.discount,
+#                     "quantity": variant.quantity,
+#                     "variant_id": variant.variant_id,
+#                 }
+#                 results.append(item_data)
+#         response_data = {
+#             "status": "200",
+#             "message": "Items in the specified category retrieved successfully",
+#             "data": results
+#         }
+#         return response_data
+#     except IntegrityError as e:
+#         print(repr(e))
+#         response.status_code = 500
+#         return {"status": 500, "message": "Error", "data": {}}
+#
 
 @app.post("/favitem")
 def add_to_wishlist(fav_item: schemas.FavItem, user_id: int, response: Response, db: Session = Depends(get_db)):
@@ -1423,3 +1425,84 @@ async def get_review(product_id: int, response: Response, db: Session = Depends(
         print(repr(e))
         response.status_code = 500
         return {"status": "500", "message": "Internal Server Error", "data": {}}
+
+
+
+# Create a FastAPI route to get all categories
+@app.get("/getallCategories")
+async def get_categories(response: Response, db: Session = Depends(get_db)):
+    try:
+        categories = db.query(models.Categories).all()
+        if not categories:
+            return {"status": "204", "message": "No categories found", "data": []}
+
+        # Serialize the categories to JSON
+        serialized_categories = [
+            {
+                "category_id": category.category_id,
+                "category_name": category.category_name,
+
+            }
+            for category in categories
+        ]
+
+        return {"status": "200", "message": "All categories fetched!", "data": serialized_categories}
+    except Exception as e:
+        print(repr(e))
+        response.status_code = 500
+        return {"status": "500", "message": "Internal Server Error", "data": {}}
+
+
+@app.get("/getall_favitem/{user_id}/{category_id}")
+def get_customer_favorites(
+    response: Response,
+    user_id: int,
+    category_id: Optional[int] = None,
+    db: Session = Depends(get_db)
+):
+    try:
+        # Check if the provided category_id exists in the database
+        if category_id is not None:
+            category = db.query(models.Categories).filter_by(category_id=category_id).first()
+            if category is None:
+                raise HTTPException(status_code=404, detail="Category_id or user_id doesn't exist")
+
+        # Your code for fetching and formatting data based on user_id and category_id
+        fav_items = db.query(models.FavItem).filter_by(user_id=user_id).all()
+
+        if not fav_items:
+            raise HTTPException(status_code=404, detail="Favorite items not found")
+
+        results = []
+
+        for fav_item in fav_items:
+            product = db.query(models.Products).filter_by(product_id=fav_item.product_id).first()
+            variant = db.query(models.ProductVariant).filter_by(variant_id=fav_item.variant_id).first()
+
+            # Inline category check
+            if category_id is None or (category_id is not None and
+                db.query(models.CategoryProduct)
+                .filter_by(product_id=product.product_id, category_id=category_id)
+                .first() is not None
+            ):
+                item_data = {
+                    "fav_item_id": fav_item.fav_item_id,
+                    "product_id": product.product_id,
+                    "product_name": product.product_name,
+                    "image": variant.image,
+                    "variant_cost": variant.variant_cost,
+                    "discounted_cost": variant.discounted_cost,
+                    "discount": variant.discount,
+                    "quantity": variant.quantity,
+                    "variant_id": variant.variant_id,
+                }
+                results.append(item_data)
+
+        return {"status": "200", "message": "Customer's favorite items retrieved successfully", "data": results}
+    except HTTPException as http_exc:
+        # Handle HTTPException separately, e.g., for 404
+        raise http_exc
+    except Exception as e:
+        print(repr(e))
+        response.status_code = 500
+        return {"status": "500", "message": "Internal server error", "data": {}}
