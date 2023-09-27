@@ -1351,11 +1351,11 @@ def get_customer_favorites(response: Response, user_id: int, db: Session = Depen
             }
             results.append(item_data)
 
-        return {"status": "200", "message": "Customer's favorite items retrieved successfully", "data": results}
+        return {"status": 200, "message": "Customer's favorite items retrieved successfully", "data": results}
     except Exception as e:
         print(repr(e))
         response.status_code = 500
-        return {"status": "500", "message": "Internal server error", "data": {}}
+        return {"status": 500, "message": "Internal server error", "data": {}}
 
 
 @app.delete("/favitem/{fav_item_id}")
@@ -1364,15 +1364,15 @@ def remove_favorite_item(response: Response, fav_item_id: int, db: Session = Dep
         item = db.query(models.FavItem).filter_by(fav_item_id=fav_item_id).first()
         if item is None:
             response.status_code = 404
-            return {"status": "404", "message": "Favourite Item not found"}
+            return {"status": 404, "message": "Favourite Item not found"}
 
         db.delete(item)
         db.commit()
-        return {"status": "200", "message": "Favorite item removed successfully!", "data": {}}
+        return {"status": 200, "message": "Favorite item removed successfully!", "data": {}}
     except Exception as e:
         print(repr(e))
         response.status_code = 500
-        return {"status": "500", "message": "Internal server error", "data": {}}
+        return {"status": 500, "message": "Internal server error", "data": {}}
 
 
 @app.post("/favitem")
@@ -1383,7 +1383,7 @@ def add_to_wishlist(fav_item: schemas.FavItem, user_id: int, response: Response,
 
         if existing_item:
             response.status_code = 400
-            return {"status": "400", "message": "Item already exists in wishlist", "data": {}}
+            return {"status": 400, "message": "Item already exists in wishlist", "data": {}}
 
         # Create a new FavItem based on the input data
         new_item = models.FavItem(**fav_item.model_dump())
@@ -1391,12 +1391,12 @@ def add_to_wishlist(fav_item: schemas.FavItem, user_id: int, response: Response,
         db.commit()
         db.refresh(new_item)
 
-        return {"status": "200", "message": "Item added to wishlist successfully", "data": new_item}
+        return {"status": 200, "message": "Item added to wishlist successfully", "data": new_item}
 
     except IntegrityError as e:
         print(repr(e))
         response.status_code = 500
-        return {"status": "500", "message": "Internal server error", "data": {}}
+        return {"status": 500, "message": "Internal server error", "data": {}}
 
 
 @app.post("/addReview")
@@ -1414,42 +1414,66 @@ async def new_review(product_id: int, user_id: int, response: Response, review: 
     except IntegrityError as e:
         print(repr(e))
         response.status_code = 404
-        return {"status": "404", "message": "Error", "data": {}}
+        return {"status": 404, "message": "Error", "data": {}}
 
 
 @app.get("/getReview")
 async def get_review(product_id: int, response: Response, db: Session = Depends(get_db)):
     try:
-        review = db.query(models.Review).filter_by(product_id=product_id).all()
+        # reviews = db.query(models.Review).filter_by(product_id=product_id).order_by(
+        #     models.Review.review_id.desc()).all()
+        reviews = (
+            db.query(models.Review)
+            .filter_by(product_id=product_id)
+            .order_by(models.Review.review_id.desc())
+            .join(models.User, models.Review.user_id == models.User.customer_contact)
+            .all()
+        )
 
-        return {"status": "200", "message": "Product review fetched!", "data": review}
+        # Extract customer names and image URLs from the reviews
+        review_data = []
+        for review in reviews:
+            customer_name = review.customer.customer_name if review.customer else None
+            profile_image = review.customer.profile_image if review.customer else None
+            review_data.append({
+                "review_id": review.review_id,
+                "product_id": review.product_id,
+                "user_id": review.user_id,
+                "rating": review.rating,
+                "review_text": review.review_text,
+                "customer_name": customer_name,
+                "profile_image": profile_image
+
+
+            })
+
+        return {"status": 200, "message": "Product review fetched!", "data": review_data}
+    except Exception as e:
+        print(repr(e))
+        response.status_code = 500
+        return {"status": 500, "message": "Internal Server Error", "data": {}}
+
+
+@app.get("/get_Categories_Id_name")
+async def get_categories(response: Response, db: Session = Depends(get_db)):
+    try:
+        categories = db.query(models.Categories).all()
+        if not categories:
+            return {"status": 204, "message": "No categories found", "data": []}
+
+        serialized_categories = [
+            {
+                "category_id": category.category_id,
+                "category_name": category.category_name,
+            }
+            for category in categories
+        ]
+
+        return {"status": 200, "message": "All categories fetched!", "data": serialized_categories}
     except Exception as e:
         print(repr(e))
         response.status_code = 500
         return {"status": "500", "message": "Internal Server Error", "data": {}}
-
-
-# @app.get("/getallCategories")
-# async def get_categories(response: Response, db: Session = Depends(get_db)):
-#     try:
-#         categories = db.query(models.Categories).all()
-#         if not categories:
-#             return {"status": "204", "message": "No categories found", "data": []}
-#
-#         serialized_categories = [
-#             {
-#                 "category_id": category.category_id,
-#                 "category_name": category.category_name,
-#
-#             }
-#             for category in categories
-#         ]
-#
-#         return {"status": "200", "message": "All categories fetched!", "data": serialized_categories}
-#     except Exception as e:
-#         print(repr(e))
-#         response.status_code = 500
-#         return {"status": "500", "message": "Internal Server Error", "data": {}}
 
 
 @app.get("/getall_favitem/{user_id}/{category_id}")
@@ -1488,128 +1512,8 @@ def get_customer_favorites(response: Response, user_id: int, category_id: Option
                 }
                 results.append(item_data)
 
-        return {"status": "200", "message": "Customer's favorite items retrieved successfully", "data": results}
+        return {"status": 200, "message": "Customer's favorite items retrieved successfully", "data": results}
     except Exception as e:
         print(repr(e))
         response.status_code = 500
-        return {"status": "500", "message": "Internal server error", "data": {}}
-
-#
-# @app.get("/getall_favitem/category")
-# def get_customer_favorites(response: Response, user_id: int, db: Session = Depends(get_db)):
-#     try:
-#
-#         fav_items = db.query(models.FavItem).filter_by(user_id=user_id).all()
-#         if not fav_items:
-#             raise HTTPException(status_code=404, detail="Favorite items not found")
-#
-#         category_details_variants = []
-#         for category in product_categories:
-#             products = db.query(models.Products).join(models.CategoryProduct, models.Products.product_id == models.CategoryProduct.product_id
-#             ).filter( models.CategoryProduct.category_id == category.category_id).all()
-#
-#             category_details = {
-#                 "category_id": category.category_id,
-#                 "category_name": category.category_name,
-#                 "category_image": category.category_image,
-#                 "products": [],
-#             }
-#
-#         results = []
-#         for fav_item in fav_items:
-#             product = db.query(models.Products).filter_by(product_id=fav_item.product_id).first()
-#             variant = db.query(models.ProductVariant).filter_by(variant_id=fav_item.variant_id).first()
-#
-#             item_data = {
-#                     "fav_item_id": fav_item.fav_item_id,
-#                     "product_id": product.product_id,
-#                     "product_name": product.product_name,
-#                     "image": variant.image,
-#                     "variant_cost": variant.variant_cost,
-#                     "discounted_cost": variant.discounted_cost,
-#                     "discount": variant.discount,
-#                     "quantity": variant.quantity,
-#                     "variant_id": variant.variant_id,
-#                 }
-#             results.append(item_data)
-#
-#         return {"status": "200", "message": "Customer's favorite items retrieved successfully", "data": results}
-#     except Exception as e:
-#         print(repr(e))
-#         response.status_code = 500
-#         return {"status": "500", "message": "Internal server error", "data": {}}
-
-# @app.get("/getall_favitem/category")
-# def get_customer_favorites(response: Response, user_id: int, db: Session = Depends(get_db)):
-#     try:
-#         fav_items = db.query(models.FavItem).filter_by(user_id=user_id).all()
-#         if not fav_items:
-#             raise HTTPException(status_code=404, detail="Favorite items not found")
-#
-#         product_categories = db.query(models.Categories).all()
-#
-#         category_details_with_products = []
-#         for category in product_categories:
-#             products = db.query(models.Products).join(models.CategoryProduct,
-#                                                       models.Products.product_id == models.CategoryProduct.product_id
-#                                                       ).filter(
-#                 models.CategoryProduct.category_id == category.category_id).all()
-#
-#             category_details = {
-#                 "category_id": category.category_id,
-#                 "category_name": category.category_name,
-#                 "category_image": category.category_image,
-#                 "products": [],
-#             }
-#             for product in products:
-#                 product_details = {
-#                     "product_id": product.product_id,
-#                     "product_name": product.product_name,
-#                     "details": product.details,
-#                     "variants": [],
-#                 }
-#
-#                 product_variants = db.query(models.ProductVariant).filter(
-#                     models.ProductVariant.product_id == product.product_id).all()
-#                 for variant in product_variants:
-#                     variant_details = {
-#                         "variant_id": variant.variant_id,
-#                         "variant_cost": variant.variant_cost,
-#                         "count": variant.count,
-#                         "brand_name": variant.brand_name,
-#                         "discounted_cost": variant.discounted_cost,
-#                         "discount": variant.discount,
-#                         "quantity": variant.quantity,
-#                         "description": variant.description,
-#                         "image": variant.image,
-#                         "ratings": variant.ratings
-#                     }
-#
-#                     product_details["variants"].append(variant_details)
-#                 category_details["products"].append(product_details)
-#             category_details_with_products.append(category_details)
-#
-#         return category_details_with_products
-#         results = []
-#         for fav_item in fav_items:
-#             product = db.query(models.Products).filter_by(product_id=fav_item.product_id).first()
-#             variant = db.query(models.ProductVariant).filter_by(variant_id=fav_item.variant_id).first()
-#
-#             item_data = {
-#                 "fav_item_id": fav_item.fav_item_id,
-#                 "product_id": product.product_id,
-#                 "product_name": product.product_name,
-#                 "image": variant.image,
-#                 "variant_cost": variant.variant_cost,
-#                 "discounted_cost": variant.discounted_cost,
-#                 "discount": variant.discount,
-#                 "quantity": variant.quantity,
-#                 "variant_id": variant.variant_id,
-#             }
-#             results.append(item_data)
-#
-#         return {"status": "200", "message": "Customer's favorite items retrieved successfully",  "item_data": results}
-#     except Exception as e:
-#         print(repr(e))
-#         response.status_code = 500
-#         return {"status": "500", "message": "Internal server error", "data": {}}
+        return {"status": 500, "message": "Internal server error", "data": {}}

@@ -96,6 +96,7 @@ class UserData(BaseModel):
     customer_birthdate: date | None = None
     email_id: EmailStr
     wallet: float
+    profile_image: str
     prev_pay_mode: str
 
 

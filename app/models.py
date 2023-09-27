@@ -102,12 +102,13 @@ class Image(Base):
 class User(Base):
     __tablename__ = "customers"
 
-    customer_id = Column(String, nullable=False, unique=True, autoincrement=True)
+    firebase_id = Column(String, nullable=False, unique=True)
     customer_name = Column(String, nullable=False)
     customer_contact = Column(BIGINT, primary_key=True, nullable=False)
     customer_birthdate = Column(Date, nullable=True)
     created_at = Column(TIMESTAMP(timezone=True),
-                        nullable=False, server_default=text('now()'))  # PROFILE IMAGE
+                        nullable=False, server_default=text('now()'))
+    profile_image = Column(String, nullable=False)
     email_id = Column(String, nullable=True)
     wallet = Column(Float, nullable=False)
     prev_pay_mode = Column(String, nullable=False)
