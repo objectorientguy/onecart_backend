@@ -218,7 +218,8 @@ class TrackingStageSchema(BaseModel):
     delivered: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
+
 
 class Coupons(BaseModel):
     coupon_id: int

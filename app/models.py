@@ -107,7 +107,8 @@ class User(Base):
     customer_contact = Column(BIGINT, primary_key=True, nullable=False)
     customer_birthdate = Column(Date, nullable=True)
     created_at = Column(TIMESTAMP(timezone=True),
-                        nullable=False, server_default=text('now()'))  # PROFILE IMAGE
+                        nullable=False, server_default=text('now()'))
+    profile_image = Column(String, nullable=False)
     email_id = Column(String, nullable=True)
     wallet = Column(Float, nullable=False)
     prev_pay_mode = Column(String, nullable=False)

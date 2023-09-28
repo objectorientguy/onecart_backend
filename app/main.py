@@ -1,7 +1,9 @@
 from typing import List, Optional
 from contextlib import contextmanager
+from urllib import response
+
 import bcrypt
-from fastapi import FastAPI, Response, Depends, UploadFile, File, Request, HTTPException, Body, Path 
+from fastapi import FastAPI, Response, Depends, UploadFile, File, Request, HTTPException, Body, Path
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import IntegrityError
 from starlette.responses import FileResponse
@@ -10,7 +12,7 @@ from sqlalchemy import select, func
 
 from . import models, schemas
 from .models import Image, Products, ProductVariant, FavItem, CategoryProduct, Review
-from .database import engine, get_db
+from .database import engine, get_db, SessionLocal
 from fastapi.middleware.cors import CORSMiddleware
 import os
 
@@ -29,6 +31,8 @@ app.add_middleware(
 UPLOAD_DIR = "app/images"
 
 logging.basicConfig(filename='app.log', level=logging.DEBUG)
+
+
 def save_image_to_db(db, filename, file_path):
     image = Image(filename=filename, file_path=file_path)
     db.add(image)
@@ -106,19 +110,19 @@ def create_user(loginSignupAuth: schemas.UserData, response: Response,
 
         if not user_data:
             # try:
-                new_user_data = models.User(
-                    **loginSignupAuth.model_dump())
-                new_user_added = models.UserCompany(  #composite table
-                    company_name=companyName,
-                    user_contact=loginSignupAuth.customer_contact)
-                db.add(new_user_data)
-                db.add(new_user_added)
-                db.commit()
-                db.refresh(new_user_data)
-                return {"status": 200, "message": "New user successfully created!", "data": new_user_data}
-            # except IntegrityError:
-            #     response.status_code = 200
-            #     return {"status": 204, "message": "User is not registered please Sing up", "data": {}}
+            new_user_data = models.User(
+                **loginSignupAuth.model_dump())
+            new_user_added = models.UserCompany(  # composite table
+                company_name=companyName,
+                user_contact=loginSignupAuth.customer_contact)
+            db.add(new_user_data)
+            db.add(new_user_added)
+            db.commit()
+            db.refresh(new_user_data)
+            return {"status": 200, "message": "New user successfully created!", "data": new_user_data}
+        # except IntegrityError:
+        #     response.status_code = 200
+        #     return {"status": 204, "message": "User is not registered please Sing up", "data": {}}
 
         user_exists = db.query(models.UserCompany).filter(models.UserCompany.company_name == companyName).filter(
             models.UserCompany.user_contact == loginSignupAuth.customer_contact).first()
@@ -166,19 +170,21 @@ def edit_user(userDetail: schemas.EditUserData, response: Response, db: Session 
 
 
 @app.post("/addAddress")
-def add_address(user_contact: int, createAddress: schemas.AddAddress, response: Response, db: Session = Depends(get_db)):
+def add_address(user_contact: int, createAddress: schemas.AddAddress, response: Response,
+                db: Session = Depends(get_db)):
     try:
 
-            new_address = models.Addresses(**createAddress.model_dump())
-            db.add(new_address)
-            db.commit()
-            db.refresh(new_address)
+        new_address = models.Addresses(**createAddress.model_dump())
+        db.add(new_address)
+        db.commit()
+        db.refresh(new_address)
 
-            return {"status": "200", "message": "New address created!", "data": new_address}
+        return {"status": "200", "message": "New address created!", "data": new_address}
     except IntegrityError as e:
         print(repr(e))
         response.status_code = 404
         return {"status": "404", "message": "Error", "data": {}}
+
 
 @app.get('/getAllAddresses')
 def get_address(response: Response, db: Session = Depends(get_db), userId=int):
@@ -314,6 +320,7 @@ def get_categories(response: Response, db: Session = Depends(get_db)):
         response.status_code = 200
         return {"status": 204, "message": "Error", "data": {}}
 
+
 @app.post('/addProducts')
 def add_products(products: List[schemas.Product], response: Response, db: Session = Depends(get_db)):
     try:
@@ -343,8 +350,10 @@ def add_products(products: List[schemas.Product], response: Response, db: Sessio
         else:
             raise
 
+
 @app.post('/addProductVariants/{product_id}')
-def add_product_variants(product_id: int, variants: List[schemas.ProductVariant], response: Response, db: Session = Depends(get_db)):
+def add_product_variants(product_id: int, variants: List[schemas.ProductVariant], response: Response,
+                         db: Session = Depends(get_db)):
     try:
 
         product = db.query(models.Products).filter(models.Products.product_id == product_id).first()
@@ -369,7 +378,6 @@ def add_product_variants(product_id: int, variants: List[schemas.ProductVariant]
         return {"status": "400", "message": "Error", "data": {}}
 
 
-
 @app.get("/getProducts")
 def get_all_products(response: Response, db: Session = Depends(get_db)):
     try:
@@ -381,6 +389,7 @@ def get_all_products(response: Response, db: Session = Depends(get_db)):
     except IntegrityError:
         response.status_code = 200
         return {"status": 204, "message": "Error", "data": {}}
+
 
 @app.get("/products/{product_id}")
 def get_product_by_product_id(response: Response, product_id: int, db: Session = Depends(get_db)):
@@ -401,24 +410,25 @@ def get_product_variants(response: Response, product_id: int, db: Session = Depe
         count_query = db.query(func.count('*')).select_from(models.CartItem)
         total_count = count_query.scalar()
 
-
         feature = db.query(models.FreatureList).all()
         recomended_products = [
-            {       "variant_id": 9, "variant_cost": 90.0, "count": 100, "brand_name": "Amul","discounted_cost": 84.0, "discount": 8,"quantity": "250 ml",
-                    "description": "Amul Lassi is a refreshing milk-based natural drink. It refreshes you immediately with the goodness of nature.",
-                    "image": [
-                        "https://oneart.onrender.com/images/amul-lassi-1-l-tetra-pak-product-side.jpeg"
-                    ],
-                    "ratings": 4
-                },
-                {
-                    "variant_id": 10,"variant_cost": 14.7,  "count": 100, "brand_name": "Amul",   "discounted_cost": 14.7,   "discount": 0, "quantity": "180 ml",
-                    "description": "Amul Lassi is a refreshing milk-based natural drink. It refreshes you immediately with the goodness of nature.",
-                    "image": [
-                        "https://oneart.onrender.com/images/amul-rose-flavoured-probiotic-la.jpeg"
-                    ],
-                    "ratings": 4
-                }]
+            {"variant_id": 9, "variant_cost": 90.0, "count": 100, "brand_name": "Amul", "discounted_cost": 84.0,
+             "discount": 8, "quantity": "250 ml",
+             "description": "Amul Lassi is a refreshing milk-based natural drink. It refreshes you immediately with the goodness of nature.",
+             "image": [
+                 "https://oneart.onrender.com/images/amul-lassi-1-l-tetra-pak-product-side.jpeg"
+             ],
+             "ratings": 4
+             },
+            {
+                "variant_id": 10, "variant_cost": 14.7, "count": 100, "brand_name": "Amul", "discounted_cost": 14.7,
+                "discount": 0, "quantity": "180 ml",
+                "description": "Amul Lassi is a refreshing milk-based natural drink. It refreshes you immediately with the goodness of nature.",
+                "image": [
+                    "https://oneart.onrender.com/images/amul-rose-flavoured-probiotic-la.jpeg"
+                ],
+                "ratings": 4
+            }]
         product = db.query(models.Products).filter(models.Products.product_id == product_id).first()
 
         if product:
@@ -451,7 +461,8 @@ def get_product_variants(response: Response, product_id: int, db: Session = Depe
             return {
                 "status": 200,
                 "message": "Product and its variants fetched successfully",
-                "data": {"product_data": product_data, "feature": feature, "recommended_products":recomended_products,"items": total_count}
+                "data": {"product_data": product_data, "feature": feature, "recommended_products": recomended_products,
+                         "items": total_count}
             }
         else:
             return {
@@ -466,9 +477,9 @@ def get_product_variants(response: Response, product_id: int, db: Session = Depe
 
 
 @app.put("/editProduct")
-def edit_product(editProduct: schemas.EditProduct,response: Response,product_id: int,db: Session = Depends(get_db)):
+def edit_product(editProduct: schemas.EditProduct, response: Response, product_id: int, db: Session = Depends(get_db)):
     try:
-        edit_product = db.query(models.Products).filter( models.Products.product_id == product_id )
+        edit_product = db.query(models.Products).filter(models.Products.product_id == product_id)
         product_exist = edit_product.first()
         if not product_exist:
             response.status_code = 404
@@ -481,6 +492,7 @@ def edit_product(editProduct: schemas.EditProduct,response: Response,product_id:
     except IntegrityError:
         response.status_code = 400
         return {"status": 400, "message": "Error", "data": {}}
+
 
 @app.get("/products/categories/{category_id}")
 def get_products_by_category_id(response: Response, category_id: int, db: Session = Depends(get_db)):
@@ -534,10 +546,8 @@ def get_products_by_category_id(response: Response, category_id: int, db: Sessio
         return {"status": 204, "message": "Error", "data": {}}
 
 
-
 @app.post("/carts")
 async def create_cart(cart: schemas.CartSchema, response: Response, db: Session = Depends(get_db)):
-
     try:
         new_cart = models.Cart(**cart.model_dump())
         db.add(new_cart)
@@ -548,7 +558,7 @@ async def create_cart(cart: schemas.CartSchema, response: Response, db: Session 
     except IntegrityError as e:
         print(repr(e))
         response.status_code = 400
-        return {"status": "400","data": {}}
+        return {"status": "400", "data": {}}
 
 
 @app.post('/deleteCart')
@@ -567,7 +577,6 @@ def delete_cart(id: int, response: Response, db: Session = Depends(get_db)):
         print(repr(e))
         response.status_code = 500
         return {"status": "500", "message": "Internal server error"}
-
 
 
 @app.post('/deleteMultipleProduct')
@@ -599,7 +608,6 @@ def search_products(response: Response, search_term: str, db: Session = Depends(
             if not char.isalnum():
                 raise ValueError(f"Search term cannot contain invalid characters: {char}.")
 
-
         search_categories = db.query(models.Categories).filter(
             (models.Categories.category_name.ilike(f"%{search_term}%"))).all()
         search_brand = db.query(models.Brand).filter(
@@ -607,17 +615,17 @@ def search_products(response: Response, search_term: str, db: Session = Depends(
         search_results = db.query(models.Products).filter(
             (models.Products.product_name.ilike(f"%{search_term}%"))).all()
 
-
         if not search_results:
             return {"status": 204, "message": "No product or brand found", "data": {}}
 
-        return {"status": 200, "message": "Products and Brand names fetched", "data": { "Categories": search_categories, "Brands": search_brand, "search_results": search_results}}
+        return {"status": 200, "message": "Products and Brand names fetched",
+                "data": {"Categories": search_categories, "Brands": search_brand, "search_results": search_results}}
 
 
     except ValueError as e:
         print(repr(e))
         response.status_code = 400
-        return {"status": 400, "message": "Error", "data": {} }
+        return {"status": 400, "message": "Error", "data": {}}
     except IntegrityError as e:
         response.status_code = 500
         return {"status": 500, "message": "Error", "data": {}}
@@ -655,8 +663,9 @@ async def get_all_products_in_categories(response: Response, db: Session = Depen
         category_details_with_products = []
         for category in product_categories:
             products = db.query(models.Products).join(models.CategoryProduct,
-                models.Products.product_id == models.CategoryProduct.product_id
-            ).filter(models.CategoryProduct.category_id == category.category_id).all()
+                                                      models.Products.product_id == models.CategoryProduct.product_id
+                                                      ).filter(
+                models.CategoryProduct.category_id == category.category_id).all()
 
             category_details = {
                 "category_id": category.category_id,
@@ -672,7 +681,8 @@ async def get_all_products_in_categories(response: Response, db: Session = Depen
                     "variants": [],
                 }
 
-                product_variants = db.query(models.ProductVariant).filter(models.ProductVariant.product_id == product.product_id).all()
+                product_variants = db.query(models.ProductVariant).filter(
+                    models.ProductVariant.product_id == product.product_id).all()
                 for variant in product_variants:
                     variant_details = {
                         "variant_id": variant.variant_id,
@@ -697,7 +707,8 @@ async def get_all_products_in_categories(response: Response, db: Session = Depen
         response.status_code = 500
         return {"status": 500, "message": "Internal Server Error", "data": []}
 
-@app.get("/getAllCategoriesVariants") #for fetch products with category
+
+@app.get("/getAllCategoriesVariants")  # for fetch products with category
 async def get_all_products_in_categories(response: Response, db: Session = Depends(get_db)):
     try:
         feature = db.query(models.FreatureList).all()
@@ -707,8 +718,9 @@ async def get_all_products_in_categories(response: Response, db: Session = Depen
         category_details_variants = []
         for category in product_categories:
             products = db.query(models.Products).join(models.CategoryProduct,
-                models.Products.product_id == models.CategoryProduct.product_id
-            ).filter(models.CategoryProduct.category_id == category.category_id).all()
+                                                      models.Products.product_id == models.CategoryProduct.product_id
+                                                      ).filter(
+                models.CategoryProduct.category_id == category.category_id).all()
 
             category_details = {
                 "category_id": category.category_id,
@@ -724,7 +736,8 @@ async def get_all_products_in_categories(response: Response, db: Session = Depen
                     "variants": [],
                 }
 
-                product_variant = db.query(models.ProductVariant).filter(models.ProductVariant.product_id == product.product_id).first()
+                product_variant = db.query(models.ProductVariant).filter(
+                    models.ProductVariant.product_id == product.product_id).first()
                 if product_variant:
                     variant_details = {
                         "variant_id": product_variant.variant_id,
@@ -743,11 +756,13 @@ async def get_all_products_in_categories(response: Response, db: Session = Depen
                 category_details["products"].append(product_details)
             category_details_variants.append(category_details)
 
-        return {"feature": feature, "category details": category_details_variants, "recomended products": recomended_products}
+        return {"feature": feature, "category details": category_details_variants,
+                "recomended products": recomended_products}
     except Exception as e:
         print(repr(e))
         response.status_code = 500
         return {"status": 500, "message": "Internal Server Error", "data": []}
+
 
 @app.get("/homescreen")
 def get_categories_and_banners_and_deals(response: Response, db: Session = Depends(get_db)):
@@ -807,18 +822,19 @@ def get_categories_and_banners_and_deals(response: Response, db: Session = Depen
         response.status_code = 200
         return {"status": 204, "message": "Error", "data": {}}
 
-@app.get("/getProductswithCartId/{cart_id}")
-def get_cart_items_with_product_ids(response: Response, cart_id: int,customer_contact:int, db: Session = Depends(get_db)):
 
+@app.get("/getProductswithCartId/{cart_id}")
+def get_cart_items_with_product_ids(response: Response, cart_id: int, customer_contact: int,
+                                    db: Session = Depends(get_db)):
     try:
         cart = db.query(models.Cart).filter_by(customer_contact=customer_contact).first()
         if cart:
             cart_items = (
-                            db.query(models.CartItem, models.ProductVariant.variant_cost)
-                            .join(models.ProductVariant, models.CartItem.variant_id == models.ProductVariant.variant_id)
-                            .filter(models.CartItem.cart_id == cart.cart_id)
-                            .all()
-                        )
+                db.query(models.CartItem, models.ProductVariant.variant_cost)
+                .join(models.ProductVariant, models.CartItem.variant_id == models.ProductVariant.variant_id)
+                .filter(models.CartItem.cart_id == cart.cart_id)
+                .all()
+            )
 
         fetch_cart_items = db.query(models.CartItem).filter(models.CartItem.cart_id == cart_id).all()
         if not fetch_cart_items:
@@ -840,11 +856,13 @@ def get_cart_items_with_product_ids(response: Response, cart_id: int,customer_co
             })
             cart_item_count = len(cart_items)
 
-        return {"status": 200, "message": "Cart items fetched", "data": {"cart_items": cart_items_with_product_ids,"item_count": cart_item_count}}
+        return {"status": 200, "message": "Cart items fetched",
+                "data": {"cart_items": cart_items_with_product_ids, "item_count": cart_item_count}}
     except IntegrityError as e:
         print(repr(e))
         response.status_code = 500
         return {"status": 500, "message": "Error", "data": {}}
+
 
 # @app.post("/add_to_cart/")
 # def add_to_cart(cart_item: schemas.CartItem, cart_id: int,response: Response,db: Session = Depends(get_db)):
@@ -873,7 +891,7 @@ def get_cart_items_with_product_ids(response: Response, cart_id: int,customer_co
 #         return {"status": 500, "message": "Error", "data": {}}
 
 @app.post("/add_to_cart")
-def add_to_cart(response: Response,user_contact: int, cart_Item: dict = Body(...), db: Session = Depends(get_db)):
+def add_to_cart(response: Response, user_contact: int, cart_Item: dict = Body(...), db: Session = Depends(get_db)):
     try:
         product_id = cart_Item["product_id"]
 
@@ -888,8 +906,7 @@ def add_to_cart(response: Response,user_contact: int, cart_Item: dict = Body(...
         existing_cart_item = db.query(models.CartItem).filter_by(cart_id=cart.cart_id, variant_id=cart_Item.get("variant_id")).first()
 
         if existing_cart_item:
-            return {"status": "200", "message": "Product already exists!"}
-
+            return {"status": 200, "message": "Product already exists!", "data":{}}
 
         else:
             variant_id = cart_Item["variant_id"]
@@ -899,33 +916,48 @@ def add_to_cart(response: Response,user_contact: int, cart_Item: dict = Body(...
             db.commit()
             db.refresh(cart_item)
 
-        return {"status": 200, "message": "Items Successfully Added to the Cart", "data": {"cart_data":cart_item}}
-
+        return {"status": 200, "message": "Items Successfully Added to the Cart", "data": {"cart_data": cart_item}}
     except IntegrityError as e:
         print(repr(e))
         response.status_code = 500
         return {"status": 500, "message": "Error", "data": {}}
 
+
 @app.put("/increment_cart_item_count")
-def increment_cart_item_count(response : Response, cart_item_id: int, product_id: int, variant_id: int, db: Session = Depends(get_db)):
+def increment_cart_item_count(response: Response, user_contact: int, product_id: int, variant_id: int,
+                              db: Session = Depends(get_db)):
     try:
-        cart_item = db.query(models.CartItem).filter_by(cartItem_id=cart_item_id, product_id=product_id, variant_id=variant_id).first()
+        cart = db.query(models.Cart).filter_by(customer_contact=user_contact).first()
+        if cart is None:
+            raise HTTPException(status_code=404, detail="Cart not found for the given customer contact")
+
+        cart_item = db.query(models.CartItem).filter_by(cart_id=cart.cart_id ,product_id=product_id, variant_id=variant_id).first()
         if cart_item is None:
             raise HTTPException(status_code=404, detail="Cart Item not found")
 
         cart_item.count += 1
         db.commit()
 
-        return {"status": 200, "message": "Cart Item count incremented successfully", "data": {"cart_item": cart_item}}
+        return {"status": 200, "message": "Cart Item count incremented successfully", "data": {}}
     except IntegrityError as e:
         db.rollback()
         response.status_code = 500
         return {"status": 500, "message": "Error", "data": {}}
 
+
 @app.put("/decrement_cart_item_count")
-def decrement_cart_item_count(response: Response, cart_item_id: int, product_id: int, variant_id: int, db: Session = Depends(get_db)):
+def decrement_cart_item_count(response: Response, user_contact: int, product_id: int, variant_id: int,
+                              db: Session = Depends(get_db)):
     try:
-        cart_item = db.query(models.CartItem).filter_by(cartItem_id=cart_item_id, product_id=product_id, variant_id=variant_id).first()
+        cart = db.query(models.Cart).filter_by(customer_contact=user_contact).first()
+        if cart is None:
+            raise HTTPException(status_code=404, detail="Cart not found for the given customer contact")
+
+        cart_item = db.query(models.CartItem).filter_by(cart_id=cart.cart_id,
+            product_id=product_id,
+            variant_id=variant_id
+        ).first()
+
         if cart_item is None:
             raise HTTPException(status_code=404, detail="Cart Item not found")
 
@@ -934,12 +966,12 @@ def decrement_cart_item_count(response: Response, cart_item_id: int, product_id:
             db.commit()
         else:
             raise HTTPException(status_code=400, detail="Count cannot be less than zero")
-
-        return {"status": 200, "message": "Cart Item count decremented successfully", "data": {"cart_item": cart_item}}
+        return {"status": 200, "message": "Cart Item count decremented successfully", "data": {}}
     except IntegrityError as e:
         db.rollback()
         response.status_code = 500
         return {"status": 500, "message": "Error", "data": {}}
+
 
 @app.delete("/delete_cart_item")
 def delete_cart_item(response: Response, cart_item_id: int, db: Session = Depends(get_db)):
@@ -961,10 +993,6 @@ def delete_cart_item(response: Response, cart_item_id: int, db: Session = Depend
         return {"status": 500, "message": "Error", "data": {}}
 
 
-
-
-
-
 # @app.post('/bookOrder')
 # def add_bookings(bookOrder: schemas.Bookings, response: Response, db: Session = Depends(get_db)):
 #     try:
@@ -977,7 +1005,6 @@ def delete_cart_item(response: Response, cart_item_id: int, db: Session = Depend
 #     except IntegrityError:
 #         response.status_code = 200
 #         return {"status": "404", "message": "Error", "data": {}}
-
 
 
 # @app.post('/bookOrder/')
@@ -1116,40 +1143,13 @@ def get_your_cart(response: Response, customer_contact: int, db: Session = Depen
             #     print(f"Variant ID: {variant_id}, Total Cost: {total_cost}")
             total_cost = sum(variant_costs.values())
 
-        return {"status": 200, "message": "Cart items fetched", "data": { "cart_items": cart_items_with_customer_contact, "cart_item_count": len(cart_items), "total_price": total_cost} }
+        return {"status": 200, "message": "Cart items fetched",
+                "data": {"cart_items": cart_items_with_customer_contact, "cart_item_count": len(cart_items),
+                         "total_price": total_cost}}
     except IntegrityError as e:
         print(repr(e))
         response.status_code = 500
         return {"status": 500, "message": "Error", "data": {}}
-
-@app.post("/favitem")
-def get_variant_info(fav_item: schemas.FavItem, user_id: int, response: Response, db: Session = Depends(get_db)):
-    try:
-        # Query the database to retrieve the user's favorite item
-        item = db.query(models.FavItem).filter_by(user_id=user_id).first()
-
-        # if item is None:
-        #     item = models.FavItem(user_id=user_id)
-        #     db.add(item)
-        #     db.commit()
-        #     db.refresh(item)
-        #     # Handle the case where no favorite item was found for the user
-        #     response.status_code = 404
-        #     return {"status": "404", "message": "Favorite item not found", "data": {}}
-
-        # Create a new FavItem based on the found item
-        new_item = models.FavItem(**fav_item.model_dump())
-        db.add(new_item)
-        db.commit()
-        db.refresh(new_item)
-
-        return {"status": "200", "message": "New fav_item added successfully!", "data": new_item}
-
-    except IntegrityError as e:
-        print(repr(e))
-        response.status_code = 400
-        return {"status": "400", "data": {}}
-
 
 
 @app.post('/bookOrder')
@@ -1169,6 +1169,7 @@ def add_booking(
         def generate_new_invoice_number():
             # Generate a unique invoice number using Unix timestamp
             return str(int(time.time()))
+
         # Generate unique order and invoice numbers
         order_number = generate_new_order_number()
         invoice_number = generate_new_invoice_number()
@@ -1200,6 +1201,7 @@ def add_booking(
         response.status_code = 500
         return {"status": 500, "message": "Internal server error", "data": {}}
 
+
 # @app.get("/getOrder/{order_id}")
 # def get_order_by_id(order_id: int = Path(..., title="Order ID"), db: Session = Depends(get_db)):
 #     try:
@@ -1210,13 +1212,12 @@ def add_booking(
 #             return {"status": 404, "message": "Booking Order not found", "data": None}
 
 
-    #
-    #     return {"status": 200, "message": "Booking Order fetched", "data": order}
-    # except IntegrityError as e:
-    #     print(repr(e))
-    #     response.status_code = 500
-    #     return {"status": 500, "message": "Internal server error", "data": None}
-
+#
+#     return {"status": 200, "message": "Booking Order fetched", "data": order}
+# except IntegrityError as e:
+#     print(repr(e))
+#     response.status_code = 500
+#     return {"status": 500, "message": "Internal server error", "data": None}
 
 
 # @app.post('/reorder/{order_id}', response_model=schemas.Bookings)
@@ -1278,10 +1279,13 @@ def get_tracking_by_booking_id(booking_id: int, db: Session = Depends(get_db)):
         #     for key in ["ordered", "under_process", "shipped", "delivered"]
         # }
 
-        return {"status": 200, "message": "Tracking Stage fetched", "data": {"tracking_data":tracking,"order":order, "products":products}}
+        return {"status": 200, "message": "Tracking Stage fetched",
+                "data": {"tracking_data": tracking, "order": order, "products": products}}
     except Exception as e:
         print(repr(e))
+        response.status_code = 500
         raise HTTPException(status_code=500, detail="Internal server error")
+
 
 @app.get("/orderlist")
 def get_tracking_by_booking_id(customer_contact: int, db: Session = Depends(get_db)):
@@ -1310,76 +1314,94 @@ def get_tracking_by_booking_id(customer_contact: int, db: Session = Depends(get_
 
     except Exception as e:
         print(repr(e))
+        response.status_code = 500
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@app.get("/getall_favitem/{user_id}")
-def get_customer_favorites(
-    user_id: int,
-    db: Session = Depends(get_db),
-
-):
+@app.get("/getall_favitem1/{user_id}")
+def get_customer_favorites(response: Response, user_id: int, db: Session = Depends(get_db)):
     try:
-
         fav_items = db.query(models.FavItem).filter_by(user_id=user_id).all()
-
         if not fav_items:
-            # Handle the case where no favorite items were found for the customer
             raise HTTPException(status_code=404, detail="Favorite items not found")
-
-        # Create a list to store the results
         results = []
-
-        # Loop through the favorite items and retrieve the required data
         for fav_item in fav_items:
-            # Query the product and product_variant tables based on fav_item data
             product = db.query(models.Products).filter_by(product_id=fav_item.product_id).first()
             variant = db.query(models.ProductVariant).filter_by(variant_id=fav_item.variant_id).first()
+            category_product = db.query(models.CategoryProduct).filter_by(product_id=product.product_id).first()
+            category = None
+            if category_product:
+                category_id = category_product.category_id
+                category = db.query(models.Categories).filter_by(category_id=category_id).first()
+            item_data = {
+                "category_id": category.category_id if category else None,
+                "category_name": category.category_name if category else None,
+                "fav_items": [
+                    {
+                        "fav_item_id": fav_item.fav_item_id,
+                        "product_id": product.product_id,
+                        "product_name": product.product_name,
+                        "variant_id": variant.variant_id,
+                        "variant_cost": variant.variant_cost,
+                        "discounted_cost": variant.discounted_cost,
+                        "discount": variant.discount,
+                        "quantity": variant.quantity,
+                        "image": variant.image}
+                ]
+            }
+            results.append(item_data)
 
-            if product and variant:
-                # Create a dictionary with the required columns
-                item_data = {
-                    "fav_item_id": fav_item.fav_item_id,  # Include fav_item_id in the response
-                    "product_id": product.product_id,
-                    "product_name": product.product_name,
-                    "image": variant.image,
-                    "variant_cost": variant.variant_cost,
-                    "discounted_cost": variant.discounted_cost,
-                    "discount": variant.discount,
-                    "quantity": variant.quantity,
-                    "variant_id": variant.variant_id,
-                }
-
-                results.append(item_data)
-
-        return {"status": "200", "message": "Customer's favorite items retrieved successfully", "data": results}
-
+        return {"status": 200, "message": "Customer's favorite items retrieved successfully", "data": results}
     except Exception as e:
         print(repr(e))
-        raise HTTPException(status_code=500, detail="Internal server error")
+        response.status_code = 500
+        return {"status": 500, "message": "Internal server error", "data": {}}
 
 
 @app.delete("/favitem/{fav_item_id}")
-def remove_favorite_item(fav_item_id: int, db: Session = Depends(get_db)):
+def remove_favorite_item(response: Response, fav_item_id: int, db: Session = Depends(get_db)):
     try:
-        # Query the database to retrieve the favorite item by its ID
         item = db.query(models.FavItem).filter_by(fav_item_id=fav_item_id).first()
-
         if item is None:
-            raise HTTPException(status_code=404, detail="Favorite item not found")
+            response.status_code = 404
+            return {"status": 404, "message": "Favourite Item not found"}
 
-        # Delete the item from the wishlist
         db.delete(item)
         db.commit()
-
-        return {"status": "200", "message": "Favorite item removed successfully!", "data": {}}
-
+        return {"status": 200, "message": "Favorite item removed successfully!", "data": {}}
     except Exception as e:
         print(repr(e))
-        raise HTTPException(status_code=500, detail="Internal server error")
+        response.status_code = 500
+        return {"status": 500, "message": "Internal server error", "data": {}}
+
+
+@app.post("/favitem")
+def add_to_wishlist(fav_item: schemas.FavItem, user_id: int, response: Response, db: Session = Depends(get_db)):
+    try:
+        # Check if the item is already in the user's wishlist
+        existing_item = db.query(models.FavItem).filter_by(user_id=user_id, product_id=fav_item.product_id).first()
+
+        if existing_item:
+            response.status_code = 400
+            return {"status": 400, "message": "Item already exists in wishlist", "data": {}}
+
+        # Create a new FavItem based on the input data
+        new_item = models.FavItem(**fav_item.model_dump())
+        db.add(new_item)
+        db.commit()
+        db.refresh(new_item)
+
+        return {"status": 200, "message": "Item added to wishlist successfully", "data": new_item}
+
+    except IntegrityError as e:
+        print(repr(e))
+        response.status_code = 500
+        return {"status": 500, "message": "Internal server error", "data": {}}
+
 
 @app.post("/addReview")
-async def new_review(product_id: int, user_id: int, response: Response, review: schemas.Review, db: Session = Depends(get_db)):
+async def new_review(product_id: int, user_id: int, response: Response, review: schemas.Review,
+                     db: Session = Depends(get_db)):
     try:
         new_review = models.Review(**review.model_dump())
         new_review.product_id = product_id
@@ -1392,15 +1414,106 @@ async def new_review(product_id: int, user_id: int, response: Response, review: 
     except IntegrityError as e:
         print(repr(e))
         response.status_code = 404
-        return {"status": "404", "message": "Error", "data": {}}
+        return {"status": 404, "message": "Error", "data": {}}
+
 
 @app.get("/getReview")
 async def get_review(product_id: int, response: Response, db: Session = Depends(get_db)):
     try:
-        review = db.query(models.Review).filter_by(product_id=product_id).all()
+        # reviews = db.query(models.Review).filter_by(product_id=product_id).order_by(
+        #     models.Review.review_id.desc()).all()
+        reviews = (
+            db.query(models.Review)
+            .filter_by(product_id=product_id)
+            .order_by(models.Review.review_id.desc())
+            .join(models.User, models.Review.user_id == models.User.customer_contact)
+            .all()
+        )
 
-        return {"status": "200", "message": "Product review fetched!", "data": review}
+        # Extract customer names and image URLs from the reviews
+        review_data = []
+        for review in reviews:
+            customer_name = review.customer.customer_name if review.customer else None
+            profile_image = review.customer.profile_image if review.customer else None
+            review_data.append({
+                "review_id": review.review_id,
+                "product_id": review.product_id,
+                "user_id": review.user_id,
+                "rating": review.rating,
+                "review_text": review.review_text,
+                "customer_name": customer_name,
+                "profile_image": profile_image
+
+
+            })
+
+        return {"status": 200, "message": "Product review fetched!", "data": review_data}
+    except Exception as e:
+        print(repr(e))
+        response.status_code = 500
+        return {"status": 500, "message": "Internal Server Error", "data": {}}
+
+
+@app.get("/get_Categories_Id_name")
+async def get_categories(response: Response, db: Session = Depends(get_db)):
+    try:
+        categories = db.query(models.Categories).all()
+        if not categories:
+            return {"status": 204, "message": "No categories found", "data": []}
+
+        serialized_categories = [
+            {
+                "category_id": category.category_id,
+                "category_name": category.category_name,
+            }
+            for category in categories
+        ]
+
+        return {"status": 200, "message": "All categories fetched!", "data": serialized_categories}
     except Exception as e:
         print(repr(e))
         response.status_code = 500
         return {"status": "500", "message": "Internal Server Error", "data": {}}
+
+
+@app.get("/getall_favitem/{user_id}/{category_id}")
+def get_customer_favorites(response: Response, user_id: int, category_id: Optional[int] = None,
+                           db: Session = Depends(get_db)):
+    try:
+        if category_id is not None:
+            category = db.query(models.Categories).filter_by(category_id=category_id).first()
+            if category is None:
+                raise HTTPException(status_code=404, detail="Category_id or user_id doesn't exist")
+
+        fav_items = db.query(models.FavItem).filter_by(user_id=user_id).all()
+        if not fav_items:
+            raise HTTPException(status_code=404, detail="Favorite items not found")
+
+        results = []
+        for fav_item in fav_items:
+            product = db.query(models.Products).filter_by(product_id=fav_item.product_id).first()
+            variant = db.query(models.ProductVariant).filter_by(variant_id=fav_item.variant_id).first()
+
+            if category_id is None or (category_id is not None and
+                                       db.query(models.CategoryProduct)
+                                               .filter_by(product_id=product.product_id, category_id=category_id)
+                                               .first() is not None
+            ):
+                item_data = {
+                    "fav_item_id": fav_item.fav_item_id,
+                    "product_id": product.product_id,
+                    "product_name": product.product_name,
+                    "image": variant.image,
+                    "variant_cost": variant.variant_cost,
+                    "discounted_cost": variant.discounted_cost,
+                    "discount": variant.discount,
+                    "quantity": variant.quantity,
+                    "variant_id": variant.variant_id,
+                }
+                results.append(item_data)
+
+        return {"status": 200, "message": "Customer's favorite items retrieved successfully", "data": results}
+    except Exception as e:
+        print(repr(e))
+        response.status_code = 500
+        return {"status": 500, "message": "Internal server error", "data": {}}
