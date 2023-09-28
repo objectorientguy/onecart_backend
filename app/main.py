@@ -1508,44 +1508,55 @@ async def get_categories(response: Response, db: Session = Depends(get_db)):
         response.status_code = 500
         return {"status": "500", "message": "Internal Server Error", "data": {}}
 
-
-@app.get("/getall_favitem/")
-def get_customer_favorites( response: Response, user_id: int,  category_id: Optional[int] = None, db: Session = Depends(get_db)):
+@app.get("/get_all_favItems")
+def get_customer_favorites(response: Response, user_id: int, category_id: Optional[int] = None,
+                           db: Session = Depends(get_db)):
     try:
-        results = []
-        fav_items = db.query(FavItem).filter_by(user_id=user_id).all()
+        if category_id is not None:
+            category = db.query(models.Categories).filter_by(category_id=category_id).first()
+            if category is None:
+                raise HTTPException(status_code=404, detail="Category_id or user_id doesn't exist")
+
+        fav_items = db.query(models.FavItem).filter_by(user_id=user_id).all()
         if not fav_items:
-            return {"status": 404, "message": "Favorite items not found for the user"}
+            raise HTTPException(status_code=404, detail="Favorite items not found")
 
+        results = []
         for fav_item in fav_items:
-            product = db.query(Products).filter_by(product_id=fav_item.product_id).first()
-            variant = db.query(ProductVariant).filter_by(variant_id=fav_item.variant_id).first()
+            product = db.query(models.Products).filter_by(product_id=fav_item.product_id).first()
+            variant = db.query(models.ProductVariant).filter_by(variant_id=fav_item.variant_id).first()
+            category_product = db.query(models.CategoryProduct).filter_by(product_id=product.product_id).first()
+            category = None
 
-            if category_id is None or (
-                category_id is not None
-                and db.query(CategoryProduct)
-                .filter_by(product_id=product.product_id, category_id=category_id)
-                .first()):
+            if category_id is None or (category_id is not None and
+                                       db.query(models.CategoryProduct)
+                                               .filter_by(product_id=product.product_id, category_id=category_id)
+                                               .first() is not None
+            ):
+
+                if category_product:
+                    category_id = category_product.category_id
+                    category = db.query(models.Categories).filter_by(category_id=category_id).first()
                 item_data = {
-                    "fav_item_id": fav_item.fav_item_id,
-                    "product_id": product.product_id,
-                    "product_name": product.product_name,
-                    "image": variant.image,
-                    "variant_cost": variant.variant_cost,
-                    "discounted_cost": variant.discounted_cost,
-                    "discount": variant.discount,
-                    "quantity": variant.quantity,
-                    "variant_id": variant.variant_id,
+                    "category_id": category.category_id if category else None,
+                    "category_name": category.category_name if category else None,
+                    "fav_items": [
+                        {
+                            "fav_item_id": fav_item.fav_item_id,
+                            "product_id": product.product_id,
+                            "product_name": product.product_name,
+                            "variant_id": variant.variant_id,
+                            "variant_cost": variant.variant_cost,
+                            "discounted_cost": variant.discounted_cost,
+                            "discount": variant.discount,
+                            "quantity": variant.quantity,
+                            "image": variant.image}
+                    ]
                 }
                 results.append(item_data)
 
-        if not results:
-            return {"status": 404, "message":"No items found"}
         return {"status": 200, "message": "Customer's favorite items retrieved successfully", "data": results}
     except Exception as e:
         print(repr(e))
         response.status_code = 500
         return {"status": 500, "message": "Internal server error", "data": {}}
-
-
-
