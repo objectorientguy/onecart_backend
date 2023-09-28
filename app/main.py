@@ -972,11 +972,31 @@ def decrement_cart_item_count(response: Response, user_contact: int, product_id:
         response.status_code = 500
         return {"status": 500, "message": "Error", "data": {}}
 
+@app.delete("/truncate_cart_items/{cart_id}")
+def truncate_cart_items(cart_id: int, db: Session = Depends(get_db)):
+    try:
+        cart = db.query(models.Cart).filter_by(cart_id=cart_id).first()
+        if cart is None:
+            return{"status": 404, "message": "Cart not found"}
+
+        db.query(models.CartItem).filter_by(cart_id=cart_id).delete(synchronize_session=False)
+        db.commit()
+
+        return {"status": 200, "message": "Cart items truncated successfully"}
+    except Exception as e:
+        db.rollback()
+        print(repr(e))
+        return {"status":500, "message": "Internal server error"}
 
 @app.delete("/delete_cart_item")
-def delete_cart_item(response: Response, cart_item_id: int, db: Session = Depends(get_db)):
+def delete_cart_item( response: Response, user_contact: int, product_id: int, variant_id: int, db: Session = Depends(get_db)):
     try:
-        cart_item = db.query(models.CartItem).filter_by(cartItem_id=cart_item_id).first()
+        cart = db.query(models.Cart).filter_by(customer_contact=user_contact).first()
+
+        if cart is None:
+            raise HTTPException(status_code=404, detail="Cart not found")
+
+        cart_item = db.query(models.CartItem).filter_by( cart_id=cart.cart_id, product_id=product_id, variant_id=variant_id).first()
 
         if cart_item is None:
             raise HTTPException(status_code=404, detail="Cart Item not found")
@@ -986,11 +1006,12 @@ def delete_cart_item(response: Response, cart_item_id: int, db: Session = Depend
             db.commit()
             return {"status": 200, "message": "Cart Item deleted successfully"}
         return {"status": 200, "message": "Cart Item count is not zero, cannot delete"}
-
     except Exception as e:
         db.rollback()
+        print(repr(e))
         response.status_code = 500
-        return {"status": 500, "message": "Error", "data": {}}
+        return {"status": 500, "message": "Internal Server Error"}
+
 
 
 # @app.post('/bookOrder')
@@ -1358,10 +1379,10 @@ def get_customer_favorites(response: Response, user_id: int, db: Session = Depen
         return {"status": 500, "message": "Internal server error", "data": {}}
 
 
-@app.delete("/favitem/{fav_item_id}")
-def remove_favorite_item(response: Response, fav_item_id: int, db: Session = Depends(get_db)):
+@app.delete("/favitem")
+def remove_favorite_item(response: Response, user_id: int, product_id: int, variant_id:int, db: Session = Depends(get_db)):
     try:
-        item = db.query(models.FavItem).filter_by(fav_item_id=fav_item_id).first()
+        item = db.query(models.FavItem).filter_by(user_id=user_id,product_id=product_id,variant_id=variant_id).first()
         if item is None:
             response.status_code = 404
             return {"status": 404, "message": "Favourite Item not found"}
@@ -1416,7 +1437,20 @@ async def new_review(product_id: int, user_id: int, response: Response, review: 
         response.status_code = 404
         return {"status": 404, "message": "Error", "data": {}}
 
+@app.delete("/delete_review")
+def delete_review( user_id: int, product_id: int, db: Session = Depends(get_db)):
+    try:
+        review = db.query(models.Review).filter_by( user_id=user_id, product_id=product_id).first()
+        if review is None:
+            return {"status": 404, "message": "Review not found", "data": {}}
 
+        db.delete(review)
+        db.commit()
+        return {"status": 200, "message": "Review deleted successfully"}
+    except Exception as e:
+        db.rollback()
+        print(repr(e))
+        return {"status": 500, "message": "Internal server error", "data": {}}
 @app.get("/getReview")
 async def get_review(product_id: int, response: Response, db: Session = Depends(get_db)):
     try:
@@ -1430,7 +1464,6 @@ async def get_review(product_id: int, response: Response, db: Session = Depends(
             .all()
         )
 
-        # Extract customer names and image URLs from the reviews
         review_data = []
         for review in reviews:
             customer_name = review.customer.customer_name if review.customer else None
