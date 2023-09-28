@@ -1339,7 +1339,7 @@ def get_tracking_by_booking_id(customer_contact: int, db: Session = Depends(get_
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@app.get("/getall_favitem1/{user_id}")
+@app.get("/get_all_favitem")
 def get_customer_favorites(response: Response, user_id: int, db: Session = Depends(get_db)):
     try:
         fav_items = db.query(models.FavItem).filter_by(user_id=user_id).all()
@@ -1508,7 +1508,7 @@ async def get_categories(response: Response, db: Session = Depends(get_db)):
         response.status_code = 500
         return {"status": "500", "message": "Internal Server Error", "data": {}}
 
-@app.get("/get_all_favItems")
+@app.get("/get_all_favItem_category")
 def get_customer_favorites(response: Response, user_id: int, category_id: Optional[int] = None,
                            db: Session = Depends(get_db)):
     try:
