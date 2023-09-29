@@ -765,11 +765,29 @@ async def get_all_products_in_categories(response: Response, db: Session = Depen
 
 
 @app.get("/homescreen")
-def get_categories_and_banners_and_deals(response: Response, db: Session = Depends(get_db)):
+def get_categories_and_banners_and_deals(customer_contact:int ,response: Response, db: Session = Depends(get_db)):
     try:
         fetch_categories = db.query(models.Categories).all()
         fetch_shop_banner = db.query(models.Shops).all()
         fetch_deals = db.query(models.Products).limit(3).all()
+
+        cart = db.query(models.Cart).filter_by(customer_contact=customer_contact).first()
+
+        if cart:
+            cart_items = (
+                db.query(models.CartItem)
+                .filter_by(cart_id=cart.cart_id)
+                .options(joinedload(models.CartItem.variant))
+                .all()
+            )
+
+
+        for cart_item in cart_items:
+            product_id = cart_item.product_id
+            variant_id = cart_item.variant_id
+
+            product = db.query(models.Products).filter(models.Products.product_id == product_id).first()
+            variant = db.query(models.ProductVariant).filter(models.ProductVariant.variant_id == variant_id).first()
 
         shop_deals = []
         shop_details = []
@@ -815,7 +833,8 @@ def get_categories_and_banners_and_deals(response: Response, db: Session = Depen
             "data": {
                 "categories": fetch_categories,
                 "popular shops": shop_details,
-                "today's deals": shop_deals
+                "today's deals": shop_deals,
+                "cart_item_count": len(cart_items)
             },
         }
     except IntegrityError:
@@ -1555,7 +1574,6 @@ def get_customer_favorites(response: Response, user_id: int, category_id:int | N
         return {"status": 200, "message": "Customer's favorite items retrieved successfully", "data": results}
 
     except Exception as e:
-        # Handle any exceptions that may occur.
         print(repr(e))
         response.status_code = 500
         return {"status": 500, "message": "Internal server error", "data": {}}
