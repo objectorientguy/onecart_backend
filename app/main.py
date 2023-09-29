@@ -791,14 +791,38 @@ async def get_all_products_in_categories(response: Response, db: Session = Depen
         response.status_code = 500
         return {"status": 500, "message": "Internal Server Error", "data": []}
 @app.get("/homescreen")
-def get_categories_and_banners_and_deals(customer_contact:int ,response: Response, db: Session = Depends(get_db)):
+def get_categories_and_banners_and_deals(customer_contact:int, response: Response ,product_id: Optional[int] = None,  variant_id: Optional[int] = None, db: Session = Depends(get_db)):
     try:
         fetch_categories = db.query(models.Categories).all()
         fetch_shop_banner = db.query(models.Shops).all()
         fetch_deals = db.query(models.Products).limit(3).all()
 
+        cart = db.query(models.Cart).filter_by(customer_contact=customer_contact).first()
+
+        if cart:
+            cart_items_query = (
+                db.query(models.CartItem)
+                .filter_by(cart_id=cart.cart_id)
+                .options(joinedload(models.CartItem.variant))
+            )
+
+            if product_id:
+                cart_items_query = cart_items_query.filter_by(product_id=product_id)
+            if variant_id:
+                cart_items_query = cart_items_query.filter_by(variant_id=variant_id)
+
+            cart_items = cart_items_query.all()
+
+        variant_counts = defaultdict(int)
+
+        for cart_item in cart_items:
+            variant_id = cart_item.variant_id
+            count = cart_item.count
+            variant_counts[variant_id] += count
+
         count_query = db.query(func.count('*')).select_from(models.CartItem)
         total_count = count_query.scalar()
+        fetch_deals = db.query(models.Products).limit(3).all()
 
         shop_deals = []
         shop_details = []
@@ -826,6 +850,7 @@ def get_categories_and_banners_and_deals(customer_contact:int ,response: Respons
                     "variant_cost": product_variant.variant_cost,
                     "count": product_variant.count,
                     "brand_name": product_variant.brand_name,
+                    "cart_item_quantity_count": variant_counts.get(product_variant.variant_id, 0),
                     "discounted_cost": product_variant.discounted_cost,
                     "discount": product_variant.discount,
                     "quantity": product_variant.quantity,
@@ -845,7 +870,7 @@ def get_categories_and_banners_and_deals(customer_contact:int ,response: Respons
                 "categories": fetch_categories,
                 "popular shops": shop_details,
                 "today's deals": shop_deals,
-                "cart_item_quantity_count": total_count
+                "cart_count": total_count
             }
         }
     except IntegrityError:
