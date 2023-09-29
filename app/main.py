@@ -405,11 +405,18 @@ def get_product_by_product_id(response: Response, product_id: int, db: Session =
 
 
 @app.get("/getProductVariants")
-def get_product_variants(response: Response, user_id: int, product_id: Optional[int] = None, variant_id: Optional[int] = None, db: Session = Depends(get_db)):
+def get_product_variants(
+        response: Response,
+        user_id: int,
+        product_id: Optional[int] = None,
+        variant_id: Optional[int] = None,
+        db: Session = Depends(get_db)
+):
     try:
         count_query = db.query(func.count('*')).select_from(models.CartItem)
         total_count = count_query.scalar()
         cart = db.query(models.Cart).filter_by(customer_contact=user_id).first()
+
         if cart:
             cart_items_query = (
                 db.query(models.CartItem)
@@ -424,19 +431,15 @@ def get_product_variants(response: Response, user_id: int, product_id: Optional[
 
             cart_items = cart_items_query.all()
 
-        variant_counts = defaultdict(lambda: {"product_id": None, "variant_id": None, "count": 0})
+        variant_counts = defaultdict(int)
 
         for cart_item in cart_items:
             variant_id = cart_item.variant_id
-            product_id = cart_item.product_id
             count = cart_item.count
-            variant_counts[variant_id]["product_id"] = product_id
-            variant_counts[variant_id]["variant_id"] = variant_id
-            variant_counts[variant_id]["count"] += count
+            variant_counts[variant_id] += count
 
-        variant_counts_list = list(variant_counts.values())
         feature = db.query(models.FreatureList).all()
-        recomended_products = [
+        recommended_products = [
             {"variant_id": 9, "variant_cost": 90.0, "count": 100, "brand_name": "Amul", "discounted_cost": 84.0,
              "discount": 8, "quantity": "250 ml",
              "description": "Amul Lassi is a refreshing milk-based natural drink. It refreshes you immediately with the goodness of nature.",
@@ -471,7 +474,7 @@ def get_product_variants(response: Response, user_id: int, product_id: Optional[
                 variant_details = {
                     "variant_id": variant.variant_id,
                     "variant_cost": variant.variant_cost,
-                    "count": variant.count,
+                    "cart_item_quantity_count": variant_counts.get(variant.variant_id, 0),
                     "brand_name": variant.brand_name,
                     "discounted_cost": variant.discounted_cost,
                     "discount": variant.discount,
@@ -483,12 +486,18 @@ def get_product_variants(response: Response, user_id: int, product_id: Optional[
 
                 product_data["variants"].append(variant_details)
 
-            return { "status": 200,
+            return {
+                "status": 200,
                 "message": "Product and its variants fetched successfully",
-                "data": {"product_data": product_data, "feature": feature, "recommended_products": recomended_products, "cart_total_count":total_count,"cart_item_total_count": variant_counts_list }
+                "data": {
+                    "product_data": product_data,
+                    "feature": feature,
+                    "recommended_products": recommended_products,
+                    "cart_total_count": total_count,
+                }
             }
         else:
-            return { "status": 404, "message": "Product not found", "data": {} }
+            return {"status": 404, "message": "Product not found", "data": {}}
 
     except IntegrityError:
         response.status_code = 200
