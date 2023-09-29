@@ -493,7 +493,7 @@ def get_product_variants(
                     "product_data": product_data,
                     "feature": feature,
                     "recommended_products": recommended_products,
-                    "cart_total_count": total_count,
+                    "cart_item_count": total_count,
                 }
             }
         else:
