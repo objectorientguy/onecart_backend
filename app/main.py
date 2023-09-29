@@ -1181,7 +1181,8 @@ def get_your_cart(response: Response, customer_contact: int, db: Session = Depen
             cart_items_with_customer_contact.append({
                 "cartItemId": cart_item.cartItem_id,
                 "product": product,
-                "variant": variant
+                "variant": variant,
+                "total_item_count_variant": cart_item.count
             })
 
             variant_cost = cart_item.variant.variant_cost
