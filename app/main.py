@@ -870,7 +870,7 @@ def get_categories_and_banners_and_deals(customer_contact:int, response: Respons
                 "categories": fetch_categories,
                 "popular shops": shop_details,
                 "today's deals": shop_deals,
-                "cart_count": total_count
+                "cart_item_count": total_count
             }
         }
     except IntegrityError:
