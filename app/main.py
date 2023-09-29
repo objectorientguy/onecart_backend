@@ -1,7 +1,7 @@
 from typing import List, Optional
 from contextlib import contextmanager
 from urllib import response
-
+from collections import defaultdict
 import bcrypt
 from fastapi import FastAPI, Response, Depends, UploadFile, File, Request, HTTPException, Body, Path
 from sqlalchemy.orm import Session, joinedload
@@ -404,12 +404,37 @@ def get_product_by_product_id(response: Response, product_id: int, db: Session =
         return {"status": 204, "message": "Error", "data": {}}
 
 
-@app.get("/getProductVariants/{product_id}")
-def get_product_variants(response: Response, product_id: int, db: Session = Depends(get_db)):
+@app.get("/getProductVariants")
+def get_product_variants(response: Response, user_id: int, product_id: Optional[int] = None, variant_id: Optional[int] = None, db: Session = Depends(get_db)):
     try:
         count_query = db.query(func.count('*')).select_from(models.CartItem)
         total_count = count_query.scalar()
+        cart = db.query(models.Cart).filter_by(customer_contact=user_id).first()
+        if cart:
+            cart_items_query = (
+                db.query(models.CartItem)
+                .filter_by(cart_id=cart.cart_id)
+                .options(joinedload(models.CartItem.variant))
+            )
 
+            if product_id:
+                cart_items_query = cart_items_query.filter_by(product_id=product_id)
+            if variant_id:
+                cart_items_query = cart_items_query.filter_by(variant_id=variant_id)
+
+            cart_items = cart_items_query.all()
+
+        variant_counts = defaultdict(lambda: {"product_id": None, "variant_id": None, "count": 0})
+
+        for cart_item in cart_items:
+            variant_id = cart_item.variant_id
+            product_id = cart_item.product_id
+            count = cart_item.count
+            variant_counts[variant_id]["product_id"] = product_id
+            variant_counts[variant_id]["variant_id"] = variant_id
+            variant_counts[variant_id]["count"] += count
+
+        variant_counts_list = list(variant_counts.values())
         feature = db.query(models.FreatureList).all()
         recomended_products = [
             {"variant_id": 9, "variant_cost": 90.0, "count": 100, "brand_name": "Amul", "discounted_cost": 84.0,
@@ -458,18 +483,12 @@ def get_product_variants(response: Response, product_id: int, db: Session = Depe
 
                 product_data["variants"].append(variant_details)
 
-            return {
-                "status": 200,
+            return { "status": 200,
                 "message": "Product and its variants fetched successfully",
-                "data": {"product_data": product_data, "feature": feature, "recommended_products": recomended_products,
-                         "items": total_count}
+                "data": {"product_data": product_data, "feature": feature, "recommended_products": recomended_products, "cart_total_count":total_count,"cart_item_total_count": variant_counts_list }
             }
         else:
-            return {
-                "status": 404,
-                "message": "Product not found",
-                "data": {}
-            }
+            return { "status": 404, "message": "Product not found", "data": {} }
 
     except IntegrityError:
         response.status_code = 200
@@ -762,8 +781,6 @@ async def get_all_products_in_categories(response: Response, db: Session = Depen
         print(repr(e))
         response.status_code = 500
         return {"status": 500, "message": "Internal Server Error", "data": []}
-
-
 @app.get("/homescreen")
 def get_categories_and_banners_and_deals(customer_contact:int ,response: Response, db: Session = Depends(get_db)):
     try:
@@ -771,23 +788,8 @@ def get_categories_and_banners_and_deals(customer_contact:int ,response: Respons
         fetch_shop_banner = db.query(models.Shops).all()
         fetch_deals = db.query(models.Products).limit(3).all()
 
-        cart = db.query(models.Cart).filter_by(customer_contact=customer_contact).first()
-
-        if cart:
-            cart_items = (
-                db.query(models.CartItem)
-                .filter_by(cart_id=cart.cart_id)
-                .options(joinedload(models.CartItem.variant))
-                .all()
-            )
-
-
-        for cart_item in cart_items:
-            product_id = cart_item.product_id
-            variant_id = cart_item.variant_id
-
-            product = db.query(models.Products).filter(models.Products.product_id == product_id).first()
-            variant = db.query(models.ProductVariant).filter(models.ProductVariant.variant_id == variant_id).first()
+        count_query = db.query(func.count('*')).select_from(models.CartItem)
+        total_count = count_query.scalar()
 
         shop_deals = []
         shop_details = []
@@ -834,13 +836,12 @@ def get_categories_and_banners_and_deals(customer_contact:int ,response: Respons
                 "categories": fetch_categories,
                 "popular shops": shop_details,
                 "today's deals": shop_deals,
-                "cart_item_count": len(cart_items)
-            },
+                "total_cart_count": total_count
+            }
         }
     except IntegrityError:
         response.status_code = 200
         return {"status": 204, "message": "Error", "data": {}}
-
 
 @app.get("/getProductswithCartId/{cart_id}")
 def get_cart_items_with_product_ids(response: Response, cart_id: int, customer_contact: int,
@@ -1203,18 +1204,14 @@ def add_booking(
         import time
 
         def generate_new_order_number():
-            # Generate a unique order number (e.g., using UUID)
             return str(uuid.uuid4())
 
         def generate_new_invoice_number():
-            # Generate a unique invoice number using Unix timestamp
             return str(int(time.time()))
 
-        # Generate unique order and invoice numbers
         order_number = generate_new_order_number()
         invoice_number = generate_new_invoice_number()
 
-        # Create a new booking object with generated numbers and other parameters
         new_booking = models.Bookings(
             user_name=bookOrder.user_name,
             order_date=bookOrder.order_date,
@@ -1418,14 +1415,12 @@ def remove_favorite_item(response: Response, user_id: int, product_id: int, vari
 @app.post("/favitem")
 def add_to_wishlist(fav_item: schemas.FavItem, user_id: int, response: Response, db: Session = Depends(get_db)):
     try:
-        # Check if the item is already in the user's wishlist
         existing_item = db.query(models.FavItem).filter_by(user_id=user_id, product_id=fav_item.product_id).first()
 
         if existing_item:
             response.status_code = 400
             return {"status": 400, "message": "Item already exists in wishlist", "data": {}}
 
-        # Create a new FavItem based on the input data
         new_item = models.FavItem(**fav_item.model_dump())
         db.add(new_item)
         db.commit()
@@ -1482,7 +1477,6 @@ async def get_review(product_id: int, response: Response, db: Session = Depends(
             .join(models.User, models.Review.user_id == models.User.customer_contact)
             .all()
         )
-
         review_data = []
         for review in reviews:
             customer_name = review.customer.customer_name if review.customer else None
@@ -1495,8 +1489,6 @@ async def get_review(product_id: int, response: Response, db: Session = Depends(
                 "review_text": review.review_text,
                 "customer_name": customer_name,
                 "profile_image": profile_image
-
-
             })
 
         return {"status": 200, "message": "Product review fetched!", "data": review_data}
