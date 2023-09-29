@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Dict
 from contextlib import contextmanager
 from urllib import response
 from collections import defaultdict
@@ -11,7 +11,7 @@ import logging
 from sqlalchemy import select, func
 
 from . import models, schemas
-from .models import Image, Products, ProductVariant, FavItem, CategoryProduct, Review
+from .models import Image, Products, ProductVariant, FavItem, CategoryProduct, Review, Categories
 from .database import engine, get_db, SessionLocal
 from fastapi.middleware.cors import CORSMiddleware
 import os
@@ -1519,55 +1519,71 @@ async def get_categories(response: Response, db: Session = Depends(get_db)):
         response.status_code = 500
         return {"status": "500", "message": "Internal Server Error", "data": {}}
 
-@app.get("/get_all_favItem_category")
-def get_customer_favorites(response: Response, user_id: int, category_id:int | None = None,
-                           db: Session = Depends(get_db)):
+@app.get("/getall_favitem/")
+def get_customer_favorites(
+        response: Response,
+        user_id: int,
+        db: Session = Depends(get_db)
+):
     try:
-        if category_id is not None:
-            category = db.query(models.Categories).filter_by(category_id=category_id).first()
-            if category is None:
-                raise HTTPException(status_code=404, detail="Category_id or user_id doesn't exist")
-
-        fav_items = db.query(models.FavItem).filter_by(user_id=user_id).all()
+        # Fetch all favorite items for the user
+        fav_items = db.query(FavItem).filter_by(user_id=user_id).all()
         if not fav_items:
-            raise HTTPException(status_code=404, detail="Favorite items not found")
+            return {"status": 404, "message": "Favorite items not found for the user"}
 
-        results: List[Dict] = []
+        # Create a dictionary to store favorite items grouped by category
+        fav_items_by_category = {}
 
+        # Iterate through favorite items and group them by category
         for fav_item in fav_items:
-            product = db.query(models.Products).filter_by(product_id=fav_item.product_id).first()
-            variant = db.query(models.ProductVariant).filter_by(variant_id=fav_item.variant_id).first()
-            category_product = db.query(models.CategoryProduct).filter_by(product_id=product.product_id, category_id=category_id).first()
-            category = None
+            product = db.query(Products).filter_by(product_id=fav_item.product_id).first()
+            variant = db.query(ProductVariant).filter_by(variant_id=fav_item.variant_id).first()
 
-            if category_id is None or (category_id is not None and category_product is not None):
-                if category_product:
-                    category_id = category_product.category_id
-                    category = db.query(models.Categories).filter_by(category_id=category_id).first()
+            # Fetch category information for the product
+            category_products = db.query(CategoryProduct).filter_by(product_id=product.product_id).all()
+            for category_product in category_products:
+                category = db.query(Categories).filter_by(category_id=category_product.category_id).first()
+                if category:
+                    category_id = category.category_id
+                    category_name = category.category_name
 
-                item_data = {
-                    "category_id": category.category_id if category else None,
-                    "category_name": category.category_name if category else None,
-                    "fav_items": [
-                        {
-                            "fav_item_id": fav_item.fav_item_id,
-                            "product_id": product.product_id,
-                            "product_name": product.product_name,
-                            "variant_id": variant.variant_id,
-                            "variant_cost": variant.variant_cost,
-                            "discounted_cost": variant.discounted_cost,
-                            "discount": variant.discount,
-                            "quantity": variant.quantity,
-                            "image": variant.image}
-                    ]
-                }
-                results.append(item_data)
+                    # Create a list of favorite items for the category if it doesn't exist
+                    if category_id not in fav_items_by_category:
+                        fav_items_by_category[category_id] = {
+                            "category_id": category_id,
+                            "category_name": category_name,
+                            "fav_items": []
+                        }
 
-        return {"status": 200, "message": "Customer's favorite items retrieved successfully", "data": results}
+                    # Add the favorite item to the category
+                    item_data = {
+                        "fav_item_id": fav_item.fav_item_id,
+                        "product_id": product.product_id,
+                        "product_name": product.product_name,
+                        "image": variant.image,
+                        "variant_cost": variant.variant_cost,
+                        "discounted_cost": variant.discounted_cost,
+                        "discount": variant.discount,
+                        "quantity": variant.quantity,
+                        "variant_id": variant.variant_id,
+                    }
+                    fav_items_by_category[category_id]["fav_items"].append(item_data)
 
+        # Convert the dictionary values to a list for the response
+        results = list(fav_items_by_category.values())
+
+        if not results:
+            return {"status": 404, "message": "No items found"}
+
+        return {"status": 200, "message": "Customer's favorite items retrieved successfully", "data": {"All": results}}
     except Exception as e:
         print(repr(e))
         response.status_code = 500
         return {"status": 500, "message": "Internal server error", "data": {}}
+
+
+
+
+
 
 
