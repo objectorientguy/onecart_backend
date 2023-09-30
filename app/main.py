@@ -440,7 +440,7 @@ def get_product_variants(
 
         feature = db.query(models.FreatureList).all()
         recommended_products = [
-            {"variant_id": 9, "variant_cost": 90.0, "count": 100, "brand_name": "Amul", "discounted_cost": 84.0,
+            {"variant_id": 9, "variant_cost": 90.0, "count": 100, "cart_item_quantity_count":1,"brand_name": "Amul", "discounted_cost": 84.0,
              "discount": 8, "quantity": "250 ml",
              "description": "Amul Lassi is a refreshing milk-based natural drink. It refreshes you immediately with the goodness of nature.",
              "image": [
@@ -449,7 +449,7 @@ def get_product_variants(
              "ratings": 4
              },
             {
-                "variant_id": 10, "variant_cost": 14.7, "count": 100, "brand_name": "Amul", "discounted_cost": 14.7,
+                "variant_id": 10, "variant_cost": 14.7, "count": 100, "cart_item_quantity_count":1,"brand_name": "Amul", "discounted_cost": 14.7,
                 "discount": 0, "quantity": "180 ml",
                 "description": "Amul Lassi is a refreshing milk-based natural drink. It refreshes you immediately with the goodness of nature.",
                 "image": [
@@ -474,6 +474,7 @@ def get_product_variants(
                 variant_details = {
                     "variant_id": variant.variant_id,
                     "variant_cost": variant.variant_cost,
+                    "count":variant.count,
                     "cart_item_quantity_count": variant_counts.get(variant.variant_id, 0),
                     "brand_name": variant.brand_name,
                     "discounted_cost": variant.discounted_cost,
