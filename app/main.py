@@ -1049,22 +1049,18 @@ def delete_cart_item( response: Response, user_contact: int, product_id: int, va
         cart = db.query(models.Cart).filter_by(customer_contact=user_contact).first()
 
         if cart is None:
-            raise HTTPException(status_code=404, detail="Cart not found")
+            return {"status": 404, "message": "Cart not found"}
 
         cart_item = db.query(models.CartItem).filter_by( cart_id=cart.cart_id, product_id=product_id, variant_id=variant_id).first()
 
         if cart_item is None:
-            raise HTTPException(status_code=404, detail="Cart Item not found")
-
-        if cart_item.count == 0:
+            return {"status": 404, "message": "Cart Item not found"}
             db.delete(cart_item)
             db.commit()
-            return {"status": 200, "message": "Cart Item deleted successfully"}
-        return {"status": 200, "message": "Cart Item count is not zero, cannot delete"}
+        return {"status": 200, "message": "Cart Item deleted successfully", "data":{}}
     except Exception as e:
         db.rollback()
         print(repr(e))
-        response.status_code = 500
         return {"status": 500, "message": "Internal Server Error"}
 
 
@@ -1370,7 +1366,6 @@ def get_tracking_by_booking_id(customer_contact: int, db: Session = Depends(get_
             order_list = []
 
             for order in orders:
-                # Extract order details
                 order_details = {
                     "order_id": order.order_id,
                     "order_status": order.order_status,
@@ -1625,35 +1620,28 @@ def get_customer_favorites(
         db: Session = Depends(get_db)
 ):
     try:
-        # Fetch all categories
         categories = db.query(models.Categories).all()
         if not categories:
             return {"status": 204, "message": "No categories found", "data": []}
 
-        # Fetch all favorite items for the user
         fav_items = db.query(FavItem).filter_by(user_id=user_id).all()
         if not fav_items:
             return {"status": 404, "message": "Favorite items not found for the user"}
 
-        # Create a dictionary to store favorite items grouped by category
         fav_items_by_category = {category.category_name: [] for category in categories}
 
-        # Create a list to store all favorite items
         all_fav_items = []
 
-        # Iterate through favorite items and group them by category
         for fav_item in fav_items:
             product = db.query(Products).filter_by(product_id=fav_item.product_id).first()
             variant = db.query(ProductVariant).filter_by(variant_id=fav_item.variant_id).first()
 
-            # Fetch category information for the product
             category_products = db.query(CategoryProduct).filter_by(product_id=product.product_id).all()
             for category_product in category_products:
                 category = db.query(Categories).filter_by(category_id=category_product.category_id).first()
                 if category:
                     category_name = category.category_name
 
-                    # Add the favorite item to the category
                     item_data = {
                         "fav_item_id": fav_item.fav_item_id,
                         "product_id": product.product_id,
@@ -1668,10 +1656,8 @@ def get_customer_favorites(
 
                     fav_items_by_category[category_name].append(item_data)
 
-                    # Add the item to the list of all favorite items
                     all_fav_items.append(item_data)
 
-        # Add messages for empty categories
         for category_name, items in fav_items_by_category.items():
             if not items:
                 fav_items_by_category[category_name] = "No Product in wishlist for this category"
