@@ -1555,6 +1555,69 @@ async def get_categories(response: Response, db: Session = Depends(get_db)):
         response.status_code = 500
         return {"status": "500", "message": "Internal Server Error", "data": {}}
 
+# @app.get("/getall_favitem/")
+# def get_customer_favorites(
+#         response: Response,
+#         user_id: int,
+#         db: Session = Depends(get_db)
+# ):
+#     try:
+#         # Fetch all favorite items for the user
+#         fav_items = db.query(FavItem).filter_by(user_id=user_id).all()
+#         if not fav_items:
+#             return {"status": 404, "message": "Favorite items not found for the user"}
+#
+#         # Create a dictionary to store favorite items grouped by category
+#         fav_items_by_category = {}
+#
+#         # Iterate through favorite items and group them by category
+#         for fav_item in fav_items:
+#             product = db.query(Products).filter_by(product_id=fav_item.product_id).first()
+#             variant = db.query(ProductVariant).filter_by(variant_id=fav_item.variant_id).first()
+#
+#             # Fetch category information for the product
+#             category_products = db.query(CategoryProduct).filter_by(product_id=product.product_id).all()
+#             for category_product in category_products:
+#                 category = db.query(Categories).filter_by(category_id=category_product.category_id).first()
+#                 if category:
+#                     category_id = category.category_id
+#                     category_name = category.category_name
+#
+#                     # Create a list of favorite items for the category if it doesn't exist
+#                     if category_id not in fav_items_by_category:
+#                         fav_items_by_category[category_id] = {
+#                             "category_id": category_id,
+#                             "category_name": category_name,
+#                             "fav_items": []
+#                         }
+#
+#                     # Add the favorite item to the category
+#                     item_data = {
+#                         "fav_item_id": fav_item.fav_item_id,
+#                         "product_id": product.product_id,
+#                         "product_name": product.product_name,
+#                         "image": variant.image,
+#                         "variant_cost": variant.variant_cost,
+#                         "discounted_cost": variant.discounted_cost,
+#                         "discount": variant.discount,
+#                         "quantity": variant.quantity,
+#                         "variant_id": variant.variant_id,
+#                     }
+#                     fav_items_by_category[category_id]["fav_items"].append(item_data)
+#
+#         # Convert the dictionary values to a list for the response
+#         results = list(fav_items_by_category.values())
+#
+#         if not results:
+#             return {"status": 404, "message": "No items found"}
+#
+#         return {"status": 200, "message": "Customer's favorite items retrieved successfully", "data": {"All": results}}
+#     except Exception as e:
+#         print(repr(e))
+#         response.status_code = 500
+#         return {"status": 500, "message": "Internal server error", "data": {}}
+
+
 @app.get("/getall_favitem/")
 def get_customer_favorites(
         response: Response,
@@ -1562,13 +1625,21 @@ def get_customer_favorites(
         db: Session = Depends(get_db)
 ):
     try:
+        # Fetch all categories
+        categories = db.query(models.Categories).all()
+        if not categories:
+            return {"status": 204, "message": "No categories found", "data": []}
+
         # Fetch all favorite items for the user
         fav_items = db.query(FavItem).filter_by(user_id=user_id).all()
         if not fav_items:
             return {"status": 404, "message": "Favorite items not found for the user"}
 
         # Create a dictionary to store favorite items grouped by category
-        fav_items_by_category = {}
+        fav_items_by_category = {category.category_name: [] for category in categories}
+
+        # Create a list to store all favorite items
+        all_fav_items = []
 
         # Iterate through favorite items and group them by category
         for fav_item in fav_items:
@@ -1580,16 +1651,7 @@ def get_customer_favorites(
             for category_product in category_products:
                 category = db.query(Categories).filter_by(category_id=category_product.category_id).first()
                 if category:
-                    category_id = category.category_id
                     category_name = category.category_name
-
-                    # Create a list of favorite items for the category if it doesn't exist
-                    if category_id not in fav_items_by_category:
-                        fav_items_by_category[category_id] = {
-                            "category_id": category_id,
-                            "category_name": category_name,
-                            "fav_items": []
-                        }
 
                     # Add the favorite item to the category
                     item_data = {
@@ -1603,21 +1665,31 @@ def get_customer_favorites(
                         "quantity": variant.quantity,
                         "variant_id": variant.variant_id,
                     }
-                    fav_items_by_category[category_id]["fav_items"].append(item_data)
 
-        # Convert the dictionary values to a list for the response
-        results = list(fav_items_by_category.values())
+                    fav_items_by_category[category_name].append(item_data)
 
-        if not results:
-            return {"status": 404, "message": "No items found"}
+                    # Add the item to the list of all favorite items
+                    all_fav_items.append(item_data)
 
-        return {"status": 200, "message": "Customer's favorite items retrieved successfully", "data": {"All": results}}
+        # Add messages for empty categories
+        for category_name, items in fav_items_by_category.items():
+            if not items:
+                fav_items_by_category[category_name] = "No Product in wishlist for this category"
+
+        response_data = {
+            "status": 200,
+            "message": "Customer's favorite items retrieved successfully",
+            "data": {
+                "All": all_fav_items,
+                "Categories": fav_items_by_category
+            }
+        }
+
+        return response_data
     except Exception as e:
         print(repr(e))
         response.status_code = 500
         return {"status": 500, "message": "Internal server error", "data": {}}
-
-
 
 
 
