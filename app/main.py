@@ -1044,25 +1044,30 @@ def truncate_cart_items(cart_id: int, db: Session = Depends(get_db)):
         return {"status":500, "message": "Internal server error"}
 
 @app.delete("/delete_cart_item")
-def delete_cart_item( response: Response, user_contact: int, product_id: int, variant_id: int, db: Session = Depends(get_db)):
+def delete_cart_item(response: Response, user_contact: int, product_id: int, variant_id: int, db: Session = Depends(get_db)):
     try:
         cart = db.query(models.Cart).filter_by(customer_contact=user_contact).first()
 
         if cart is None:
             return {"status": 404, "message": "Cart not found"}
 
-        cart_item = db.query(models.CartItem).filter_by( cart_id=cart.cart_id, product_id=product_id, variant_id=variant_id).first()
+        cart_item = db.query(models.CartItem).filter_by(
+            cart_id=cart.cart_id,
+            product_id=product_id,
+            variant_id=variant_id
+        ).first()
 
         if cart_item is None:
             return {"status": 404, "message": "Cart Item not found"}
-            db.delete(cart_item)
-            db.commit()
-        return {"status": 200, "message": "Cart Item deleted successfully", "data":{}}
+
+        db.delete(cart_item)
+        db.commit()
+
+        return {"status": 200, "message": "Cart Item deleted successfully", "data": {}}
     except Exception as e:
         db.rollback()
         print(repr(e))
         return {"status": 500, "message": "Internal Server Error"}
-
 
 
 # @app.post('/bookOrder')
