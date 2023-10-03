@@ -998,7 +998,7 @@ def get_cart_items_with_product_ids(response: Response, cart_id: int, customer_c
 #         return {"status": 500, "message": "Error", "data": {}}
 
 @app.post("/add_to_cart")
-def add_to_cart(response: Response, user_contact: int, cart_Item: dict = Body(...), db: Session = Depends(get_db)):
+def add_to_cart(response: Response, user_contact: int,product_id: Optional[int] = None,  variant_id: Optional[int] = None, cart_Item: dict = Body(...), db: Session = Depends(get_db)):
     try:
         product_id = cart_Item["product_id"]
 
@@ -1023,7 +1023,30 @@ def add_to_cart(response: Response, user_contact: int, cart_Item: dict = Body(..
             db.commit()
             db.refresh(cart_item)
 
-        return {"status": 200, "message": "Items Successfully Added to the Cart", "data": {"cart_data": cart_item}}
+        if cart:
+            cart_items_query = (
+                db.query(models.CartItem)
+                .filter_by(cart_id=cart.cart_id)
+                .options(joinedload(models.CartItem.variant)))
+
+            if product_id:
+                cart_items_query = cart_items_query.filter_by(product_id=product_id)
+            if variant_id:
+                cart_items_query = cart_items_query.filter_by(variant_id=variant_id)
+
+            cart_items = cart_items_query.all()
+
+        variant_counts = defaultdict(int)
+
+        for cart_item in cart_items:
+            variant_id = cart_item.variant_id
+            count = cart_item.count
+            variant_counts[variant_id] += count
+
+        count_query = db.query(func.count('*')).select_from(models.CartItem)
+        total_count = count_query.scalar()
+
+        return {"status": 200, "message": "Items Successfully Added to the Cart", "data": {"cart_data": cart_item, "cart_item_quantity_count": variant_counts.get(variant_id, 0) ,"cart_item_count": total_count}}
     except IntegrityError as e:
         print(repr(e))
         response.status_code = 500
