@@ -523,9 +523,35 @@ def edit_product(editProduct: schemas.EditProduct, response: Response, product_i
         return {"status": 400, "message": "Error", "data": {}}
 
 
-@app.get("/products/categories/{category_id}")
-def get_products_by_category_id(response: Response, category_id: int, db: Session = Depends(get_db)):
+@app.get("/products/categories/{customer_contact}/{category_id}")
+def get_products_by_category_id(response: Response, category_id: int, customer_contact: int, product_id: Optional[int] = None,  variant_id: Optional[int] = None, db: Session = Depends(get_db)):
     try:
+
+        cart = db.query(models.Cart).filter_by(customer_contact=customer_contact).first()
+
+        if cart:
+            cart_items_query = (
+                db.query(models.CartItem)
+                .filter_by(cart_id=cart.cart_id)
+                .options(joinedload(models.CartItem.variant))
+            )
+
+            if product_id:
+                cart_items_query = cart_items_query.filter_by(product_id=product_id)
+            if variant_id:
+                cart_items_query = cart_items_query.filter_by(variant_id=variant_id)
+
+            cart_items = cart_items_query.all()
+
+        variant_counts = defaultdict(int)
+
+        for cart_item in cart_items:
+            variant_id = cart_item.variant_id
+            count = cart_item.count
+            variant_counts[variant_id] += count
+
+        count_query = db.query(func.count('*')).select_from(models.CartItem)
+        total_count = count_query.scalar()
 
         product_details = []
         products_in_category = (
@@ -543,7 +569,6 @@ def get_products_by_category_id(response: Response, category_id: int, db: Sessio
                 "variants": [],
             }
 
-            # Fetch variants for each product
             variants = (
                 db.query(models.ProductVariant)
                 .filter(models.ProductVariant.product_id == product.product_id)
@@ -556,6 +581,7 @@ def get_products_by_category_id(response: Response, category_id: int, db: Sessio
                     "variant_cost": variant.variant_cost,
                     "count": variant.count,
                     "brand_name": variant.brand_name,
+                    "cart_item_quantity_count": variant_counts.get(variant_id, 0),
                     "discounted_cost": variant.discounted_cost,
                     "discount": variant.discount,
                     "quantity": variant.quantity,
@@ -568,7 +594,7 @@ def get_products_by_category_id(response: Response, category_id: int, db: Sessio
 
             product_details.append(product_details_dict)
 
-        return {"status": 200, "message": "Products by category fetched", "products": product_details}
+        return {"status": 200, "message": "Products by category fetched", "products": product_details, "cart_item_count": total_count}
     except IntegrityError as e:
         print(repr(e))
         response.status_code = 200
@@ -629,9 +655,35 @@ def delete_multiple_products(product_ids: List[int], response: Response, db: Ses
         return {"status": "500", "message": "Internal server error"}
 
 
-@app.get("/productsSearch/")
-def search_products(response: Response, search_term: str, db: Session = Depends(get_db)):
+@app.get("/productsSearch/{customer_contact}")
+def search_products(response: Response, search_term: str, customer_contact: int,product_id: Optional[int] = None,  variant_id: Optional[int] = None, db: Session = Depends(get_db)):
     try:
+
+        cart = db.query(models.Cart).filter_by(customer_contact=customer_contact).first()
+
+        if cart:
+            cart_items_query = (
+                db.query(models.CartItem)
+                .filter_by(cart_id=cart.cart_id)
+                .options(joinedload(models.CartItem.variant))
+            )
+
+            if product_id:
+                cart_items_query = cart_items_query.filter_by(product_id=product_id)
+            if variant_id:
+                cart_items_query = cart_items_query.filter_by(variant_id=variant_id)
+
+            cart_items = cart_items_query.all()
+
+        variant_counts = defaultdict(int)
+
+        for cart_item in cart_items:
+            variant_id = cart_item.variant_id
+            count = cart_item.count
+            variant_counts[variant_id] += count
+
+        count_query = db.query(func.count('*')).select_from(models.CartItem)
+        total_count = count_query.scalar()
 
         for char in search_term:
             if not char.isalnum():
@@ -648,7 +700,7 @@ def search_products(response: Response, search_term: str, db: Session = Depends(
             return {"status": 204, "message": "No product or brand found", "data": {}}
 
         return {"status": 200, "message": "Products and Brand names fetched",
-                "data": {"Categories": search_categories, "Brands": search_brand, "search_results": search_results}}
+                "data": {"Categories": search_categories, "Brands": search_brand, "search_results": search_results, "cart_item_count": total_count}}
 
 
     except ValueError as e:
@@ -1185,7 +1237,6 @@ def delete_cart_item(response: Response, user_contact: int, product_id: int, var
 def get_your_cart(response: Response, customer_contact: int, db: Session = Depends(get_db)):
     try:
         cart = db.query(models.Cart).filter_by(customer_contact=customer_contact).first()
-
         if cart:
             cart_items = (
                 db.query(models.CartItem)
@@ -1213,13 +1264,18 @@ def get_your_cart(response: Response, customer_contact: int, db: Session = Depen
             })
 
             variant_cost = cart_item.variant.variant_cost
+
+            variant_cost_total = variant_cost * cart_item.count
+
             if variant_id in variant_costs:
                 variant_costs[variant_id] += variant_cost
             else:
                 variant_costs[variant_id] = variant_cost
             # for variant_id, total_cost in variant_costs.items():
             #     print(f"Variant ID: {variant_id}, Total Cost: {total_cost}")
-            total_cost = sum(variant_costs.values())
+            # total_cost = sum(variant_cost_total.values())
+            total_cost += variant_cost_total
+
 
         return {"status": 200, "message": "Cart items fetched",
                 "data": {"cart_items": cart_items_with_customer_contact, "cart_item_count": len(cart_items),
