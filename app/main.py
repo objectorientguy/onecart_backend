@@ -1510,20 +1510,24 @@ def get_tracking_by_booking_id(customer_contact: int, db: Session = Depends(get_
 #         return {"status": 500, "message": "Internal server error", "data": {}}
 
 
-@app.delete("/favitem")
-def remove_favorite_item(response: Response, user_id: int, product_id: int, variant_id:int, db: Session = Depends(get_db)):
-    try:
-        item = db.query(models.FavItem).filter_by(user_id=user_id,product_id=product_id,variant_id=variant_id).first()
-        if item is None:
-            response.status_code = 404
-            return {"status": 404, "message": "Favourite Item not found"}
 
+@app.delete("/favitem/{fav_item_id}")
+def remove_favorite_item(fav_item_id: int, db: Session = Depends(get_db)):
+    try:
+        # Query the database to retrieve the favorite item by its ID
+        item = db.query(models.FavItem).filter_by(fav_item_id=fav_item_id).first()
+
+        if item is None:
+            return {"status": 400, "message": "item doesn't exixt", "data": {}}
+
+        # Delete the item from the wishlist
         db.delete(item)
         db.commit()
-        return {"status": 200, "message": "Favorite item removed successfully!", "data": {}}
+
+        return {"status": "200", "message": "Favorite item removed successfully!", "data": {}}
+
     except Exception as e:
         print(repr(e))
-        response.status_code = 500
         return {"status": 500, "message": "Internal server error", "data": {}}
 
 
@@ -1547,6 +1551,9 @@ def add_to_wishlist(fav_item: schemas.FavItem, user_id: int, response: Response,
         print(repr(e))
         response.status_code = 500
         return {"status": 500, "message": "Internal server error", "data": {}}
+
+
+
 
 
 @app.post("/addReview")
@@ -1698,3 +1705,5 @@ def get_customer_favorites(
         print(repr(e))
         response.status_code = 500
         return {"status": 500, "message": "Internal server error", "data": []}
+
+
