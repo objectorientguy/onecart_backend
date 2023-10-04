@@ -1621,7 +1621,6 @@ def remove_favorite_item(user_id: int, product_id: int, variant_id: int, db: Ses
         return {"status": 500, "message": "Internal server error", "data": {}}
 
 
-
 @app.post("/favitem")
 def add_to_wishlist(fav_item: schemas.FavItem, user_id: int, response: Response, db: Session = Depends(get_db)):
     try:
@@ -1642,10 +1641,6 @@ def add_to_wishlist(fav_item: schemas.FavItem, user_id: int, response: Response,
         print(repr(e))
         response.status_code = 500
         return {"status": 500, "message": "Internal server error", "data": {}}
-
-
-
-
 
 @app.post("/addReview")
 async def new_review(product_id: int, user_id: int, response: Response, review: schemas.Review,
@@ -1732,75 +1727,79 @@ async def get_categories(response: Response, db: Session = Depends(get_db)):
         response.status_code = 500
         return {"status": "500", "message": "Internal Server Error", "data": {}}
 
+@app.get("/getall_favitem/")
+def get_customer_favorites(
+        response: Response,
+        user_id: int,
+        db: Session = Depends(get_db)
+):
+    try:
+        cart = db.query(models.Cart).filter_by(customer_contact=user_id).first()
+        fav_items = db.query(FavItem).filter_by(user_id=user_id).all()
 
-# @app.get("/getall_favitem/")
-# def get_customer_favorites(
-#         response: Response,
-#         user_id: int,
-#         db: Session = Depends(get_db)
-# ):
-#     try:
-#         # Fetch all favorite items for the user
-#         fav_items = db.query(FavItem).filter_by(user_id=user_id).all()
-#         if not fav_items:
-#             return {
-#                 "status": 404,
-#                 "message": "Favorite items not found for the user",
-#                 "data": []
-#             }
-#
-#         # Create a list to store all favorite items
-#         all_fav_items = []
-#
-#         # Iterate through favorite items and gather them
-#         for fav_item in fav_items:
-#             product = db.query(Products).filter_by(product_id=fav_item.product_id).first()
-#             variant = db.query(ProductVariant).filter_by(variant_id=fav_item.variant_id).first()
-#
-#             # Fetch category information for the product
-#             category_products = db.query(CategoryProduct).filter_by(product_id=product.product_id).all()
-#
-#             # Initialize a variable to store category_id
-#             category_id = None
-#
-#             for category_product in category_products:
-#                 category = db.query(Categories).filter_by(category_id=category_product.category_id).first()
-#                 if category:
-#                     category_id = category.category_id
-#                     break
-#
-#             # Add the favorite item to the list with category_id
-#             item_data = {
-#                 "fav_item_id": fav_item.fav_item_id,
-#                 "product_id": product.product_id,
-#                 "product_name": product.product_name,
-#                 "image": variant.image,
-#                 "variant_cost": variant.variant_cost,
-#                 "discounted_cost": variant.discounted_cost,
-#                 "discount": variant.discount,
-#                 "quantity": variant.quantity,
-#                 "variant_id": variant.variant_id,
-#                 "category_id": category_id
-#             }
-#
-#             all_fav_items.append(item_data)
-#
-#         response_data = {
-#             "status": 200,
-#             "message": "Customer's favorite items retrieved successfully",
-#             "data": all_fav_items
-#         }
-#
-#         return response_data
-#     except Exception as e:
-#         print(repr(e))
-#         response.status_code = 500
-#         return {"status": 500, "message": "Internal server error", "data": []}
-#
-#
+        if not fav_items:
+            return {
+                "status": 404,
+                "message": "Favorite items not found for the user",
+                "data": []
+            }
 
+        # Create a list to store all favorite items
+        all_fav_items = []
+        variant_counts = defaultdict(int)  # Move this outside the loop
 
+        for fav_item in fav_items:
+            product = db.query(Products).filter_by(product_id=fav_item.product_id).first()
+            variant = db.query(ProductVariant).filter_by(variant_id=fav_item.variant_id).first()
 
+            # Fetch category information for the product
+            category_products = db.query(CategoryProduct).filter_by(product_id=product.product_id).all()
 
+            # Initialize a variable to store category_id
+            category_id = None
 
+            for category_product in category_products:
+                category = db.query(Categories).filter_by(category_id=category_product.category_id).first()
+                if category:
+                    category_id = category.category_id
+                    break  # Stop after finding the first category
 
+            # Fetch the count from CartItem for the current item
+            cart_item = db.query(models.CartItem).filter_by(cart_id=cart.cart_id, product_id=fav_item.product_id,
+                                                            variant_id=fav_item.variant_id).first()
+            count = cart_item.count if cart_item else 0
+
+            # Add the favorite item to the list with category_id
+            item_data = {
+                "fav_item_id": fav_item.fav_item_id,
+                "product_id": product.product_id,
+                "product_name": product.product_name,
+                "image": variant.image,
+                "brand": variant.brand_name,
+                "variant_cost": variant.variant_cost,
+                "discounted_cost": variant.discounted_cost,
+                "discount": variant.discount,
+                "quantity": variant.quantity,
+                "variant_id": variant.variant_id,
+                "category_id": category_id,
+                "count": count,
+                "cart_item_quantity_count": variant_counts.get(variant.variant_id, 0)
+            }
+
+            all_fav_items.append(item_data)
+
+        count_query = db.query(func.count('*')).select_from(models.CartItem)
+        total_count = count_query.scalar()
+
+        response_data = {
+            "status": 200,
+            "message": "Customer's favorite items retrieved successfully",
+            "data": all_fav_items,
+            "cart_item_count": total_count
+        }
+
+        return response_data
+    except Exception as e:
+        print(repr(e))
+        response.status_code = 500
+        return {"status": 500, "message": "Internal server error", "data": []}

@@ -359,8 +359,7 @@ class FreatureList(Base):
     __tablename__ = "feature"
 
     feature_id = Column(Integer, primary_key=True, autoincrement=True)
-    shop_id = Column(Integer, ForeignKey(
-        "shops.shop_id", ondelete="CASCADE"), nullable=False)
+    shop_id = Column(Integer, ForeignKey("shops.shop_id", ondelete="CASCADE"), nullable=False)
     feature_image = Column(JSON, nullable=False)
 
     shop = relationship("Shops")
@@ -374,8 +373,6 @@ class FavItem(Base):
     product_id = Column(Integer, ForeignKey("products.product_id", ondelete="CASCADE"), nullable=True)
     shop_id = Column(Integer, ForeignKey("shops.shop_id", ondelete="CASCADE"), nullable=True)
 
-
-    # Establish a relationship with the ProductVariant table
     variant = relationship("ProductVariant")
     product = relationship("Products")
     shop = relationship("Shops")
@@ -390,6 +387,7 @@ class FavItem(Base):
 
 class Review(Base):
     __tablename__ = "reviews"
+
     review_id = Column(BIGINT, primary_key=True, autoincrement=True)
     product_id = Column(BIGINT, ForeignKey("products.product_id", ondelete="CASCADE"), nullable=True)
     user_id = Column(BIGINT, ForeignKey("customers.customer_contact", ondelete="CASCADE"), nullable=True)
@@ -400,4 +398,36 @@ class Review(Base):
     product = relationship("Products")
     customer = relationship("User")
 
+class Owner(Base):
+    __tablename__ = "owner"
 
+    owner_id = Column(BIGINT, primary_key=True, autoincrement=True)
+    owner_name = Column(String, nullable=False)
+    contact_number = Column(BIGINT, nullable=False)
+    owner_email = Column(String, nullable=True)
+    owner_password = Column(String, nullable=False)
+    company_name = Column(String, ForeignKey("companies.company_name", ondelete="CASCADE"))
+
+    company = relationship("Companies")
+
+class Employee(Base):
+    __tablename__ = "employee"
+
+    employee_id = Column(BIGINT, primary_key=True, autoincrement=True)
+    owner_id = Column(BIGINT, ForeignKey("owner.owner_id", ondelete="CASCADE"))
+    employee_name = Column(String, nullable=False)
+    employee_email = Column(String, nullable=False)
+    employee_password = Column(String, nullable=False)
+
+    owner = relationship("Owner")
+
+class Role(Base):
+    __tablename__ = "role"
+
+    role_id = Column(Integer, primary_key=True, autoincrement=True)
+    manager = Column(Boolean, nullable=False)
+    cashier = Column(Boolean, nullable=False)
+    clerk = Column(Boolean, nullable=False)
+    employee_id = Column(Integer, ForeignKey("employee.employee_id", ondelete="CASCADE"))
+
+    employee = relationship("Employee")

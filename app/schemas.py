@@ -278,3 +278,22 @@ class Review(BaseModel):
 
     class Config:
         from_attributes = True
+
+class Owner(BaseModel):
+    owner_id: int
+    owner_name: str
+    contact_number: int
+    owner_email: str
+    owner_password: str
+class Employee(BaseModel):
+    employee_id: int
+    employee_name: str
+    employee_email: str
+    employee_password: str
+
+class Role(BaseModel):
+    role_id: int
+    manager: bool
+    cashier: bool
+    clerk: bool
+    employee_id: int
