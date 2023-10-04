@@ -1054,22 +1054,58 @@ def add_to_cart(response: Response, user_contact: int,product_id: Optional[int] 
 
 
 @app.put("/increment_cart_item_count")
-def increment_cart_item_count(response: Response, user_contact: int, product_id: int, variant_id: int,
+def increment_cart_item_count( response: Response, user_contact: int, product_id: int, variant_id: int,
                               db: Session = Depends(get_db)):
     try:
         cart = db.query(models.Cart).filter_by(customer_contact=user_contact).first()
         if cart is None:
             raise HTTPException(status_code=404, detail="Cart not found for the given customer contact")
 
-        cart_item = db.query(models.CartItem).filter_by(cart_id=cart.cart_id ,product_id=product_id, variant_id=variant_id).first()
+        cart_item = db.query(models.CartItem).filter_by(cart_id=cart.cart_id, product_id=product_id, variant_id=variant_id).first()
         if cart_item is None:
             raise HTTPException(status_code=404, detail="Cart Item not found")
 
         cart_item.count += 1
         db.commit()
 
-        return {"status": 200, "message": "Cart Item count incremented successfully", "data": {}}
+        if cart:
+            cart_items_query = (
+                db.query(models.CartItem)
+                .filter_by(cart_id=cart.cart_id)
+                .options(joinedload(models.CartItem.variant)))
+
+            if product_id:
+                cart_items_query = cart_items_query.filter_by(product_id=product_id)
+            if variant_id:
+                cart_items_query = cart_items_query.filter_by(variant_id=variant_id)
+
+            cart_items = cart_items_query.all()
+
+        variant_counts = defaultdict(int)
+
+        for cart_item in cart_items:
+            variant_id = cart_item.variant_id
+            count = cart_item.count
+            variant_counts[variant_id] += count
+
+        count_query = db.query(func.count('*')).select_from(models.CartItem)
+        total_count = count_query.scalar()
+
+
+        return {
+            "status": 200,
+            "message": "Cart Item count incremented successfully",
+            "data": {
+                "cart_data": cart_item,
+                "cart_item_quantity_count": variant_counts.get(variant_id, 0),
+                "cart_item_count": total_count
+            }
+
+
+        }
+
     except IntegrityError as e:
+        print(repr(e))
         db.rollback()
         response.status_code = 500
         return {"status": 500, "message": "Error", "data": {}}
@@ -1083,11 +1119,7 @@ def decrement_cart_item_count(response: Response, user_contact: int, product_id:
         if cart is None:
             raise HTTPException(status_code=404, detail="Cart not found for the given customer contact")
 
-        cart_item = db.query(models.CartItem).filter_by(cart_id=cart.cart_id,
-            product_id=product_id,
-            variant_id=variant_id
-        ).first()
-
+        cart_item = db.query(models.CartItem).filter_by(cart_id=cart.cart_id, product_id=product_id, variant_id=variant_id).first()
         if cart_item is None:
             raise HTTPException(status_code=404, detail="Cart Item not found")
 
@@ -1096,7 +1128,36 @@ def decrement_cart_item_count(response: Response, user_contact: int, product_id:
             db.commit()
         else:
             raise HTTPException(status_code=400, detail="Count cannot be less than zero")
-        return {"status": 200, "message": "Cart Item count decremented successfully", "data": {}}
+
+        if cart:
+            cart_items_query = (
+                db.query(models.CartItem)
+                .filter_by(cart_id=cart.cart_id)
+                .options(joinedload(models.CartItem.variant)))
+
+            if product_id:
+                cart_items_query = cart_items_query.filter_by(product_id=product_id)
+            if variant_id:
+                cart_items_query = cart_items_query.filter_by(variant_id=variant_id)
+
+            cart_items = cart_items_query.all()
+
+        variant_counts = defaultdict(int)
+
+        for cart_item in cart_items:
+            variant_id = cart_item.variant_id
+            count = cart_item.count
+            variant_counts[variant_id] += count
+
+        count_query = db.query(func.count('*')).select_from(models.CartItem)
+        total_count = count_query.scalar()
+        return {
+                "status": 200, "message": "Cart Item count decremented successfully",
+                "data": {
+                "cart_data": cart_item,
+                "cart_item_quantity_count": variant_counts.get(variant_id, 0),
+                "cart_item_count": total_count
+                }}
     except IntegrityError as e:
         db.rollback()
         response.status_code = 500
@@ -1122,23 +1183,46 @@ def truncate_cart_items(cart_id: int, db: Session = Depends(get_db)):
 def delete_cart_item(response: Response, user_contact: int, product_id: int, variant_id: int, db: Session = Depends(get_db)):
     try:
         cart = db.query(models.Cart).filter_by(customer_contact=user_contact).first()
-
         if cart is None:
             return {"status": 404, "message": "Cart not found"}
 
-        cart_item = db.query(models.CartItem).filter_by(
-            cart_id=cart.cart_id,
-            product_id=product_id,
-            variant_id=variant_id
-        ).first()
-
+        cart_item = db.query(models.CartItem).filter_by(cart_id=cart.cart_id, product_id=product_id, variant_id=variant_id).first()
         if cart_item is None:
             return {"status": 404, "message": "Cart Item not found"}
 
         db.delete(cart_item)
         db.commit()
 
-        return {"status": 200, "message": "Cart Item deleted successfully", "data": {}}
+        if cart:
+            cart_items_query = (
+                db.query(models.CartItem)
+                .filter_by(cart_id=cart.cart_id)
+                .options(joinedload(models.CartItem.variant)))
+
+            if product_id:
+                cart_items_query = cart_items_query.filter_by(product_id=product_id)
+            if variant_id:
+                cart_items_query = cart_items_query.filter_by(variant_id=variant_id)
+
+            cart_items = cart_items_query.all()
+
+        variant_counts = defaultdict(int)
+
+        for cart_item in cart_items:
+            variant_id = cart_item.variant_id
+            count = cart_item.count
+            variant_counts[variant_id] += count
+
+        count_query = db.query(func.count('*')).select_from(models.CartItem)
+        total_count = count_query.scalar()
+        return {
+                "status": 200, "message": "Cart Item deleted successfully",
+                "data": {
+                "cart_data": cart_item,
+                "cart_item_quantity_count": variant_counts.get(variant_id, 0),
+                "cart_item_count": total_count
+                }}
+
     except Exception as e:
         db.rollback()
         print(repr(e))
