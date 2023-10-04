@@ -175,7 +175,7 @@ class Addresses(Base):
 
 class CartItem(Base):
     __tablename__ = "cart_items"
-    cartItem_id = Column(Integer, primary_key=True, autoincrement=True)
+    cartItemId = Column(Integer, primary_key=True, autoincrement=True)
     cart_id = Column(Integer, ForeignKey(
         "carts.cart_id", ondelete="CASCADE"), nullable=False)
     product_id = Column(BIGINT, ForeignKey(
