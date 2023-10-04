@@ -782,7 +782,7 @@ async def get_all_products_in_categories(response: Response, db: Session = Depen
                 category_details["products"].append(product_details)
             category_details_with_products.append(category_details)
 
-        return category_details_with_products
+        return {"status": 200 , "message": "response fetched successfully","data": category_details_with_products}
     except Exception as e:
         print(repr(e))
         response.status_code = 500

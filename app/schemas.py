@@ -5,10 +5,13 @@ from datetime import date, time, datetime
 
 class Companies(BaseModel):
     company_id: int | None = None
-    user_contact: int
     company_name: str
+    company_domain: str
+    company_logo: str
     password: str
     email: str
+    services: str
+    contact_number: int
     company_contact: int
     company_address: str
 
