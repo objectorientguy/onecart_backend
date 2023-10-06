@@ -6,25 +6,6 @@ from .database import Base
 from sqlalchemy.orm import composite
 
 
-class Companies(Base):
-    __tablename__ = "companies"
-
-    company_id = Column(BIGINT, nullable=False, autoincrement=True, unique=True)
-    company_name = Column(String, nullable=False, primary_key=True, unique=True)
-    password = Column(String, primary_key=True, nullable=False)
-    email = Column(String, nullable=False)
-    company_contact = Column(BIGINT, nullable=True)
-    company_address = Column(String, nullable=False)
-    white_labelled = Column(Boolean, nullable=False)
-
-    @validates('company_name', 'password', 'email', 'company_contact', 'company_address')
-    def empty_string_to_null(self, key, value):
-        if isinstance(value, str) and value == '':
-            return None
-        else:
-            return value
-
-
 class Categories(Base):
     __tablename__ = "categories"
 
@@ -372,9 +353,9 @@ class FavItem(Base):
     variant_id = Column(Integer, ForeignKey("product_variants.variant_id", ondelete="CASCADE"), nullable=True)
     product_id = Column(Integer, ForeignKey("products.product_id", ondelete="CASCADE"), nullable=True)
     shop_id = Column(Integer, ForeignKey("shops.shop_id", ondelete="CASCADE"), nullable=True)
-
     variant = relationship("ProductVariant")
     product = relationship("Products")
+
     shop = relationship("Shops")
     customer = relationship("User")
 
@@ -398,14 +379,37 @@ class Review(Base):
     product = relationship("Products")
     customer = relationship("User")
 
-class Owner(Base):
-    __tablename__ = "owner"
+class Companies(Base):
+    __tablename__ = "companies"
 
-    owner_id = Column(BIGINT, primary_key=True, autoincrement=True)
-    owner_name = Column(String, nullable=False)
-    contact_number = Column(BIGINT, nullable=False)
-    owner_email = Column(String, nullable=True)
-    owner_password = Column(String, nullable=False)
+    company_id = Column(String, nullable=True, autoincrement=True, unique=True)
+    # company_name = Column(String, nullable=False, primary_key=True, unique=True)
+    company_name = Column(String, nullable=True, unique=True)
+    company_password = Column(String,  nullable=False)
+    company_domain = Column(String, nullable=True)
+    company_logo = Column(JSON, nullable=True)
+    company_email = Column(String,  primary_key=True, nullable=False)
+    services = Column(String, nullable=True)
+    company_contact = Column(BIGINT, nullable=True)
+    company_address = Column(String, nullable=True)
+    white_labelled = Column(Boolean, nullable=True)
+    onboarding_date = Column(TIMESTAMP(timezone=True), nullable=True, server_default=text('now()'))
+
+    @validates('company_name', 'company_password', 'company_email', 'company_contact', 'company_address')
+    def empty_string_to_null(self, key, value):
+        if isinstance(value, str) and value == '':
+            return None
+        else:
+            return value
+
+class Branch(Base):
+    __tablename__ = "branch"
+
+    branch_id = Column(Integer, primary_key=True, autoincrement=True)
+    branch_name = Column(String, nullable=True)
+    branch_address = Column(String, nullable=True)
+    branch_email = Column(String, nullable=True)
+    branch_identifier = Column(String, nullable=True)
     company_name = Column(String, ForeignKey("companies.company_name", ondelete="CASCADE"))
 
     company = relationship("Companies")
@@ -414,12 +418,14 @@ class Employee(Base):
     __tablename__ = "employee"
 
     employee_id = Column(BIGINT, primary_key=True, autoincrement=True)
-    owner_id = Column(BIGINT, ForeignKey("owner.owner_id", ondelete="CASCADE"))
     employee_name = Column(String, nullable=False)
     employee_email = Column(String, nullable=False)
     employee_password = Column(String, nullable=False)
+    employee_gender = Column(String, nullable=True)
+    branch_id = Column(Integer, ForeignKey("branch.branch_id", ondelete="CASCADE"))
 
-    owner = relationship("Owner")
+    branch = relationship("Branch")
+
 
 class Role(Base):
     __tablename__ = "role"

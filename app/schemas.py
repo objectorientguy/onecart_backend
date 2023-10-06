@@ -3,22 +3,6 @@ from pydantic import BaseModel, EmailStr
 from datetime import date, time, datetime
 
 
-class Companies(BaseModel):
-    company_id: int | None = None
-    company_name: str
-    company_domain: str
-    company_logo: str
-    password: str
-    email: str
-    services: str
-    contact_number: int
-    company_contact: int
-    company_address: str
-
-    class Config:
-        from_attributes = True
-
-
 class UserCompany(BaseModel):
     company_name: str
     user_contact: int
@@ -282,17 +266,62 @@ class Review(BaseModel):
     class Config:
         from_attributes = True
 
-class Owner(BaseModel):
-    owner_id: int
-    owner_name: str
-    contact_number: int
-    owner_email: str
-    owner_password: str
+class Companies(BaseModel):
+    company_id: Optional[int] | None = None
+    company_name: str
+    company_password: str
+    company_domain: str
+    company_logo: str
+    company_email: EmailStr | None = None
+    services: str
+    company_contact: int
+    company_address: str
+    white_labelled: bool = True
+
+    class Config:
+        from_attributes = True
+
+class CompanyUpdateDetails(BaseModel):
+    company_name: str
+    company_domain: str
+    company_logo: str
+    services: str
+    company_contact: int
+    company_address: str
+    white_labelled: bool = True
+
+    class Config:
+        from_attributes = True
+
+
+class CompanySignUp(BaseModel):
+    company_id: Optional[str] | None = None
+    company_email: EmailStr
+    company_password: str
+
+    class Config:
+        from_attributes = True
+
+class CompanyLogin(BaseModel):
+    company_email: EmailStr
+    company_password: str
+
+    class Config:
+        from_attributes = True
+
+class Branch(BaseModel):
+    branch_id: int
+    branch_name: str
+    branch_address: str
+    branch_email: str
+    branch_identifier: str
+
 class Employee(BaseModel):
     employee_id: int
     employee_name: str
     employee_email: str
     employee_password: str
+    employee_gender: str
 
 class Role(BaseModel):
     role_id: int
@@ -300,3 +329,4 @@ class Role(BaseModel):
     cashier: bool
     clerk: bool
     employee_id: int
+

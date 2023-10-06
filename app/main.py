@@ -1,14 +1,16 @@
 from typing import List, Optional, Dict
 from contextlib import contextmanager
+from uuid import uuid4
 from urllib import response
 from collections import defaultdict
 import bcrypt
+from passlib.context import CryptContext
 from fastapi import FastAPI, Response, Depends, UploadFile, File, Request, HTTPException, Body, Path
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import IntegrityError
 from starlette.responses import FileResponse
 import logging
-from sqlalchemy import select, func
+from sqlalchemy import select, func, update
 
 from . import models, schemas
 from .models import Image, Products, ProductVariant, FavItem, CategoryProduct, Review, Categories
@@ -16,6 +18,7 @@ from .database import engine, get_db, SessionLocal
 from fastapi.middleware.cors import CORSMiddleware
 import os
 
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
@@ -241,36 +244,203 @@ def delete_user_address(response: Response, db: Session = Depends(get_db), addre
         return {"status": "404", "message": "Error", "data": {}}
 
 
-@app.post('/signupCompany')
-def add_companies(addCompany: schemas.Companies, response: Response, db: Session = Depends(get_db)):
+# @app.post('/signupCompany')
+# def add_companies(addCompany: schemas.CompanySignUp, response: Response, db: Session = Depends(get_db)):
+#     try:
+#         existing_company = db.query(models.Companies).filter(
+#             models.Companies.company_email == addCompany.company_email).first()
+#         if existing_company:
+#             return {"status": 200, "message": "Company Signup Completed. Please fill in company details.",
+#                     "data": existing_company}
+#
+#         salt = bcrypt.gensalt()
+#         password = bcrypt.hashpw(addCompany.company_password.encode('utf-8'), salt)
+#         new_company = models.Companies(**addCompany.model_dump())
+#         new_company.password = password.decode('utf-8')
+#         db.add(new_company)
+#         db.commit()
+#         db.refresh(new_company)
+#
+#         return {"status": 200, "message": "Company Signed Up!", "data": new_company}
+#     except Exception as e:
+#         print(repr(e))
+#         response.status_code = 500
+#         return {"status": 500, "message": "Internal Server Error", "data": {}}
+
+# @app.post('/signupCompany')
+# def add_companies(addCompany: schemas.CompanySignUp, response: Response, db: Session = Depends(get_db)):
+#     try:
+#         existing_company = db.query(models.Companies).filter(
+#             models.Companies.company_email == addCompany.company_email).first()
+#         if existing_company:
+#             return {"status": 200, "message": "Company Signup Completed. Please fill in company details.",
+#                     "data": existing_company}
+#
+#         hashed_password = pwd_context.hash(addCompany.company_password)
+#         user.password = hashed_password
+#         salt = bcrypt.gensalt()
+#         password = bcrypt.hashpw(addCompany.company_password.encode('utf-8'), salt)  # Removed .encode('utf-8')
+#         new_company = models.Companies(**addCompany.model_dump())
+#         new_company.password = password.decode('utf-8')
+#         db.add(new_company)
+#         db.commit()
+#         db.refresh(new_company)
+#
+#         return {"status": 200, "message": "Company Signed Up!", "data": new_company}
+#     except Exception as e:
+#         print(repr(e))
+#         response.status_code = 500
+#         return {"status": 500, "message": "Internal Server Error", "data": {}}
+
+@app.post('/signupcompany')
+async def add_companies(addCompany: schemas.CompanySignUp, response: Response, db: Session = Depends(get_db)):
     try:
-        salt = bcrypt.gensalt()
-        password = bcrypt.hashpw(addCompany.password.encode('utf-8'), salt)
-        new_company = models.Companies(**addCompany.model_dump())
-        new_company.password = password.decode('utf-8')
+        existing_company = db.query(models.Companies).filter(
+            models.Companies.company_email == addCompany.company_email).first()
+        if existing_company:
+            return {"status": 400, "message":"Company already exists"}
+
+        hashed_password = pwd_context.hash(addCompany.company_password)
+
+        company_id = uuid4().hex
+
+        new_company = models.Companies(
+            company_id=company_id,
+            company_email=addCompany.company_email,
+            company_password=hashed_password
+        )
+
         db.add(new_company)
         db.commit()
         db.refresh(new_company)
 
-        return {"status": "200", "message": "New company added successfully!", "data": new_company}
-    except IntegrityError:
-        response.status_code = 200
-        return {"status": "404", "message": "Error", "data": {}}
+        return {"status": 200, "message": "Company Signed Up!", "data": {
+            "company_id": new_company.company_id,
+            "company_email": new_company.company_email,
+        }}
+    except Exception as e:
+        print(repr(e))
+        response.status_code = 500
+        return {"status": 500, "message": "Internal Server Error", "data": {}}
+
+# def create_company_from_signup(signup_data: schemas.CompanySignUp):
+#     salt = bcrypt.gensalt()
+#     hashed_password = bcrypt.hashpw(signup_data.company_password.encode(), salt)
+#
+#     return Companies(
+#         company_name=signup_data.company_name,
+#         company_password=hashed_password.decode(),
+#         company_email=signup_data.company_email,
+#     )
+
+# @app.post('/signupCompany')
+# def add_companies(addCompany: schemas.CompanySignUp, response: Response, db: Session = Depends(get_db)):
+#     try:
+#         existing_company = db.query(models.Companies).filter(models.Companies.company_email == addCompany.company_email).first()
+#         if existing_company:
+#             return {"status": 200, "message": "Company Signup Completed. Please fill in company details.",
+#                     "data": existing_company}
+#
+#         new_company = create_company_from_signup(addCompany)
+#         db.add(new_company)
+#         db.commit()
+#         db.refresh(new_company)
+#
+#         return {"status": 200, "message": "Company Signed Up!", "data": new_company}
+#     except Exception as e:
+#         print(repr(e))
+#         response.status_code = 500
+#         return {"status": 500, "message": "Internal Server Error", "data": {}}
+@app.post('/logincompany')
+def login_company(login_data: schemas.CompanyLogin, response: Response, db: Session = Depends(get_db)):
+    try:
+        company = db.query(models.Companies).filter(models.Companies.company_email == login_data.company_email).first()
+
+        if company:
+            if pwd_context.verify(login_data.company_password, company.company_password):
+                return {"status": 200, "message": "Company logged in successfully!", "data":  {
+            "company_id": company.company_id,
+            "company_email": company.company_email,
+        }}
+            else:
+                return {"status": 401, "message": "Incorrect password", "data": {}}
+        else:
+            return {"status": 404, "message": "Company not found", "data": {}}
+    except Exception as e:
+        print(repr(e))
+        response.status_code = 500
+        return {"status": 500, "message": "Internal Server Error", "data": {}}
+
+@app.put('/company/details')
+def update_company_details(company_email: str, response: Response,request_body: schemas.CompanyUpdateDetails = Body(...), db: Session = Depends(get_db)):
+    try:
+        company = db.query(models.Companies).filter(models.Companies.company_email == company_email).first()
+        if company:
+            company.company_name = request_body.company_name
+            company.company_domain = request_body.company_domain
+            company.company_logo = request_body.company_logo
+            company.services = request_body.services
+            company.company_contact = request_body.company_contact
+            company.company_address = request_body.company_address
+            company.white_labelled = request_body.white_labelled
+            print(company)
+
+            db.commit()
+
+            return {"status": 200, "message": "Company details added successfully", "data": {"company_details": request_body}}
+
+    except Exception as e:
+        print(repr(e))
+        response.status_code = 500
+        return {"status": 500, "message": "Internal Server Error", "data": {}}
 
 
-@app.post("/companyLogin")
-def company_login(loginCompany: schemas.CompanyLogin, db: Session = Depends(get_db)):
-    company_exists = db.query(models.Companies).filter(models.Companies.email == loginCompany.email).first()
-    if company_exists:
-        correct_password = bcrypt.checkpw(loginCompany.password.encode('utf-8'),
-                                          company_exists.password.encode('utf-8'))
-        if correct_password:
-            return {"status": "200", "message": "New company logged in!", "data": company_exists}
+@app.post("/branch/{company-name}")
+def add_branch(branch_data: schemas.Branch, db: Session = Depends(get_db)):
+    try:
+        db = SessionLocal()
+        company = db.query(Companies).filter_by(company_name=branch_data.company_name).first()
+        if company is None:
+            return {"status_code":404, "message":"Company not found"}
 
-        return {"status": "204", "message": "Incorrect password!", "data": company_exists}
+        new_branch = Branch(**branch_data.dict())
+        db.add(new_branch)
+        db.commit()
+        db.refresh(new_branch)
 
-    return {"status": "204", "message": "Company not registered, Please sign up!", "data": {}}
+        return {"status": 200, "message": "Branch added successfully", "data": new_branch}
+    except IntegrityError as e:
+        db.rollback()
+        return {"status_code":400, "message":"Duplicate branch or other integrity error"}
+    finally:
+        db.close()
 
+
+
+
+
+
+
+
+
+
+# @app.post('/loginCompany')
+# def login_company(login_data: schemas.Companies, response: Response, db: Session = Depends(get_db)):
+#     try:
+#         company = db.query(models.Companies).filter(models.Companies.company_email == login_data.company_email).first()
+#
+#         if company:
+#             stored_hashed_password = company.company_password.encode()
+#             if bcrypt.checkpw(login_data.company_password.encode(), stored_hashed_password):
+#                 return {"status": 200, "message": "Company logged in successfully!", "data": company}
+#             else:
+#                 return {"status": 401, "message": "Incorrect password", "data": {}}
+#         else:
+#             return {"status": 404, "message": "Company not found", "data": {}}
+#     except Exception as e:
+#         print(repr(e))
+#         response.status_code = 500
+#         return {"status": 500, "message": "Internal Server Error", "data": {}}
 
 @app.post('/addCategory')
 def add_categories(addCategory: schemas.Category, response: Response, db: Session = Depends(get_db)):
@@ -1704,7 +1874,6 @@ async def get_review(product_id: int, response: Response, db: Session = Depends(
         print(repr(e))
         response.status_code = 500
         return {"status": 500, "message": "Internal Server Error", "data": {}}
-
 
 @app.get("/get_Categories_Id_name")
 async def get_categories(response: Response, db: Session = Depends(get_db)):
