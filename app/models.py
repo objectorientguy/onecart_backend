@@ -409,7 +409,7 @@ class Branch(Base):
     branch_name = Column(String, nullable=True)
     branch_address = Column(String, nullable=True)
     branch_email = Column(String, nullable=True)
-    branch_identifier = Column(String, nullable=True)
+    branch_number = Column(BIGINT, nullable=True)
     company_name = Column(String, ForeignKey("companies.company_name", ondelete="CASCADE"))
 
     company = relationship("Companies")

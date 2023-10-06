@@ -310,11 +310,15 @@ class CompanyLogin(BaseModel):
         from_attributes = True
 
 class Branch(BaseModel):
-    branch_id: int
     branch_name: str
     branch_address: str
     branch_email: str
-    branch_identifier: str
+    branch_number: int
+    company_name: str | None = None
+
+    class Config:
+        from_attributes = True
+
 
 class Employee(BaseModel):
     employee_id: int

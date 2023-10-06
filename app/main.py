@@ -384,43 +384,39 @@ def update_company_details(company_email: str, response: Response,request_body: 
             company.company_address = request_body.company_address
             company.white_labelled = request_body.white_labelled
             print(company)
-
             db.commit()
 
             return {"status": 200, "message": "Company details added successfully", "data": {"company_details": request_body}}
-
     except Exception as e:
         print(repr(e))
         response.status_code = 500
         return {"status": 500, "message": "Internal Server Error", "data": {}}
 
-
-@app.post("/branch/{company-name}")
-def add_branch(branch_data: schemas.Branch, db: Session = Depends(get_db)):
+@app.post("/branch/{company_id}")
+def add_branch(company_id: str, branch_data: schemas.Branch, db: Session = Depends(get_db)):
     try:
-        db = SessionLocal()
-        company = db.query(Companies).filter_by(company_name=branch_data.company_name).first()
+        company = db.query(models.Companies).filter_by(company_id=company_id).first()
         if company is None:
-            return {"status_code":404, "message":"Company not found"}
+            return {"status_code": 404, "message": "Company not found"}
 
-        new_branch = Branch(**branch_data.dict())
+        existing_branch = db.query(models.Branch).filter_by(company_name=company.company_name,
+                                                            branch_name=branch_data.branch_name).first()
+        if existing_branch:
+            return {"status_code": 400, "message": "Branch with the same name already exists"}
+
+        branch_data.company_name = company.company_name
+        new_branch = models.Branch(**branch_data.model_dump())
         db.add(new_branch)
         db.commit()
         db.refresh(new_branch)
 
         return {"status": 200, "message": "Branch added successfully", "data": new_branch}
     except IntegrityError as e:
-        db.rollback()
-        return {"status_code":400, "message":"Duplicate branch or other integrity error"}
+        print(repr(e))
+        response.status_code = 500
+        return {"status": 500, "message": "Internal Server Error", "data": {}}
     finally:
         db.close()
-
-
-
-
-
-
-
 
 
 
