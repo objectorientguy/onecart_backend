@@ -315,22 +315,25 @@ class Branch(BaseModel):
     branch_email: str
     branch_number: int
     company_name: str | None = None
-
     class Config:
         from_attributes = True
 
-
 class Employee(BaseModel):
-    employee_id: int
+    employee_id: int | None = None
     employee_name: str
-    employee_email: str
+    employee_contact: int
     employee_password: str
     employee_gender: str
+    branch_id: int | None = None
 
 class Role(BaseModel):
-    role_id: int
-    manager: bool
-    cashier: bool
-    clerk: bool
-    employee_id: int
+    role_id: int | None = None
+    role_name: str
+    dashboard_feature: bool | None = None
+    orders_feature: bool | None = None
+    products_feature: bool | None = None
+    insights_feature: bool | None = None
+    employee_id: int | None = None
+
+
 

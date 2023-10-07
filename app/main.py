@@ -104,6 +104,52 @@ async def upload_image(request: Request, files: List[UploadFile] = File(...), db
     return {"status": 200, "message": "Images uploaded successfully", "data": {"image_url": image_urls}}
 
 
+
+@app.post("/multipleUpload/")
+async def upload_image(
+    request: Request,
+    product_id: int,
+    variant_id: int,
+    files: List[UploadFile] = File(...),
+    db: Session = Depends(get_db)
+):
+    image_urls = []
+    for file in files:
+        contents = await file.read()
+        filename = file.filename
+        file_path = os.path.join(UPLOAD_DIR, filename)
+
+        with open(file_path, "wb") as f:
+            f.write(contents)
+
+        image = Image(filename=filename, file_path=file_path)
+
+        try:
+            db.add(image)
+            db.commit()
+            db.refresh(image)
+        except Exception as e:
+            logging.error(f"Error storing image {filename}: {e}")
+            db.rollback()
+        finally:
+            db.close()
+
+        base_url = request.base_url
+        image_url = f"{base_url}images/{file.filename}"
+        image_urls.append(image_url)
+        # Fetch the product variant from the database
+    product_variant = db.query(ProductVariant).filter_by(product_id=product_id, variant_id=variant_id).first()
+
+    if product_variant:
+        existing_images = product_variant.image or []
+        existing_images += image_urls
+        product_variant.image = existing_images
+
+        db.commit()
+
+    return {"status": 200, "message": "Images uploaded successfully", "data": {"image_urls": image_urls}}
+
+
 @app.post('/userAuthenticate')
 def create_user(loginSignupAuth: schemas.UserData, response: Response,
                 db: Session = Depends(get_db), companyName=str):
@@ -418,6 +464,124 @@ def add_branch(company_id: str, branch_data: schemas.Branch, db: Session = Depen
     finally:
         db.close()
 
+@app.post("/branch/employee/{branch_id}")
+def add_employee(branch_id: int, employee_data: schemas.Employee, role_data: schemas.Role, response: Response,
+                 db: Session = Depends(get_db)):
+    try:
+        branch = db.query(models.Branch).filter_by(branch_id=branch_id).first()
+        employees = db.query(models.Employee).filter_by(branch_id=branch_id).all()
+        roles = db.query(models.Role).first()
+
+        if branch is None:
+            return {"status": 404, "message": "Branch not found"}
+
+        employee_data.branch_id = branch.branch_id
+        new_employee = models.Employee(**employee_data.model_dump())
+        db.add(new_employee)
+        db.commit()
+
+        new_employee_id = new_employee.employee_id
+
+        role_data.role_name = role_data.role_name
+        new_role_name = models.Role(**role_data.model_dump())
+        new_role_name.employee_id = new_employee_id
+        db.add(new_role_name)
+        db.commit()
+
+        employee_list = []
+
+        response_data = {
+            "address": branch.branch_address,
+            "employee_count": len(employees),
+            "employees": employee_list
+        }
+
+        for emp in employees:
+            employee_list.append({
+                "employee_name": emp.employee_name,
+                "roles": role_data.role_name
+            })
+
+        # response_data = {
+        #     "address" : branch.branch_address,
+        #     "employee_count": len(employees),
+        #     "employee_name": new_employee.employee_name,
+        #     "roles": role_data.role_name
+        # }
+
+
+        db.refresh(new_employee)
+        return {"status": 200, "message": "New Employee added successfully",
+                "data": {"New_employee": new_employee, "Existing_employee": response_data}}
+    except IntegrityError as e:
+        print(repr(e))
+        response.status_code = 500
+        return {"status": 500, "message": "Internal Server Error", "data": {}}
+    finally:
+        db.close()
+
+# @app.post("/branch/employee/{branch_id}")
+# def add_employee(branch_id:int, employee_data: schemas.Employee, role_data: schemas.Role,response:Response, db: Session = Depends(get_db)):
+#     try:
+#         branch = db.query(models.Branch).filter_by(branch_id=branch_id).first()
+#         employees = db.query(models.Employee).filter_by(branch_id=branch_id).all()
+#         role = db.query(models.Role).first()
+#         if branch is None:
+#             return {"status": 404, "message":"Branch not found"}
+#         employee_count = len(employees)
+#         response_data = {
+#             "role": role.role_name,
+#             "branch_name": branch.branch_name,
+#             "employee_count": employee_count,
+#             "employees": [{"employee_name": emp.employee_name} for emp in employees]
+#         }
+#
+#         employee_data.branch_id = branch.branch_id
+#         new_employee = models.Employee(**employee_data.model_dump())
+#         db.add(new_employee)
+#         db.commit()
+#
+#         employees.employee_id = employees.employee_id
+#         new_role_name = models.Role(**role_data.model_dump())
+#         db.add(new_role_name)
+#         db.commit()
+#
+#         db.refresh(new_employee)
+#         return {"status": 200, "message": "New Employee added successfully", "data": {"New_employee": new_employee, "Existing_employee": response_data}}
+#     except IntegrityError as e:
+#         print(repr(e))
+#         response.status_code = 500
+#         return {"status": 500, "message": "Internal Server Error", "data": {}}
+#     finally:
+#         db.close()
+
+# @app.post("/branch/employee/{branch_id}")
+# def add_employee(branch_id:int, employee_data: schemas.Employee, response:Response, db: Session = Depends(get_db)):
+#     try:
+#         branch = db.query(models.Branch).filter_by(branch_id=branch_id).first()
+#         employees = db.query(models.Employee).filter_by(branch_id=branch_id).all()
+#
+#         if branch is None:
+#             return {"status": 404, "message":"Branch not found"}
+#         employee_count = len(employees)
+#         response_data = {
+#             "branch_name": branch.branch_name,
+#             "employee_count": employee_count,
+#             "employees": [{"employee_name": emp.employee_name} for emp in employees]
+#         }
+#         employee_data.branch_id = branch.branch_id
+#         new_employee = models.Employee(**employee_data.model_dump())
+#         db.add(new_employee)
+#         db.commit()
+#
+#         db.refresh(new_employee)
+#         return {"status": 200, "message": "New Employee added successfully", "data": {"New_employee": new_employee, "Existing_employee": response_data}}
+#     except IntegrityError as e:
+#         print(repr(e))
+#         response.status_code = 500
+#         return {"status": 500, "message": "Internal Server Error", "data": {}}
+#     finally:
+#         db.close()
 
 
 # @app.post('/loginCompany')

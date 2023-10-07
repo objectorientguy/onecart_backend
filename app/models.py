@@ -419,21 +419,22 @@ class Employee(Base):
 
     employee_id = Column(BIGINT, primary_key=True, autoincrement=True)
     employee_name = Column(String, nullable=False)
-    employee_email = Column(String, nullable=False)
+    employee_contact = Column(BIGINT, nullable=False)
     employee_password = Column(String, nullable=False)
     employee_gender = Column(String, nullable=True)
     branch_id = Column(Integer, ForeignKey("branch.branch_id", ondelete="CASCADE"))
 
     branch = relationship("Branch")
 
-
 class Role(Base):
     __tablename__ = "role"
 
     role_id = Column(Integer, primary_key=True, autoincrement=True)
-    manager = Column(Boolean, nullable=False)
-    cashier = Column(Boolean, nullable=False)
-    clerk = Column(Boolean, nullable=False)
+    role_name = Column(String, nullable=True)
+    dashboard_feature = Column(Boolean, nullable=True)
+    orders_feature = Column(Boolean, nullable=True)
+    products_feature = Column(Boolean, nullable=True)
+    insights_feature = Column(Boolean, nullable=True)
     employee_id = Column(Integer, ForeignKey("employee.employee_id", ondelete="CASCADE"))
 
     employee = relationship("Employee")
