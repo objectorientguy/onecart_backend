@@ -5,8 +5,7 @@ from urllib import response
 from collections import defaultdict
 import bcrypt
 import firebase_admin
-from firebase_admin import credentials, storage
-import pyrebase
+from firebase_admin import credentials, db, storage
 from passlib.context import CryptContext
 from fastapi import FastAPI, Response, Depends, File, Request, HTTPException, Body, Path, UploadFile, Form
 from sqlalchemy.orm import Session, joinedload
@@ -38,30 +37,6 @@ UPLOAD_DIR = "app/images"
 
 logging.basicConfig(filename='app.log', level=logging.DEBUG)
 
-config = {
-  "apiKey": "AIzaSyBymRlTGe83-EmcadfPEo2XUu98SzJKbRY",
-  "authDomain": "onecart-5f6a8.firebaseapp.com",
-  "projectId": "onecart-5f6a8",
-  "storageBucket": "onecart-5f6a8.appspot.com",
-  "messagingSenderId": "950335734717",
-  "appId": "1:950335734717:web:a185700223eea7c6f188d4",
-  "measurementId": "G-N0RKSZ67WD",
-  "seviceAccount": "serviceAccount.json",
-  "databaseURL": "https://onecart-5f6a8-default-rtdb.firebaseio.com/"
-};
-
-firebase = pyrebase.initialize_app(config)
-storage = firebase.storage()
-storage.child()
-
-def download_video(downlaod_url, video_title):
-    response = requests.get(downlaod_url)
-
-    with open(video_title, 'wb') as f:
-        f.write(response.content)
-
-
-
 def save_image_to_db(db, filename, file_path):
     image = Image(filename=filename, file_path=file_path)
     db.add(image)
@@ -69,10 +44,65 @@ def save_image_to_db(db, filename, file_path):
     db.refresh(image)
     return image
 
+cred = credentials.Certificate({
+  "type": "service_account",
+  "project_id": "onecart-5f6a8",
+  "private_key_id": "38c1e579ad08c6f059967f28369307f30b05eb5c",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDC5Bs6pGly2HUZ\niXzinRJNxiQl11bdZ8JgoQPzyqSPFq6IbQePSBs82ntbSjxHf6x4jjYGRD3oBA93\npjyaViU9PlKP7uoLoqVAz22jfyK66OD6f8svtzjXqAYnyi0Q78GbnEoAygFOOiVw\n6D3ka65MCiKiAcjWwbqx9aN9AsTSK+nBZsfrDd9d1MSDofAvmlM3NNDtTJ4Z33TV\nE39CpJfBEcqxkFRDMI4nckOnJ6/WFNC7ec0Ey6zXxgrjibwQ/7sWuTWkYmqbRUyx\nC/9+QR0f+DToOG15AphEJpKngdayFI2rw/OE23Vz1wyKqKhsoEYark92GZnPZc28\nmprFQlZFAgMBAAECggEAH6GPpM0t+zCUEuS8cvhM0fgsgkLIy68NPosrncwgOMQU\n6DoP7cqldxM7zbWHApC/gKKONKarSIauLvx5XhBIw3+jvU4oyOIpQZNZB135WE43\nQ5jttK0faesQsrEO7u6G5Rdw8F9Y5mYsEP70mqf6dkd31wUEoIx5XWxRkFbcdILZ\nAMbJo5+YmRCAunB35OrN5DTRp5ODU6Ab1xxXXwX5AVL8IbaEJdHDX6wA6JKl+9TH\n/x2nOr4scpmprjHnWPWQJkDW4W3LR4fwyghb2bnemKhkON5Bl5wH3CJwKZAEe+x0\nWGbUAdBqD2IBX4+HayR8JGhu0oeFAe55E7dts+PiyQKBgQDosee0S6+kmgKcuCFg\n+1Il/qI/BaBjTNzkfleHnzSqSD6L8b5Yh0OwzxBrtaVh3m1LuZ/I1r41yStlf829\njY86u77ZetWvmydSem8jqUnP9MTEOodjEU/SDgvZpkj1hLBFM5AhCk4yRF0jqj07\ndA/UWgd/sgLnh/Ca5tGkOs83/QKBgQDWaPE5jhgPunZWPyE4UTlvE0+cihBv4/Ef\nKYBDJ0nsom6etSq0nNBrD/ElQJyK9HcOykayZR8SZnEZSkHCphlL05MQqYAaIB2V\nqPKmb6R+1mAVDaMeWSWF2Eg3E4uWIVdmhvzcN3QYzSvBnvbio4xQ4QCmaCkegwmR\niUGY6qU16QKBgFdBdvA9vVRMyBP6W9HhC/HhZPea5YS26tHnqmzZv0bnJkUV1lme\nBz0CuFabW7OyU2uk5IzMMbE7iUFbRkwBDCdrBWrJy904oeskrA5EScBoOWyXwfLd\nKABNchYga5VdNzgL2Mz6702cIwzfpmxn3hOz2sIAf2RQrmF3kj8yKkgFAoGBAMi8\nFWOqKdLH4rSahBKC0P+yF63aAMuQn5VqOGAmr2oxJNnHiYTw75vcoAsdc7IQcErT\ni97HF5EVgbuIrwp6kWJRYfWOi5VqDeio9Qxnp5zsPaZYTyhBlAS8Wdfen6fd7ULb\nDG9sJ3B03gt3NXM4ZUzvarlg+WZMji/ITjbJMAXJAoGBAItWLAgjFNq4Tt6A+9eN\nXmXFB3QmiwyN8HDQNzs6WxpoqhBm52yaD/F+wE8Tp/KswiwqNLjRYNo5XiUk2mj8\nShgS3UyrMK+ZJyb+OCD15G/QdVsPUWB8/6q4B4sdoWvp3qrlj/lfMdQ+d6+JYgcl\nNJCL44NeX0QSptNEMsRKjPPA\n-----END PRIVATE KEY-----\n",
+  "client_email": "firebase-adminsdk-1g1po@onecart-5f6a8.iam.gserviceaccount.com",
+  "client_id": "108694359227909599503",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-1g1po%40onecart-5f6a8.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+})
+
+firebase_admin.initialize_app(cred, {"sotageBucket": 'gs://onecart-5f6a8.appspot.com'})
+
+
 
 @app.get('/')
 def root():
     return {'message': 'Hello world'}
+
+
+# class ImageUploadResponse(BaseModel):
+#     image_url: str
+
+@app.post("/upload-image/")
+async def upload_image(
+    image: UploadFile = File(...),
+    product_id: int = Form(...),
+    variant_id: int = Form(...),
+    db: Session = Depends(get_db),
+):
+    try:
+        # Upload the image to Firebase Storage
+        bucket = storage.bucket()
+        blob = bucket.blob(f"product_images/{product_id}/{variant_id}/{image.filename}")
+        blob.upload_from_string(image.file.read(), content_type=image.content_type)
+
+        # Get the URL of the uploaded image from Firebase
+        image_url = blob.public_url
+
+        # Store the image URL in your local database
+        product_variant = db.query(models.ProductVariant).filter_by(
+            product_id=product_id, variant_id=variant_id
+        ).first()
+
+        if product_variant:
+            existing_images = product_variant.image or []
+            existing_images.append(image_url)
+            product_variant.image = existing_images
+            db.commit()
+
+        return {"image_url": image_url}
+
+    except Exception as e:
+        print(repr(e))
+        # Handle any errors that may occur during image upload or database update
+        return {"error": str(e)}
 
 
 @app.post("/upload")
@@ -477,7 +507,7 @@ def login_company(login_data: schemas.CompanyLogin, response: Response, db: Sess
         response.status_code = 500
         return {"status": 500, "message": "Internal Server Error", "data": {}}
 @app.post("/company/logo")
-async def upload_company_logo(request: Request, logo: UploadFile = File(...), company_email: str = Form(...),  db: Session = Depends(get_db)):
+async def upload_company_logo(request: Request, logo: UploadFile = File(...), company_id: str = Form(...),  db: Session = Depends(get_db)):
     try:
         image_data = logo.file.read()
         image_filename = logo.filename
@@ -486,7 +516,7 @@ async def upload_company_logo(request: Request, logo: UploadFile = File(...), co
         with open(image_path, "wb") as f:
             f.write(image_data)
 
-        company = db.query(models.Companies).filter(models.Companies.company_email == company_email).first()
+        company = db.query(models.Companies).filter(models.Companies.company_id == company_id).first()
         if company:
             base_url = request.base_url
             logo_url = f"{base_url}images/{image_filename}"
@@ -502,9 +532,9 @@ async def upload_company_logo(request: Request, logo: UploadFile = File(...), co
     finally:
         db.close()
 @app.delete("/company/logo")
-async def delete_company_logo(company_email: str, db: Session = Depends(get_db)):
+async def delete_company_logo(company_id: str, db: Session = Depends(get_db)):
     try:
-        company = db.query(models.Companies).filter(models.Companies.company_email == company_email).first()
+        company = db.query(models.Companies).filter(models.Companies.company_id == company_id).first()
         if company:
             if company.company_logo:
                 image_filename = company.company_logo.split("/")[-1]
@@ -523,14 +553,14 @@ async def delete_company_logo(company_email: str, db: Session = Depends(get_db))
     except Exception as e:
         print(repr(e))
         db.rollback()
-        raise HTTPException(status_code=500, detail="Internal Server Error")
+        return{"status" : 500, "message": "Internal Server Error","data": {}}
     finally:
         db.close()
 
 @app.put('/company/details')
-def update_company_details(company_email: str, response: Response,request_body: schemas.CompanyUpdateDetails = Body(...), db: Session = Depends(get_db)):
+def update_company_details(company_id: str, response: Response,request_body: schemas.CompanyUpdateDetails = Body(...), db: Session = Depends(get_db)):
     try:
-        company = db.query(models.Companies).filter(models.Companies.company_email == company_email).first()
+        company = db.query(models.Companies).filter(models.Companies.company_id == company_id).first()
         if company:
             company.company_name = request_body.company_name
             company.company_domain = request_body.company_domain
