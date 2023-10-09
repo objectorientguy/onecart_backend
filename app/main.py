@@ -58,7 +58,7 @@ cred = credentials.Certificate({
   "universe_domain": "googleapis.com"
 })
 
-firebase_admin.initialize_app(cred, {"sotageBucket": 'gs://onecart-5f6a8.appspot.com'})
+firebase_admin.initialize_app(cred, {"storageBucket": 'gs://onecart-5f6a8.appspot.com'})
 
 
 
@@ -97,7 +97,7 @@ async def upload_image(
             product_variant.image = existing_images
             db.commit()
 
-        return {"image_url": image_url}
+        return {"status": 200, "message": "ok","image_url": image_url}
 
     except Exception as e:
         print(repr(e))
