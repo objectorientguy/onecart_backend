@@ -4,6 +4,9 @@ from uuid import uuid4
 from urllib import response
 from collections import defaultdict
 import bcrypt
+import firebase_admin
+from firebase_admin import credentials, storage
+import pyrebase
 from passlib.context import CryptContext
 from fastapi import FastAPI, Response, Depends, File, Request, HTTPException, Body, Path, UploadFile, Form
 from sqlalchemy.orm import Session, joinedload
@@ -34,6 +37,29 @@ app.add_middleware(
 UPLOAD_DIR = "app/images"
 
 logging.basicConfig(filename='app.log', level=logging.DEBUG)
+
+config = {
+  "apiKey": "AIzaSyBymRlTGe83-EmcadfPEo2XUu98SzJKbRY",
+  "authDomain": "onecart-5f6a8.firebaseapp.com",
+  "projectId": "onecart-5f6a8",
+  "storageBucket": "onecart-5f6a8.appspot.com",
+  "messagingSenderId": "950335734717",
+  "appId": "1:950335734717:web:a185700223eea7c6f188d4",
+  "measurementId": "G-N0RKSZ67WD",
+  "seviceAccount": "serviceAccount.json",
+  "databaseURL": "https://onecart-5f6a8-default-rtdb.firebaseio.com/"
+};
+
+firebase = pyrebase.initialize_app(config)
+storage = firebase.storage()
+storage.child()
+
+def download_video(downlaod_url, video_title):
+    response = requests.get(downlaod_url)
+
+    with open(video_title, 'wb') as f:
+        f.write(response.content)
+
 
 
 def save_image_to_db(db, filename, file_path):
@@ -101,39 +127,89 @@ async def upload_image(request: Request, files: List[UploadFile] = File(...), db
 
     return {"status": 200, "message": "Images uploaded successfully", "data": {"image_url": image_urls}}
 
-@app.post("/product/image")
-async def upload_image(request: Request, product_id: int, variant_id: int,  files: List[UploadFile] = File(...), db: Session = Depends(get_db)):
-    image_urls = []
-    for file in files:
-        contents = await file.read()
-        filename = file.filename
-        file_path = os.path.join(UPLOAD_DIR, filename)
-        with open(file_path, "wb") as f:
-            f.write(contents)
+# @app.post("/product/image")
+# async def upload_image(request: Request, product_id: int, variant_id: int,  files: List[UploadFile] = File(...), db: Session = Depends(get_db)):
+#     image_urls = []
+#     for file in files:
+#         contents = await file.read()
+#         filename = file.filename
+#         file_path = os.path.join(UPLOAD_DIR, filename)
+#         with open(file_path, "wb") as f:
+#             f.write(contents)
+#
+#         image = Image(filename=filename, file_path=file_path)
+#         try:
+#             db.add(image)
+#             db.commit()
+#             db.refresh(image)
+#         except Exception as e:
+#             logging.error(f"Error storing image {filename}: {e}")
+#             db.rollback()
+#         finally:
+#             db.close()
+#
+#         base_url = request.base_url
+#         image_url = f"{base_url}images/{file.filename}"
+#         image_urls.append(image_url)
+#
+#     product_variant = db.query(ProductVariant).filter_by(product_id=product_id, variant_id=variant_id).first()
+#     if product_variant:
+#         existing_images = product_variant.image or []
+#         existing_images += image_urls
+#         product_variant.image = existing_images
+#         db.commit()
+#
+#     return {"status": 200, "message": "Images uploaded successfully", "data": {"image_urls": image_urls}}
 
-        image = Image(filename=filename, file_path=file_path)
-        try:
+@app.post("/product/image")
+async def edit_product_images(
+    request: Request,
+    product_id: int,
+    variant_id: int,
+    new_files: List[UploadFile] = File(...),
+    remove_images: List[str] = Body(...),
+    db: Session = Depends(get_db)
+):
+    try:
+        product_variant = db.query(ProductVariant).filter_by(product_id=product_id, variant_id=variant_id).first()
+        if not product_variant:
+            return {"status": 404, "message": "Product variant not found"}
+
+        # Remove the specified images
+        existing_images = [image for image in product_variant.image if image not in remove_images]
+
+        # Upload new images
+        new_image_urls = []
+        for file in new_files:
+            contents = await file.read()
+            filename = file.filename
+            file_path = os.path.join(UPLOAD_DIR, filename)
+            with open(file_path, "wb") as f:
+                f.write(contents)
+
+            image = Image(filename=filename, file_path=file_path)
             db.add(image)
             db.commit()
             db.refresh(image)
-        except Exception as e:
-            logging.error(f"Error storing image {filename}: {e}")
-            db.rollback()
-        finally:
-            db.close()
 
-        base_url = request.base_url
-        image_url = f"{base_url}images/{file.filename}"
-        image_urls.append(image_url)
+            base_url = request.base_url
+            image_url = f"{base_url}images/{file.filename}"
+            new_image_urls.append(image_url)
 
-    product_variant = db.query(ProductVariant).filter_by(product_id=product_id, variant_id=variant_id).first()
-    if product_variant:
-        existing_images = product_variant.image or []
-        existing_images += image_urls
-        product_variant.image = existing_images
+        # Combine existing and new images
+        updated_images = existing_images + new_image_urls
+
+        # Update the product variant with the updated image URLs
+        product_variant.image = updated_images
         db.commit()
 
-    return {"status": 200, "message": "Images uploaded successfully", "data": {"image_urls": image_urls}}
+        return {"status": 200, "message": "Images updated successfully", "data": {"image_urls": updated_images}}
+    except Exception as e:
+        print(repr(e))
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Internal Server Error")
+    finally:
+        db.close()
 
 @app.post('/userAuthenticate')
 def create_user(loginSignupAuth: schemas.UserData, response: Response,
@@ -328,7 +404,7 @@ async def add_companies(addCompany: schemas.CompanySignUp, response: Response, d
         existing_company = db.query(models.Companies).filter(
             models.Companies.company_email == addCompany.company_email).first()
         if existing_company:
-            return {"status": 400, "message":"Company already exists"}
+            return {"status": 400, "message":"Company already exists", "data": {}}
 
         hashed_password = pwd_context.hash(addCompany.company_password)
 
@@ -418,7 +494,7 @@ async def upload_company_logo(request: Request, logo: UploadFile = File(...), co
             db.commit()
             return {"status": 200, "message": "Company logo uploaded successfully", "data": {"logo_url": logo_url}}
         else:
-            return {"status": 404, "message": "Company not found"}
+            return {"status": 404, "message": "Company not found", "data": {}}
     except Exception as e:
         print(repr(e))
         response.status_code = 500
@@ -439,11 +515,11 @@ async def delete_company_logo(company_email: str, db: Session = Depends(get_db))
 
                 company.company_logo = None
                 db.commit()
-                return {"status": 200, "message": "Company logo deleted successfully"}
+                return {"status": 200, "message": "Company logo deleted successfully", "data": {}}
             else:
-                return {"status": 404, "message": "Company logo not found"}
+                return {"status": 404, "message": "Company logo not found", "data": {}}
         else:
-            return {"status": 404, "message": "Company not found"}
+            return {"status": 404, "message": "Company not found", "data": {}}
     except Exception as e:
         print(repr(e))
         db.rollback()
@@ -477,12 +553,12 @@ def add_branch(company_id: str, branch_data: schemas.Branch, db: Session = Depen
     try:
         company = db.query(models.Companies).filter_by(company_id=company_id).first()
         if company is None:
-            return {"status_code": 404, "message": "Company not found"}
+            return {"status_code": 404, "message": "Company not found", "data": {}}
 
         existing_branch = db.query(models.Branch).filter_by(company_name=company.company_name,
                                                             branch_name=branch_data.branch_name).first()
         if existing_branch:
-            return {"status_code": 400, "message": "Branch with the same name already exists"}
+            return {"status_code": 400, "message": "Branch with the same name already exists", "data": {}}
 
         branch_data.company_name = company.company_name
         new_branch = models.Branch(**branch_data.model_dump())
@@ -507,7 +583,7 @@ def add_employee(branch_id: int, employee_data: schemas.Employee, role_data: sch
         roles = db.query(models.Role).first()
 
         if branch is None:
-            return {"status": 404, "message": "Branch not found"}
+            return {"status": 404, "message": "Branch not found", "data": {}}
 
         employee_data.branch_id = branch.branch_id
         new_employee = models.Employee(**employee_data.model_dump())
@@ -687,7 +763,7 @@ def add_products(products: List[schemas.Product], response: Response, db: Sessio
             ).first()
 
             if existing_product:
-                return {"status": "200", "message": "Product already exists!"}
+                return {"status": "200", "message": "Product already exists!", "data": {}}
                 continue
 
             new_product = models.Products(**product.model_dump())
