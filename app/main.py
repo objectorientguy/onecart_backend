@@ -5,7 +5,7 @@ from urllib import response
 from collections import defaultdict
 import bcrypt
 from passlib.context import CryptContext
-from fastapi import FastAPI, Response, Depends, UploadFile, File, Request, HTTPException, Body, Path
+from fastapi import FastAPI, Response, Depends, File, Request, HTTPException, Body, Path, UploadFile, Form
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import IntegrityError
 from starlette.responses import FileResponse
@@ -66,7 +66,6 @@ async def upload_image(request: Request, file: UploadFile = File(...), db: Sessi
     finally:
         db.close()
 
-
 @app.get("/images/{filename}")
 async def get_image(filename: str):
     image_path = os.path.join(UPLOAD_DIR, filename)
@@ -74,7 +73,6 @@ async def get_image(filename: str):
         logging.error(f"Image not found: {filename}")
         raise HTTPException(status_code=404, detail="Image not found")
     return FileResponse(image_path)
-
 
 @app.post("/multipleUpload")
 async def upload_image(request: Request, files: List[UploadFile] = File(...), db: Session = Depends(get_db)):
@@ -103,27 +101,17 @@ async def upload_image(request: Request, files: List[UploadFile] = File(...), db
 
     return {"status": 200, "message": "Images uploaded successfully", "data": {"image_url": image_urls}}
 
-
-
-@app.post("/multipleUpload/")
-async def upload_image(
-    request: Request,
-    product_id: int,
-    variant_id: int,
-    files: List[UploadFile] = File(...),
-    db: Session = Depends(get_db)
-):
+@app.post("/product/image")
+async def upload_image(request: Request, product_id: int, variant_id: int,  files: List[UploadFile] = File(...), db: Session = Depends(get_db)):
     image_urls = []
     for file in files:
         contents = await file.read()
         filename = file.filename
         file_path = os.path.join(UPLOAD_DIR, filename)
-
         with open(file_path, "wb") as f:
             f.write(contents)
 
         image = Image(filename=filename, file_path=file_path)
-
         try:
             db.add(image)
             db.commit()
@@ -137,18 +125,15 @@ async def upload_image(
         base_url = request.base_url
         image_url = f"{base_url}images/{file.filename}"
         image_urls.append(image_url)
-        # Fetch the product variant from the database
-    product_variant = db.query(ProductVariant).filter_by(product_id=product_id, variant_id=variant_id).first()
 
+    product_variant = db.query(ProductVariant).filter_by(product_id=product_id, variant_id=variant_id).first()
     if product_variant:
         existing_images = product_variant.image or []
         existing_images += image_urls
         product_variant.image = existing_images
-
         db.commit()
 
     return {"status": 200, "message": "Images uploaded successfully", "data": {"image_urls": image_urls}}
-
 
 @app.post('/userAuthenticate')
 def create_user(loginSignupAuth: schemas.UserData, response: Response,
@@ -196,7 +181,6 @@ def create_user(loginSignupAuth: schemas.UserData, response: Response,
         print(repr(e))
         response.status_code = 404
         return {"status": 404, "message": "Error", "data": {}}
-
 
 @app.put('/editUser/{userId}')
 def edit_user(userDetail: schemas.EditUserData, response: Response, db: Session = Depends(get_db),
@@ -416,6 +400,56 @@ def login_company(login_data: schemas.CompanyLogin, response: Response, db: Sess
         print(repr(e))
         response.status_code = 500
         return {"status": 500, "message": "Internal Server Error", "data": {}}
+@app.post("/company/logo")
+async def upload_company_logo(request: Request, logo: UploadFile = File(...), company_email: str = Form(...),  db: Session = Depends(get_db)):
+    try:
+        image_data = logo.file.read()
+        image_filename = logo.filename
+        image_path = os.path.join(UPLOAD_DIR, image_filename)
+
+        with open(image_path, "wb") as f:
+            f.write(image_data)
+
+        company = db.query(models.Companies).filter(models.Companies.company_email == company_email).first()
+        if company:
+            base_url = request.base_url
+            logo_url = f"{base_url}images/{image_filename}"
+            company.company_logo = logo_url  # Store the full image URL in the database
+            db.commit()
+            return {"status": 200, "message": "Company logo uploaded successfully", "data": {"logo_url": logo_url}}
+        else:
+            return {"status": 404, "message": "Company not found"}
+    except Exception as e:
+        print(repr(e))
+        response.status_code = 500
+        return {"status": 500, "message": "Internal Server Error", "data": {}}
+    finally:
+        db.close()
+@app.delete("/company/logo")
+async def delete_company_logo(company_email: str, db: Session = Depends(get_db)):
+    try:
+        company = db.query(models.Companies).filter(models.Companies.company_email == company_email).first()
+        if company:
+            if company.company_logo:
+                image_filename = company.company_logo.split("/")[-1]
+                image_path = os.path.join(UPLOAD_DIR, image_filename)
+
+                if os.path.exists(image_path):
+                    os.remove(image_path)
+
+                company.company_logo = None
+                db.commit()
+                return {"status": 200, "message": "Company logo deleted successfully"}
+            else:
+                return {"status": 404, "message": "Company logo not found"}
+        else:
+            return {"status": 404, "message": "Company not found"}
+    except Exception as e:
+        print(repr(e))
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Internal Server Error")
+    finally:
+        db.close()
 
 @app.put('/company/details')
 def update_company_details(company_email: str, response: Response,request_body: schemas.CompanyUpdateDetails = Body(...), db: Session = Depends(get_db)):
@@ -501,14 +535,6 @@ def add_employee(branch_id: int, employee_data: schemas.Employee, role_data: sch
                 "employee_name": emp.employee_name,
                 "roles": role_data.role_name
             })
-
-        # response_data = {
-        #     "address" : branch.branch_address,
-        #     "employee_count": len(employees),
-        #     "employee_name": new_employee.employee_name,
-        #     "roles": role_data.role_name
-        # }
-
 
         db.refresh(new_employee)
         return {"status": 200, "message": "New Employee added successfully",
