@@ -58,7 +58,7 @@ cred = credentials.Certificate({
   "universe_domain": "googleapis.com"
 })
 
-firebase_admin.initialize_app(cred, {"storageBucket": 'gs://onecart-5f6a8.appspot.com'})
+firebase_admin.initialize_app(cred, {"storageBucket": 'onecart-5f6a8.appspot.com'})
 
 
 
@@ -578,7 +578,7 @@ def update_company_details(company_id: str, response: Response,request_body: sch
         response.status_code = 500
         return {"status": 500, "message": "Internal Server Error", "data": {}}
 
-@app.post("/branch/{company_id}")
+@app.post("/branch")
 def add_branch(company_id: str, branch_data: schemas.Branch, db: Session = Depends(get_db)):
     try:
         company = db.query(models.Companies).filter_by(company_id=company_id).first()
@@ -604,7 +604,7 @@ def add_branch(company_id: str, branch_data: schemas.Branch, db: Session = Depen
     finally:
         db.close()
 
-@app.post("/branch/employee/{branch_id}")
+@app.post("/branch/employee")
 def add_employee(branch_id: int, employee_data: schemas.Employee, role_data: schemas.Role, response: Response,
                  db: Session = Depends(get_db)):
     try:
