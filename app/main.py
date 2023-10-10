@@ -5,7 +5,7 @@ from urllib import response
 from collections import defaultdict
 import bcrypt
 import firebase_admin
-from firebase_admin import credentials, db, storage
+from firebase_admin import credentials, db
 from passlib.context import CryptContext
 from fastapi import FastAPI, Response, Depends, File, Request, HTTPException, Body, Path, UploadFile, Form
 from sqlalchemy.orm import Session, joinedload
@@ -58,10 +58,9 @@ cred = credentials.Certificate({
   "universe_domain": "googleapis.com"
 })
 
-firebase_admin.initialize_app(cred, {"storageBucket": 'onecart-5f6a8.appspot.com'})
+firebase_admin.initialize_app(cred, {'databaseURL':'https://onecart-5f6a8-default-rtdb.firebaseio.com/'})
 
-
-
+# "storageBucket": 'onecart-5f6a8.appspot.com'
 @app.get('/')
 def root():
     return {'message': 'Hello world'}
@@ -69,6 +68,13 @@ def root():
 
 # class ImageUploadResponse(BaseModel):
 #     image_url: str
+
+from fastapi import FastAPI
+
+app = FastAPI()
+
+import datetime  # Import the datetime module
+
 
 @app.post("/upload-image/")
 async def upload_image(
@@ -78,6 +84,8 @@ async def upload_image(
     db: Session = Depends(get_db),
 ):
     try:
+        from firebase_admin import storage
+
         # Upload the image to Firebase Storage
         bucket = storage.bucket()
         blob = bucket.blob(f"product_images/{product_id}/{variant_id}/{image.filename}")
@@ -86,7 +94,7 @@ async def upload_image(
         # Get the URL of the uploaded image from Firebase
         image_url = blob.public_url
 
-        # Store the image URL in your local database
+        # Store the full Firebase Storage URL in your local database
         product_variant = db.query(models.ProductVariant).filter_by(
             product_id=product_id, variant_id=variant_id
         ).first()
@@ -97,12 +105,51 @@ async def upload_image(
             product_variant.image = existing_images
             db.commit()
 
-        return {"status": 200, "message": "ok","image_url": image_url}
+        return {"image_url": image_url}
 
     except Exception as e:
         print(repr(e))
         # Handle any errors that may occur during image upload or database update
         return {"error": str(e)}
+
+
+
+# @app.post("/upload-image/")
+# async def upload_image(
+#     image: UploadFile = File(...),
+#     product_id: int = Form(...),
+#     variant_id: int = Form(...),
+#     db: Session = Depends(get_db),
+# ):
+#     try:
+#         # Upload the image to Firebase Storage
+#         bucket = storage.bucket()
+#         blob = bucket.blob(f"product_images/{product_id}/{variant_id}/{image.filename}")
+#         blob.upload_from_string(image.file.read(), content_type=image.content_type)
+#
+#         # Get the URL of the uploaded image from Firebase
+#         image_url = blob.public_url
+#
+#         image_url = image_url.replace("https://storage.googleapis.com", "")
+#
+#         # Store the image URL in your local database
+#         product_variant = db.query(models.ProductVariant).filter_by(
+#             product_id=product_id, variant_id=variant_id
+#         ).first()
+#
+#         if product_variant:
+#             existing_images = product_variant.image or []
+#             existing_images.append(image_url)
+#             product_variant.image = existing_images
+#             db.commit()
+#
+#         return {"image_url": image_url}
+#
+#     except Exception as e:
+#         print(repr(e))
+#         # Handle any errors that may occur during image upload or database update
+#         return {"error": str(e)}
+
 
 
 @app.post("/upload")
@@ -639,6 +686,7 @@ def add_employee(branch_id: int, employee_data: schemas.Employee, role_data: sch
         for emp in employees:
             employee_list.append({
                 "employee_name": emp.employee_name,
+                "role_key": role_data.role_id,
                 "roles": role_data.role_name
             })
 
