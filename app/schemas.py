@@ -75,12 +75,12 @@ class ProductVariant(BaseModel):
     count: int
     brand_name: str
     discounted_cost: float
-    discount: int
+    discount: int | None = None
     quantity: str
     description: str
     discounted_cost: float
     image: List[str]
-    ratings: int
+    ratings: int | None = None
     product_id: int
 
     class Config:
@@ -300,3 +300,32 @@ class Role(BaseModel):
     cashier: bool
     clerk: bool
     employee_id: int
+
+class ProductInput(BaseModel):
+    product_name: Optional[str] = None
+    brand_name: Optional[str] = None
+    details: Optional[str] = None
+    description: Optional[str] = None
+    category_name: Optional[str] = None
+    image: Optional[List[str]] = None
+    variant_cost: Optional[float] = None
+    discounted_cost: Optional[float] = None
+    quantity: Optional[str] = None
+    count: Optional[int] = None
+
+class ProductUpdateInput(BaseModel):
+    product_name: Optional[str] = None
+    description: Optional[str] = None
+    category_name: Optional[str] = None
+    image: Optional[str] = None
+    variant_cost: Optional[float] = None
+    discounted_price: Optional[float] = None
+    quantity: Optional[str] = None
+    count: Optional[int] = None
+    product_id: Optional[int] = None
+    brand_name: Optional[str] = None
+
+
+
+class EditCategoryName(BaseModel):
+    category_name: str

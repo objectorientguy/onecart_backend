@@ -71,6 +71,7 @@ class Products(Base):
     brand = relationship("Brand")
 
 
+
 class ProductVariant(Base):
     __tablename__ = "product_variants"
 
