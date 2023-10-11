@@ -686,5 +686,3 @@ def create_orders(response: Response, db: Session = Depends(get_db)):
     except Exception as e:
         print(repr(e))
         raise HTTPException(status_code=500, detail=str(e))
-
-
