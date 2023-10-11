@@ -4,8 +4,9 @@ from uuid import uuid4
 from urllib import response
 from collections import defaultdict
 import bcrypt
+from fastapi.responses import JSONResponse
 import firebase_admin
-from firebase_admin import credentials, db
+from firebase_admin import credentials, db, storage
 from passlib.context import CryptContext
 from fastapi import FastAPI, Response, Depends, File, Request, HTTPException, Body, Path, UploadFile, Form
 from sqlalchemy.orm import Session, joinedload
@@ -13,6 +14,8 @@ from sqlalchemy.exc import IntegrityError
 from starlette.responses import FileResponse
 import logging
 from sqlalchemy import select, func, update
+import shutil
+from datetime import timedelta
 
 from . import models, schemas
 from .models import Image, Products, ProductVariant, FavItem, CategoryProduct, Review, Categories
@@ -44,73 +47,37 @@ def save_image_to_db(db, filename, file_path):
     db.refresh(image)
     return image
 
-cred = credentials.Certificate({
-  "type": "service_account",
-  "project_id": "onecart-5f6a8",
-  "private_key_id": "38c1e579ad08c6f059967f28369307f30b05eb5c",
-  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDC5Bs6pGly2HUZ\niXzinRJNxiQl11bdZ8JgoQPzyqSPFq6IbQePSBs82ntbSjxHf6x4jjYGRD3oBA93\npjyaViU9PlKP7uoLoqVAz22jfyK66OD6f8svtzjXqAYnyi0Q78GbnEoAygFOOiVw\n6D3ka65MCiKiAcjWwbqx9aN9AsTSK+nBZsfrDd9d1MSDofAvmlM3NNDtTJ4Z33TV\nE39CpJfBEcqxkFRDMI4nckOnJ6/WFNC7ec0Ey6zXxgrjibwQ/7sWuTWkYmqbRUyx\nC/9+QR0f+DToOG15AphEJpKngdayFI2rw/OE23Vz1wyKqKhsoEYark92GZnPZc28\nmprFQlZFAgMBAAECggEAH6GPpM0t+zCUEuS8cvhM0fgsgkLIy68NPosrncwgOMQU\n6DoP7cqldxM7zbWHApC/gKKONKarSIauLvx5XhBIw3+jvU4oyOIpQZNZB135WE43\nQ5jttK0faesQsrEO7u6G5Rdw8F9Y5mYsEP70mqf6dkd31wUEoIx5XWxRkFbcdILZ\nAMbJo5+YmRCAunB35OrN5DTRp5ODU6Ab1xxXXwX5AVL8IbaEJdHDX6wA6JKl+9TH\n/x2nOr4scpmprjHnWPWQJkDW4W3LR4fwyghb2bnemKhkON5Bl5wH3CJwKZAEe+x0\nWGbUAdBqD2IBX4+HayR8JGhu0oeFAe55E7dts+PiyQKBgQDosee0S6+kmgKcuCFg\n+1Il/qI/BaBjTNzkfleHnzSqSD6L8b5Yh0OwzxBrtaVh3m1LuZ/I1r41yStlf829\njY86u77ZetWvmydSem8jqUnP9MTEOodjEU/SDgvZpkj1hLBFM5AhCk4yRF0jqj07\ndA/UWgd/sgLnh/Ca5tGkOs83/QKBgQDWaPE5jhgPunZWPyE4UTlvE0+cihBv4/Ef\nKYBDJ0nsom6etSq0nNBrD/ElQJyK9HcOykayZR8SZnEZSkHCphlL05MQqYAaIB2V\nqPKmb6R+1mAVDaMeWSWF2Eg3E4uWIVdmhvzcN3QYzSvBnvbio4xQ4QCmaCkegwmR\niUGY6qU16QKBgFdBdvA9vVRMyBP6W9HhC/HhZPea5YS26tHnqmzZv0bnJkUV1lme\nBz0CuFabW7OyU2uk5IzMMbE7iUFbRkwBDCdrBWrJy904oeskrA5EScBoOWyXwfLd\nKABNchYga5VdNzgL2Mz6702cIwzfpmxn3hOz2sIAf2RQrmF3kj8yKkgFAoGBAMi8\nFWOqKdLH4rSahBKC0P+yF63aAMuQn5VqOGAmr2oxJNnHiYTw75vcoAsdc7IQcErT\ni97HF5EVgbuIrwp6kWJRYfWOi5VqDeio9Qxnp5zsPaZYTyhBlAS8Wdfen6fd7ULb\nDG9sJ3B03gt3NXM4ZUzvarlg+WZMji/ITjbJMAXJAoGBAItWLAgjFNq4Tt6A+9eN\nXmXFB3QmiwyN8HDQNzs6WxpoqhBm52yaD/F+wE8Tp/KswiwqNLjRYNo5XiUk2mj8\nShgS3UyrMK+ZJyb+OCD15G/QdVsPUWB8/6q4B4sdoWvp3qrlj/lfMdQ+d6+JYgcl\nNJCL44NeX0QSptNEMsRKjPPA\n-----END PRIVATE KEY-----\n",
-  "client_email": "firebase-adminsdk-1g1po@onecart-5f6a8.iam.gserviceaccount.com",
-  "client_id": "108694359227909599503",
-  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-  "token_uri": "https://oauth2.googleapis.com/token",
-  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-1g1po%40onecart-5f6a8.iam.gserviceaccount.com",
-  "universe_domain": "googleapis.com"
-})
+cred = credentials.Certificate("serviceAccountKey.json")
+firebase_admin.initialize_app(cred, {'storageBucket':'onecart-6156a.appspot.com','databaseURL':'https://onecart-6156a-default-rtdb.firebaseio.com/'})
 
-firebase_admin.initialize_app(cred, {'databaseURL':'https://onecart-5f6a8-default-rtdb.firebaseio.com/'})
-
-# "storageBucket": 'onecart-5f6a8.appspot.com'
 @app.get('/')
 def root():
     return {'message': 'Hello world'}
 
 
-# class ImageUploadResponse(BaseModel):
-#     image_url: str
-
-from fastapi import FastAPI
-
-app = FastAPI()
-
-import datetime  # Import the datetime module
-
-
-@app.post("/upload-image/")
-async def upload_image(
-    image: UploadFile = File(...),
-    product_id: int = Form(...),
-    variant_id: int = Form(...),
-    db: Session = Depends(get_db),
-):
+def save_upload_file(upload_file: UploadFile, destination: str):
     try:
-        from firebase_admin import storage
-
-        # Upload the image to Firebase Storage
+        with open(destination, "wb") as buffer:
+            shutil.copyfileobj(upload_file.file, buffer)
+    finally:
+        upload_file.file.close()
+@app.post("/upload_images/")
+async def upload_images(upload_files: List[UploadFile] = File(...)):
+    image_urls = []
+    for upload_file in upload_files:
+        destination = os.path.join("app", "uploaded_images", upload_file.filename)
+        save_upload_file(upload_file, destination)
         bucket = storage.bucket()
-        blob = bucket.blob(f"product_images/{product_id}/{variant_id}/{image.filename}")
-        blob.upload_from_string(image.file.read(), content_type=image.content_type)
-
-        # Get the URL of the uploaded image from Firebase
-        image_url = blob.public_url
-
-        # Store the full Firebase Storage URL in your local database
-        product_variant = db.query(models.ProductVariant).filter_by(
-            product_id=product_id, variant_id=variant_id
-        ).first()
-
-        if product_variant:
-            existing_images = product_variant.image or []
-            existing_images.append(image_url)
-            product_variant.image = existing_images
-            db.commit()
-
-        return {"image_url": image_url}
-
-    except Exception as e:
-        print(repr(e))
-        # Handle any errors that may occur during image upload or database update
-        return {"error": str(e)}
+        blob = bucket.blob(f"uploaded_images/{upload_file.filename}")
+        blob.upload_from_filename(destination)
+        image_url = blob.generate_signed_url(method="GET", expiration=timedelta(days=7))
+        image_urls.append(image_url)
+    response_data = {
+        "status": 200,
+        "message": "Images uploaded successfully.",
+        "data": {"image_urls": image_urls}
+    }
+    return JSONResponse(content=response_data)
 
 
 
@@ -686,8 +653,8 @@ def add_employee(branch_id: int, employee_data: schemas.Employee, role_data: sch
         for emp in employees:
             employee_list.append({
                 "employee_name": emp.employee_name,
-                "role_key": role_data.role_id,
-                "roles": role_data.role_name
+                "roles": role_data.role_name,
+                "role_key": roles.role_id
             })
 
         db.refresh(new_employee)
@@ -763,24 +730,6 @@ def add_employee(branch_id: int, employee_data: schemas.Employee, role_data: sch
 #     finally:
 #         db.close()
 
-
-# @app.post('/loginCompany')
-# def login_company(login_data: schemas.Companies, response: Response, db: Session = Depends(get_db)):
-#     try:
-#         company = db.query(models.Companies).filter(models.Companies.company_email == login_data.company_email).first()
-#
-#         if company:
-#             stored_hashed_password = company.company_password.encode()
-#             if bcrypt.checkpw(login_data.company_password.encode(), stored_hashed_password):
-#                 return {"status": 200, "message": "Company logged in successfully!", "data": company}
-#             else:
-#                 return {"status": 401, "message": "Incorrect password", "data": {}}
-#         else:
-#             return {"status": 404, "message": "Company not found", "data": {}}
-#     except Exception as e:
-#         print(repr(e))
-#         response.status_code = 500
-#         return {"status": 500, "message": "Internal Server Error", "data": {}}
 
 @app.post('/addCategory')
 def add_categories(addCategory: schemas.Category, response: Response, db: Session = Depends(get_db)):
