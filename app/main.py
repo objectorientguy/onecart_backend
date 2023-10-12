@@ -656,6 +656,10 @@ def update_company_details(company_id: str, response: Response,request_body: sch
     try:
         company = db.query(models.Companies).filter(models.Companies.company_id == company_id).first()
         if company:
+            existing_company = db.query(models.Companies).filter(
+                models.Companies.company_name == request_body.company_name).first()
+            if existing_company and existing_company.company_id != company_id:
+                return {"status": 400, "message": "Company name already exists for another company", "data": {}}
             company.company_name = request_body.company_name
             company.company_address = request_body.company_address
             company.company_contact = request_body.company_contact
@@ -668,6 +672,7 @@ def update_company_details(company_id: str, response: Response,request_body: sch
         print(repr(e))
         response.status_code = 500
         return {"status": 500, "message": "Internal Server Error", "data": {}}
+
 
 @app.post("/branch")
 def add_branch(company_id: str, branch_data: schemas.Branch, db: Session = Depends(get_db)):
