@@ -440,3 +440,23 @@ class Role(Base):
 
     employee = relationship("Employee")
 
+class NewUsers(Base):
+    __tablename__ = "new_users"
+
+    user_uniqueid = Column(BIGINT, primary_key=True, nullable=False, server_default=text("EXTRACT(EPOCH FROM NOW())::BIGINT"))
+    user_name = Column(String, nullable=True)
+    user_contact = Column(BIGINT, nullable=True)
+    user_birthdate = Column(Date, nullable=True)
+    created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('now()'))
+    user_image = Column(String, nullable=True)
+    user_emailId = Column(String, nullable=True)
+    user_password = Column(String, nullable=True)
+
+
+
+    @validates('user_contact', 'user_uniqueid')
+    def empty_string_to_null(self, key, value):
+        if isinstance(value, str) and value == '':
+            return None
+        else:
+            return value

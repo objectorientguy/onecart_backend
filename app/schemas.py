@@ -379,4 +379,15 @@ class EditCategoryName(BaseModel):
     category_name: str
 
 
+class NewUsers(BaseModel):
+    user_uniqueid : int | None = None
+    user_name: str | None = None
+    user_contact: str | None = None
+    user_birthdate: str | None = None
+    user_image: str | None = None
+    user_emailId: str | None = None
+    user_password: str
+
+
+
 
