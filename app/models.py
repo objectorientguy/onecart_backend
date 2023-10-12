@@ -419,7 +419,7 @@ class Employee(Base):
     __tablename__ = "employee"
 
     employee_id = Column(BIGINT, primary_key=True, autoincrement=True)
-    employee_name = Column(String, nullable=False)
+    employee_name = Column(String, nullable=True)
     employee_contact = Column(BIGINT, nullable=False)
     employee_password = Column(String, nullable=False)
     employee_gender = Column(String, nullable=True)
