@@ -300,8 +300,6 @@ class Companies(BaseModel):
 class CompanyUpdateDetails(BaseModel):
     company_name: str
     company_domain: str
-    company_logo: str
-    services: str
     company_contact: int
     company_address: str
     white_labelled: bool = True
@@ -330,7 +328,7 @@ class Branch(BaseModel):
     branch_address: str
     branch_email: str
     branch_number: int
-    company_name: str | None = None
+    company_id: str | None = None
     class Config:
         from_attributes = True
 

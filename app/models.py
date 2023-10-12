@@ -411,7 +411,7 @@ class Branch(Base):
     branch_address = Column(String, nullable=True)
     branch_email = Column(String, nullable=True)
     branch_number = Column(BIGINT, nullable=True)
-    company_name = Column(String, ForeignKey("companies.company_name", ondelete="CASCADE"))
+    company_id = Column(String, ForeignKey("companies.company_id", ondelete="CASCADE"))
 
     company = relationship("Companies")
 
@@ -439,3 +439,4 @@ class Role(Base):
     employee_id = Column(Integer, ForeignKey("employee.employee_id", ondelete="CASCADE"))
 
     employee = relationship("Employee")
+

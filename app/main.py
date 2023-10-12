@@ -1,4 +1,5 @@
 from typing import List, Optional
+import io
 from contextlib import contextmanager
 from urllib import response
 from collections import defaultdict
@@ -7,7 +8,7 @@ from fastapi.responses import JSONResponse
 import firebase_admin
 from firebase_admin import credentials, db, storage
 from passlib.context import CryptContext
-from fastapi import FastAPI, Response, Depends, File, Request, HTTPException, Body, Path, UploadFile, Form
+from fastapi import FastAPI, Response, Depends, File, Request, HTTPException, Body, Path, UploadFile, Form, Query
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import IntegrityError
 from starlette.responses import FileResponse
@@ -15,7 +16,7 @@ import logging
 from sqlalchemy import select, func, update
 import shutil
 from datetime import timedelta
-
+import base64
 from . import models, schemas
 from .models import Image, Products, ProductVariant, FavItem, CategoryProduct, Review, Categories
 from .database import engine, get_db, SessionLocal
@@ -61,7 +62,7 @@ def save_upload_file(upload_file: UploadFile, destination: str):
             shutil.copyfileobj(upload_file.file, buffer)
     finally:
         upload_file.file.close()
-@app.post("/upload_images/")
+@app.post("/fire_base/image")
 async def upload_images(upload_files: List[UploadFile] = File(...)):
     image_urls = []
     for upload_file in upload_files:
@@ -78,6 +79,48 @@ async def upload_images(upload_files: List[UploadFile] = File(...)):
         "data": {"image_urls": image_urls}
     }
     return JSONResponse(content=response_data)
+
+@app.post("/upload_images/")
+async def upload_images(product_id: int, variant_id: int,upload_files: List[UploadFile] = File(...), db: Session = Depends(get_db)):
+    image_urls = []
+
+    for upload_file in upload_files:
+        destination = os.path.join("app", "uploaded_images", upload_file.filename)
+        save_upload_file(upload_file, destination)
+
+        # Upload the image to Firebase Storage
+        bucket = storage.bucket()
+        blob = bucket.blob(f"uploaded_images/{upload_file.filename}")
+        blob.upload_from_filename(destination)
+
+        image_url = blob.generate_signed_url(method="GET", expiration=timedelta(days=7))
+        image_urls.append(image_url)
+
+
+        product_variant = db.query(models.ProductVariant).filter_by(
+                product_id=product_id, variant_id=variant_id
+            ).first()
+
+        if product_variant:
+                existing_images = product_variant.image or []
+                existing_images.append(image_url)
+                product_variant.image = existing_images
+                db.commit()
+
+    response_data = {
+        "status": 200,
+        "message": "Images uploaded successfully.",
+        "data": {"image_urls": image_urls}
+    }
+
+    return JSONResponse(content=response_data)
+
+def save_upload_file(upload_file: UploadFile, destination: str):
+    try:
+        with open(destination, "wb") as buffer:
+            shutil.copyfileobj(upload_file.file, buffer)
+    finally:
+        upload_file.file.close()
 
 
 
@@ -504,6 +547,26 @@ async def add_companies(addCompany: schemas.CompanySignUp, response: Response, d
 #         print(repr(e))
 #         response.status_code = 500
 #         return {"status": 500, "message": "Internal Server Error", "data": {}}
+# @app.post('/logincompany')
+# def login_company(login_data: schemas.CompanyLogin, response: Response, db: Session = Depends(get_db)):
+#     try:
+#         company = db.query(models.Companies).filter(models.Companies.company_email == login_data.company_email).first()
+#
+#         if company:
+#             if pwd_context.verify(login_data.company_password, company.company_password):
+#                 return {"status": 200, "message": "Company logged in successfully!", "data":  {
+#             "company_id": company.company_id,
+#             "company_email": company.company_email,
+#         }}
+#             else:
+#                 return {"status": 401, "message": "Incorrect password", "data": {}}
+#         else:
+#             return {"status": 404, "message": "Company not found", "data": {}}
+#     except Exception as e:
+#         print(repr(e))
+#         response.status_code = 500
+#         return {"status": 500, "message": "Internal Server Error", "data": {}}
+
 @app.post('/logincompany')
 def login_company(login_data: schemas.CompanyLogin, response: Response, db: Session = Depends(get_db)):
     try:
@@ -511,10 +574,23 @@ def login_company(login_data: schemas.CompanyLogin, response: Response, db: Sess
 
         if company:
             if pwd_context.verify(login_data.company_password, company.company_password):
-                return {"status": 200, "message": "Company logged in successfully!", "data":  {
-            "company_id": company.company_id,
-            "company_email": company.company_email,
-        }}
+                response_data = {
+                    "status": 200,
+                    "message": "Company logged in successfully!",
+                    "data": {
+                        "company_id": company.company_id,
+                        "company_email": company.company_email,
+                    }
+                }
+                company_id = company.company_id
+
+                branches = db.query(models.Branch).filter(models.Branch.company_id == company_id).all()
+                employees = db.query(models.Employee).join(models.Branch).filter(models.Branch.company_id == company_id).all()
+
+                response_data['data']['branches'] = [branch.__dict__ for branch in branches]
+                response_data['data']['employees'] = [employee.__dict__ for employee in employees]
+
+                return response_data
             else:
                 return {"status": 401, "message": "Incorrect password", "data": {}}
         else:
@@ -523,6 +599,7 @@ def login_company(login_data: schemas.CompanyLogin, response: Response, db: Sess
         print(repr(e))
         response.status_code = 500
         return {"status": 500, "message": "Internal Server Error", "data": {}}
+
 @app.post("/company/logo")
 async def upload_company_logo(request: Request, logo: UploadFile = File(...), company_id: str = Form(...),  db: Session = Depends(get_db)):
     try:
@@ -580,12 +657,9 @@ def update_company_details(company_id: str, response: Response,request_body: sch
         company = db.query(models.Companies).filter(models.Companies.company_id == company_id).first()
         if company:
             company.company_name = request_body.company_name
-            company.company_domain = request_body.company_domain
-            company.company_logo = request_body.company_logo
-            company.services = request_body.services
-            company.company_contact = request_body.company_contact
             company.company_address = request_body.company_address
-            company.white_labelled = request_body.white_labelled
+            company.company_contact = request_body.company_contact
+            company.company_domain = request_body.company_domain
             print(company)
             db.commit()
 
@@ -602,12 +676,12 @@ def add_branch(company_id: str, branch_data: schemas.Branch, db: Session = Depen
         if company is None:
             return {"status_code": 404, "message": "Company not found", "data": {}}
 
-        existing_branch = db.query(models.Branch).filter_by(company_name=company.company_name,
+        existing_branch = db.query(models.Branch).filter_by(company_id=company.company_id,
                                                             branch_name=branch_data.branch_name).first()
         if existing_branch:
             return {"status_code": 400, "message": "Branch with the same name already exists", "data": {}}
 
-        branch_data.company_name = company.company_name
+        branch_data.company_id = company.company_id
         new_branch = models.Branch(**branch_data.model_dump())
         db.add(new_branch)
         db.commit()
