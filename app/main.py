@@ -664,7 +664,7 @@ async def delete_company_logo(company_id: str, db: Session = Depends(get_db)):
     finally:
         db.close()
 
-@app.put('/company/details')
+@app.post('/company/details')
 def update_company_details(company_id: str, response: Response,request_body: schemas.CompanyUpdateDetails = Body(...), db: Session = Depends(get_db)):
     try:
         company = db.query(models.Companies).filter(models.Companies.company_id == company_id).first()
