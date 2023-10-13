@@ -285,7 +285,7 @@ class Review(BaseModel):
 class Companies(BaseModel):
     company_id: Optional[int] | None = None
     company_name: str
-    company_password: str
+    company_password: str | None = None
     company_domain: str
     company_logo: str
     company_email: EmailStr | None = None
@@ -334,10 +334,10 @@ class Branch(BaseModel):
 
 class Employee(BaseModel):
     employee_id: int | None = None
-    employee_name: str
-    employee_contact: int
-    employee_password: str
-    employee_gender: str
+    employee_name: str | None = None
+    employee_contact: int | None = None
+    employee_password: str | None = None
+    employee_gender: str | None = None
     branch_id: int | None = None
 
 class Role(BaseModel):
@@ -377,6 +377,17 @@ class ProductUpdateInput(BaseModel):
 
 class EditCategoryName(BaseModel):
     category_name: str
+
+
+class NewUsers(BaseModel):
+    user_uniqueid : int | None = None
+    user_name: str | None = None
+    user_contact: str | None = None
+    user_birthdate: str | None = None
+    user_image: str | None = None
+    user_emailId: str | None = None
+    user_password: str
+
 
 
 
