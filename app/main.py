@@ -470,10 +470,10 @@ def signup(response: Response, company_data: schemas.CompanySignUp = Body(...), 
             "signup_credentials": signup_credentials
         }}
     except Exception as e:
-        return{"status_code":400, "message":"User already Exists!"}
+        return{"status_code":400, "message":"User already Exists!", "data":{}}
     except Exception as e:
         print(repr(e))
-        return{"status_code":500, "message":"Internal Server Error!"}
+        return{"status_code":500, "message":"Internal Server Error!", "data":{}}
 
 
 @app.post('/logincompany')
@@ -493,13 +493,13 @@ def login_company(login_credentials: Union[str, int], login_data: schemas.LoginF
                 else:
                     return build_employee_response(user, db)
             else:
-                return {"status": 401, "message":"Incorrect password"}
-        return {"status": 400, "message":"Incorrect password"}
+                return {"status": 401, "message":"Incorrect password", "data":{}}
+        return {"status": 400, "message":"Incorrect password", "data":{}}
     except DataError as e:
-        return {"status": 400, "message":"Invalid login credential"}
+        return {"status": 400, "message":"Invalid login credential", "data":{}}
     except Exception as e:
         print(repr(e))
-        return {"status": 500, "message":"Internal Server Error"}
+        return {"status": 500, "message":"Internal Server Error", "data":{}}
 def build_company_response(company, db):
     response_data = {
         "status": 200,
@@ -545,7 +545,7 @@ async def upload_company_logo(request: Request, logo: UploadFile = File(...), co
         if company:
             base_url = request.base_url
             logo_url = f"{base_url}images/{image_filename}"
-            company.company_logo = logo_url  # Store the full image URL in the database
+            company.company_logo = logo_url
             db.commit()
             return {"status": 200, "message": "Company logo uploaded successfully", "data": {"logo_url": logo_url}}
         else:
@@ -630,6 +630,12 @@ def add_branch(company_id: str, branch_data: schemas.Branch, db: Session = Depen
     finally:
         db.close()
 
+
+def get_employee_info(employee_id: int, db: Session):
+    result = db.query(models.Employee.employee_name, models.Role.role_name, models.Role.role_id) \
+        .join(models.Role, models.Employee.employee_id == models.Role.employee_id) \
+        .filter(models.Employee.employee_id == employee_id).first()
+    return (result)
 @app.post("/branch/employee")
 def add_employee(branch_id: int, employee_data: schemas.Employee, role_data: schemas.Role, response: Response,
                  db: Session = Depends(get_db)):
@@ -637,7 +643,6 @@ def add_employee(branch_id: int, employee_data: schemas.Employee, role_data: sch
 
         employees = db.query(models.Employee).filter_by(branch_id=branch_id).all()
         roles = db.query(models.Role).first()
-
         branch = db.query(models.Branch).filter_by(branch_id=branch_id).first()
         if branch is None:
             return {"status": 404, "message": "Branch not found", "data": {}}
@@ -653,7 +658,6 @@ def add_employee(branch_id: int, employee_data: schemas.Employee, role_data: sch
             return {"status": 400, "message": "User already exists", "data": {}}
 
         hashed_password = pwd_context.hash(employee_data.employee_password)
-
         employee_data.employee_password = hashed_password
         employee_data.branch_id = branch.branch_id
         new_employee = models.Employee(**employee_data.model_dump())
@@ -671,11 +675,9 @@ def add_employee(branch_id: int, employee_data: schemas.Employee, role_data: sch
             user_contact=employee_data.employee_contact,
             user_password = employee_data.employee_password,
             user_name = employee_data.employee_name
-
         )
         db.add(new_user)
         db.commit()
-
         unique_id = new_user.user_uniqueid
         employee_list = []
         response_data = {
@@ -684,12 +686,15 @@ def add_employee(branch_id: int, employee_data: schemas.Employee, role_data: sch
             "employees": employee_list
         }
 
-        for emp in employees:
-            employee_list.append({
-                "employee_name": emp.employee_name,
-                "roles": role_data.role_name,
-                "role_key": roles.role_id
-            })
+        for employee in employees:
+            employee_info = get_employee_info(employee.employee_id, db)
+            if employee_info:
+                employee_name, role_name, role_id = employee_info
+                employee_list.append({
+                    "employee_name": employee_name,
+                    "role_name": role_name,
+                    "role_key": role_id
+                })
 
         db.refresh(new_employee)
         return {"status": 200, "message": "New Employee added successfully",
@@ -700,34 +705,6 @@ def add_employee(branch_id: int, employee_data: schemas.Employee, role_data: sch
         return {"status": 500, "message": "Internal Server Error", "data": {}}
     finally:
         db.close()
-@app.post('/loginemployee')
-def login_employee(login_data: schemas.Employee, response: Response, db: Session = Depends(get_db)):
-    try:
-        employee = db.query(models.Employee).filter(models.Employee.employee_contact == login_data.employee_contact).first()
-
-        if employee:
-            if employee:
-                stored_hash = employee.employee_password
-            if pwd_context.verify(login_data.employee_password, employee.employee_password):
-                response_data = {
-                    "status": 200,
-                    "message": "Employee logged in successfully!",
-                    "data": {
-                        "employee_name": employee.employee_name,
-                        "employee_contact": employee.employee_contact,
-                    }
-                }
-                branch_id = employee.branch_id
-                branches = db.query(models.Branch).filter(models.Branch.branch_id == branch_id).all()
-                return response_data
-            else:
-                return {"status": 401, "message": "Incorrect password", "data": {}}
-        else:
-            return {"status": 404, "message": "Employee not found", "data": {}}
-    except Exception as e:
-        print(repr(e))
-        response.status_code = 500
-        return {"status": 500, "message": "Internal Server Error", "data": {}}
 
 
 @app.post('/addCategory')
