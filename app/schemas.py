@@ -310,18 +310,22 @@ class CompanyUpdateDetails(BaseModel):
 
 class CompanySignUp(BaseModel):
     company_id: Optional[str] | None = None
-    company_email: EmailStr
+    company_email: str | None = None
+    company_contact: int | None = None
     company_password: str
 
     class Config:
         from_attributes = True
 
-class CompanyLogin(BaseModel):
-    company_email: EmailStr
-    company_password: str
+class LoginFlow(BaseModel):
+    company_contact: int | None = None
+    company_email: str | None = None
+    employee_contact: int | None = None
+    login_password: str
 
     class Config:
         from_attributes = True
+
 
 class Branch(BaseModel):
     branch_name: str
@@ -380,7 +384,7 @@ class EditCategoryName(BaseModel):
 
 
 class NewUsers(BaseModel):
-    user_uniqueid : int | None = None
+    user_uniqueid: int | None = None
     user_name: str | None = None
     user_contact: str | None = None
     user_birthdate: str | None = None

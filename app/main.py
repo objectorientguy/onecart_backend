@@ -441,180 +441,95 @@ def delete_user_address(response: Response, db: Session = Depends(get_db), addre
         response.status_code = 404
         return {"status": "404", "message": "Error", "data": {}}
 
-
-# @app.post('/signupCompany')
-# def add_companies(addCompany: schemas.CompanySignUp, response: Response, db: Session = Depends(get_db)):
-#     try:
-#         existing_company = db.query(models.Companies).filter(
-#             models.Companies.company_email == addCompany.company_email).first()
-#         if existing_company:
-#             return {"status": 200, "message": "Company Signup Completed. Please fill in company details.",
-#                     "data": existing_company}
-#
-#         salt = bcrypt.gensalt()
-#         password = bcrypt.hashpw(addCompany.company_password.encode('utf-8'), salt)
-#         new_company = models.Companies(**addCompany.model_dump())
-#         new_company.password = password.decode('utf-8')
-#         db.add(new_company)
-#         db.commit()
-#         db.refresh(new_company)
-#
-#         return {"status": 200, "message": "Company Signed Up!", "data": new_company}
-#     except Exception as e:
-#         print(repr(e))
-#         response.status_code = 500
-#         return {"status": 500, "message": "Internal Server Error", "data": {}}
-
-# @app.post('/signupCompany')
-# def add_companies(addCompany: schemas.CompanySignUp, response: Response, db: Session = Depends(get_db)):
-#     try:
-#         existing_company = db.query(models.Companies).filter(
-#             models.Companies.company_email == addCompany.company_email).first()
-#         if existing_company:
-#             return {"status": 200, "message": "Company Signup Completed. Please fill in company details.",
-#                     "data": existing_company}
-#
-#         hashed_password = pwd_context.hash(addCompany.company_password)
-#         user.password = hashed_password
-#         salt = bcrypt.gensalt()
-#         password = bcrypt.hashpw(addCompany.company_password.encode('utf-8'), salt)  # Removed .encode('utf-8')
-#         new_company = models.Companies(**addCompany.model_dump())
-#         new_company.password = password.decode('utf-8')
-#         db.add(new_company)
-#         db.commit()
-#         db.refresh(new_company)
-#
-#         return {"status": 200, "message": "Company Signed Up!", "data": new_company}
-#     except Exception as e:
-#         print(repr(e))
-#         response.status_code = 500
-#         return {"status": 500, "message": "Internal Server Error", "data": {}}
-
-@app.post('/signupcompany')
-async def add_companies(addCompany: schemas.CompanySignUp, db: Session = Depends(get_db)):
+@app.post('/signup')
+def signup(response: Response, company_data: schemas.CompanySignUp = Body(...), signup_credentials: Union[str, int] = Query(...), db: Session = Depends(get_db)):
     try:
-        existing_user = db.query(models.NewUsers).filter(
-            models.NewUsers.user_emailId == addCompany.company_email).first()
-        if existing_user:
-            return {"status": 400, "message": "User already exists", "data": {}}
-
-        existing_company = db.query(models.Companies).filter(
-            models.Companies.company_email == addCompany.company_email).first()
-        if existing_company:
-            return {"status": 400, "message":"User already exists", "data": {}}
-
-
-        hashed_password = pwd_context.hash(addCompany.company_password)
+        if signup_credentials.isdigit():
+            company_data.company_contact = int(signup_credentials)
+        else:
+            company_data.company_email = signup_credentials
+        hashed_password = pwd_context.hash(company_data.company_password)
         company_id = uuid4().hex
         new_company = models.Companies(
             company_id=company_id,
-            company_email=addCompany.company_email,
+            company_email=company_data.company_email,
+            company_contact=company_data.company_contact,
             company_password=hashed_password
         )
-
-        db.add(new_company)
-        db.commit()
-        db.refresh(new_company)
-
         new_user = models.NewUsers(
-            user_emailId=addCompany.company_email,
-            user_password=addCompany.company_password
+            user_contact=company_data.company_contact,
+            user_emailId=company_data.company_email,
+            user_password=company_data.company_password
         )
-
-        db.add(new_user)
-        db.commit()
-
-        return {"status": 200, "message": "Company Signed Up!", "data": {
+        with db.begin():
+            db.add(new_company)
+            db.add(new_user)
+            db.commit()
+        return {"status": 200, "message": "User Signed Up!", "data": {
             "company_id": new_company.company_id,
-            "company_email": new_company.company_email,
+            "signup_credentials": signup_credentials
         }}
     except Exception as e:
-        print(repr(e))
-        response.status_code = 500
-        return {"status": 500, "message": "Internal Server Error", "data": {}}
-
-# def create_company_from_signup(signup_data: schemas.CompanySignUp):
-#     salt = bcrypt.gensalt()
-#     hashed_password = bcrypt.hashpw(signup_data.company_password.encode(), salt)
-#
-#     return Companies(
-#         company_name=signup_data.company_name,
-#         company_password=hashed_password.decode(),
-#         company_email=signup_data.company_email,
-#     )
-
-# @app.post('/signupCompany')
-# def add_companies(addCompany: schemas.CompanySignUp, response: Response, db: Session = Depends(get_db)):
-#     try:
-#         existing_company = db.query(models.Companies).filter(models.Companies.company_email == addCompany.company_email).first()
-#         if existing_company:
-#             return {"status": 200, "message": "Company Signup Completed. Please fill in company details.",
-#                     "data": existing_company}
-#
-#         new_company = create_company_from_signup(addCompany)
-#         db.add(new_company)
-#         db.commit()
-#         db.refresh(new_company)
-#
-#         return {"status": 200, "message": "Company Signed Up!", "data": new_company}
-#     except Exception as e:
-#         print(repr(e))
-#         response.status_code = 500
-#         return {"status": 500, "message": "Internal Server Error", "data": {}}
-# @app.post('/logincompany')
-# def login_company(login_data: schemas.CompanyLogin, response: Response, db: Session = Depends(get_db)):
-#     try:
-#         company = db.query(models.Companies).filter(models.Companies.company_email == login_data.company_email).first()
-#
-#         if company:
-#             if pwd_context.verify(login_data.company_password, company.company_password):
-#                 return {"status": 200, "message": "Company logged in successfully!", "data":  {
-#             "company_id": company.company_id,
-#             "company_email": company.company_email,
-#         }}
-#             else:
-#                 return {"status": 401, "message": "Incorrect password", "data": {}}
-#         else:
-#             return {"status": 404, "message": "Company not found", "data": {}}
-#     except Exception as e:
-#         print(repr(e))
-#         response.status_code = 500
-#         return {"status": 500, "message": "Internal Server Error", "data": {}}
-
-@app.post('/logincompany')
-def login_company(login_data: schemas.CompanyLogin, response: Response, db: Session = Depends(get_db)):
-    try:
-        company = db.query(models.Companies).filter(models.Companies.company_email == login_data.company_email).first()
-
-        if company:
-            if pwd_context.verify(login_data.company_password, company.company_password):
-                response_data = {
-                    "status": 200,
-                    "message": "Company logged in successfully!",
-                    "data": {
-                        "company_id": company.company_id,
-                        "company_email": company.company_email,
-                    }
-                }
-                company_id = company.company_id
-
-                company = db.query(models.Companies).filter(models.Companies.company_id == company_id).first()
-                branches = db.query(models.Branch).filter(models.Branch.company_id == company_id).all()
-                employees = db.query(models.Employee).join(models.Branch).filter(models.Branch.company_id == company_id).all()
-
-                response_data['data']['branches'] = [branch.__dict__ for branch in branches]
-                response_data['data']['company'] = company.__dict__
-                response_data['data']['employees'] = [employee.__dict__ for employee in employees]
-
-                return response_data
-            else:
-                return {"status": 401, "message": "Incorrect password", "data": {}}
-        else:
-            return {"status": 404, "message": "Company not found", "data": {}}
+        return{"status_code":400, "message":"User already Exists!"}
     except Exception as e:
         print(repr(e))
-        response.status_code = 500
-        return {"status": 500, "message": "Internal Server Error", "data": {}}
+        return{"status_code":500, "message":"Internal Server Error!"}
+
+
+@app.post('/logincompany')
+def login_company(login_credentials: Union[str, int], login_data: schemas.LoginFlow, response: Response, db: Session = Depends(get_db)):
+    try:
+        user = (
+            db.query(models.Companies).filter(models.Companies.company_email == login_credentials).first()
+            or
+            db.query(models.Companies).filter(models.Companies.company_contact == login_credentials).first()
+            or
+            db.query(models.Employee).filter(models.Employee.employee_contact == login_credentials).first()
+        )
+        if user:
+            if pwd_context.verify(login_data.login_password, user.company_password if isinstance(user, models.Companies) else user.employee_password):
+                if isinstance(user, models.Companies):
+                    return build_company_response(user, db)
+                else:
+                    return build_employee_response(user, db)
+            else:
+                return {"status": 401, "message":"Incorrect password"}
+        return {"status": 400, "message":"Incorrect password"}
+    except DataError as e:
+        return {"status": 400, "message":"Invalid login credential"}
+    except Exception as e:
+        print(repr(e))
+        return {"status": 500, "message":"Internal Server Error"}
+def build_company_response(company, db):
+    response_data = {
+        "status": 200,
+        "message": "Company logged in successfully!",
+        "data": {
+            "company_id": company.company_id,
+            "company_email": company.company_email,
+            "company_contact": company.company_contact
+        }
+    }
+    company_id = company.company_id
+    branches = db.query(models.Branch).filter(models.Branch.company_id == company_id).all()
+    employees = db.query(models.Employee).join(models.Branch).filter(models.Branch.company_id == company_id).all()
+    response_data['data']['branches'] = [branch.__dict__ for branch in branches]
+    response_data['data']['company'] = company.__dict__
+    response_data['data']['employees'] = [employee.__dict__ for employee in employees]
+    return response_data
+def build_employee_response(employee, db):
+    response_data = {
+        "status": 200,
+        "message": "Employee logged in successfully!",
+        "data": {
+            "employee_contact": employee.employee_contact
+        }
+    }
+    employee_contact = employee.employee_contact
+    employees = db.query(models.Employee).filter(models.Employee.employee_contact == employee_contact).all()
+    response_data['data']['employees'] = [employee.__dict__ for employee in employees]
+    return response_data
+
 
 @app.post("/company/logo")
 async def upload_company_logo(request: Request, logo: UploadFile = File(...), company_id: str = Form(...),  db: Session = Depends(get_db)):
@@ -813,107 +728,6 @@ def login_employee(login_data: schemas.Employee, response: Response, db: Session
         print(repr(e))
         response.status_code = 500
         return {"status": 500, "message": "Internal Server Error", "data": {}}
-
-#
-# @app.post('/login')
-# def login(login_credentials: Union[str, int], login_data: Union[schemas.CompanyLogin, schemas.Employee], response: Response,
-#           db: Session = Depends(get_db)):
-#     try:
-#         user = None
-#
-#         if login_credentials.endswith('@example.com'):
-#             company = db.query(models.Companies).filter(
-#                 models.Companies.company_email == login_credentials).first()
-#         else:
-#             employee = db.query(models.Employee).filter(
-#                 models.Employee.employee_contact == login_credentials).first()
-#
-#         if user:
-#             if login_credentials.endswith('@example.com'):
-#                 if pwd_context.verify(login_data.company_password, company.company_password):
-#                     response_data = {
-#                         "status": 200,
-#                         "message": "User logged in successfully!",
-#                         "data": {
-#                             "company_id": user.company_id,
-#                             "company_email": user.company_email,
-#                         }
-#                     }
-#                 else:
-#                     return {"status": 401, "message": "Incorrect password", "data": {}}
-#             else:
-#                 if pwd_context.verify(login_data.employee_password, employee.employee_password):
-#                     response_data = {
-#                         "status": 200,
-#                         "message": "User logged in successfully!",
-#                         "data": {
-#                             "employee_name": user.employee_name,
-#                             "employee_contact": user.employee_contact,
-#                         }
-#                     }
-#                 else:
-#                     return {"status": 401, "message": "Incorrect password", "data": {}}
-#
-#             return response_data
-#         else:
-#             return {"status": 404, "message": "User not found", "data": {}}
-#     except DataError as e:
-#         print(repr(e))
-#         response.status_code = 500
-#         return {"status": 500, "message": "Internal Server Error", "data": {}}
-#
-
-# @app.post('/login')
-# def login(login_credentials: str, login_data: Union[schemas.CompanyLogin, schemas.Employee], response: Response, db: Session = Depends(get_db)):
-#     try:
-#         user = None
-#
-#         if isinstance(login_data, schemas.CompanyLogin):
-#             user = db.query(models.Companies).filter(
-#                 models.Companies.company_email == login_credentials).first()
-#         elif isinstance(login_data, schemas.Employee):
-#             user = db.query(models.Employee).filter(
-#                 models.Employee.employee_contact == login_credentials).first()
-#         else:
-#             return {"status": 400, "message": "Invalid login data", "data": {}}
-#
-        # if user:
-        #     if pwd_context.verify(login_data.company_password if isinstance(login_data, schemas.CompanyLogin) else login_data.employee_password,
-        #                           user.company_password if isinstance(login_data, schemas.CompanyLogin) else user.employee_password):
-        #         response_data = {
-        #             "status": 200,
-        #             "message": "User logged in successfully!",
-        #         }
-#
-#                 if isinstance(login_data, schemas.CompanyLogin):
-#                     company_id = user.company_id
-#                     branches = db.query(models.Branch).filter(models.Branch.company_id == company_id).all()
-#                     employees = db.query(models.Employee).join(models.Branch).filter(
-#                         models.Branch.company_id == company_id).all()
-#                     response_data['data'] = {
-#                         "company_id": user.company_id,
-#                         "company_email": user.company_email,
-#                         "branches": [branch.__dict__ for branch in branches],
-#                         "employees": [employee.__dict__ for employee in employees]
-#                     }
-#                 elif isinstance(login_data, schemas.Employee):
-#                     response_data['data'] = {
-#                         "employee_name": user.employee_name,
-#                         "employee_contact": user.employee_contact,
-#                     }
-#                 return response_data
-#             else:
-#                 return {"status": 401, "message": "Incorrect password", "data": {}}
-#         else:
-#             return {"status": 404, "message": "User not found", "data": {}}
-#     except DataError as e:
-#         if 'invalid input syntax for type bigint' in str(e):
-#             return {"status": 400, "message": "Invalid login credential", "data": {}}
-#         else:
-#             print(repr(e))
-#             response.status_code = 500
-#             return {"status": 500, "message": "Internal Server Error", "data": {}}
-
 
 
 @app.post('/addCategory')
