@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 import firebase_admin
 from firebase_admin import credentials, db, storage
 from passlib.context import CryptContext
-from fastapi import FastAPI, Response, Depends, File, Request, HTTPException, Body, Path, UploadFile, Form
+from fastapi import FastAPI, Response, Depends, File, Request, HTTPException, Body, Path, UploadFile, Form, Query
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import IntegrityError
 from starlette.responses import FileResponse
@@ -17,10 +17,12 @@ import shutil
 from datetime import timedelta
 
 from . import models, schemas
-from .models import Image, Products, ProductVariant, FavItem, CategoryProduct, Review, Categories
+from .models import Image, Products, ProductVariant, FavItem, CategoryProduct, Review, Categories, Order, Payment
 from .database import engine, get_db, SessionLocal
 from fastapi.middleware.cors import CORSMiddleware
 import os
+
+from .schemas import OrderCreate
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 models.Base.metadata.create_all(bind=engine)
@@ -2275,106 +2277,94 @@ def add_product(product_data: schemas.ProductInput, db: Session = Depends(get_db
         ).first()
 
         if existing_product:
-            return JSONResponse(content={"status": 400, "message": "Product already exists!"})
+            return JSONResponse(content={"status": 400, "message": "Product already exists!", "data": {}})
 
         brand = db.query(models.Brand).filter(
             models.Brand.brand_name == product_data.brand_name
         ).first()
 
-        if brand:
-
-            new_product = models.Products(
-                product_name=product_data.product_name,
-                details=product_data.details,
-                brand_id=brand.brand_id,
-            )
-        else:
-
-            return JSONResponse(content={"status": 400, "message": "Brand not found"})
+        if not brand:
+            return JSONResponse(content={"status": 400, "message": "Brand not found", "data": {}})
 
         category = db.query(models.Categories).filter(
             models.Categories.category_name == product_data.category_name
         ).first()
 
         if not category:
+            # If the category doesn't exist, create it
+            category = models.Categories(category_name=product_data.category_name)
+            db.add(category)
+            db.commit()
+            db.refresh(category)
 
-            return JSONResponse(content={"status": 400, "message": "Category not found"})
-
+        new_product = models.Products(
+            product_name=product_data.product_name,
+            brand_id=brand.brand_id,
+        )
 
         db.add(new_product)
         db.commit()
         db.refresh(new_product)
 
-
         new_variant = models.ProductVariant(
             variant_cost=product_data.variant_cost,
-            count=product_data.count,
+            measuring_unit=product_data.measuring_unit,
             brand_name=product_data.brand_name,
             discounted_cost=product_data.discounted_cost,
             quantity=product_data.quantity,
+            stock=product_data.stock,
             description=product_data.description,
-            image=product_data.image,
             product_id=new_product.product_id,
+            category_name=product_data.category_name,
         )
-
 
         db.add(new_variant)
         db.commit()
 
-        return JSONResponse(content={"status": 200, "message": "New product added successfully!",
-                                     "data": {"product_id": new_product.product_id}})
+        # Now, add the product_id and category_id to ProductCategory
+        product_category = models.CategoryProduct(
+            product_id=new_product.product_id,
+            category_id=category.category_id,
+        )
+        db.add(product_category)
+        db.commit()
+
+        return JSONResponse(content={"status": 200, "message": "New product added successfully!", "data": {"product_id": new_product.product_id}})
     except IntegrityError as e:
         if "duplicate key value violates unique constraint" in str(e):
-            return JSONResponse(content={"status": 400, "message": "Check the product name and categories"})
+            return JSONResponse(content={"status": 400, "message": "Check the product name and categories", "data": {}})
         else:
+            print("Database Error:", str(e))
             raise
 
 
-@app.put('/addProductVariant/{product_id}')
-def update_product(product_id: int, product_data: schemas.ProductUpdateInput, db: Session = Depends(get_db)):
+@app.post('/addProductVariant/{product_id}')
+def add_product_variant(product_id: int, product_data: schemas.ProductUpdateInput, db: Session = Depends(get_db)):
     try:
-        existing_product = db.query(models.Products).filter(
-            models.Products.product_id == product_id
+        existing_product = db.query(models.ProductVariant).filter(
+            models.ProductVariant.product_id == product_id
         ).first()
 
         if not existing_product:
-            return JSONResponse(content={"status": 404, "message": "Product not found"})
-
-        category = db.query(models.Categories).filter(
-            models.Categories.category_name == product_data.category_name
-        ).first()
-
-        if not category:
-            return JSONResponse(content={"status": 400, "message": "Category not found"})
-
-        for field, value in product_data.dict().items():
-            if value is not None:
-                setattr(existing_product, field, value)
-
-        db.commit()
+            return JSONResponse(content={"status": 404, "message": "Product not found", "data": {}})
 
         new_variant = models.ProductVariant(
             variant_cost=product_data.variant_cost,
-            brand_name=product_data.brand_name,
-            count=product_data.count,
-            discounted_cost=product_data.discounted_price,
+            brand_name=existing_product.brand_name,
+            discounted_cost=product_data.discounted_cost,
+            stock=product_data.stock,
             quantity=product_data.quantity,
-            description=product_data.description,
-            image=product_data.image,
+            measuring_unit=product_data.measuring_unit,
+            description=existing_product.description,
             product_id=product_id,
+            category_name=existing_product.category_name,
         )
-
         db.add(new_variant)
         db.commit()
 
-        return JSONResponse(content={"status": 200, "message": "Product updated successfully!",
-                                     "data": {"product_id": product_id}})
-    except IntegrityError as e:
-        if "duplicate key value violates unique constraint" in str(e):
-            return JSONResponse(content={"status": 400, "message": "Check the product name and categories"})
-        else:
-            return {"status": 500, "message": "Internal Server Error"}
-
+        return JSONResponse(content={"status": 200, "message": "Product variant added successfully!", "data": {"variant_id": new_variant.variant_id}})
+    except Exception as e:
+        return JSONResponse(content={"status": 500, "message": "Internal Server Error", "error": str(e)})
 
 
 @app.put('/editProductVariant/')
@@ -2393,7 +2383,7 @@ def edit_product_variant(
         ).first()
 
         if not existing_variant:
-            return {"status": 404, "detail": "Product variant not found"}
+            return {"status": 400, "detail": "Product variant not found",  "data": {}}
 
         for field, value in variant_data.dict().items():
             if value is not None:
@@ -2401,12 +2391,12 @@ def edit_product_variant(
 
         db.commit()
 
-        return {"status": 200, "message": "Product variant updated successfully!"}
+        return {"status": 200, "message": "Product variant edited successfully!"}
     except IntegrityError as e:
         if "duplicate key value violates unique constraint" in str(e):
-            return {"status": 400, "message": "Check the variant details"}
+            return {"status": 400, "message": "Check the variant details", "data": {}}
         else:
-            return {"status": 500, "message": "Internal Server Error"}
+            return {"status": 500, "message": "Internal Server Error", "error": str(e)}
 
 
 @app.put("/editCategoryName/{category_id}")
@@ -2422,15 +2412,48 @@ def edit_category_name(
         ).first()
 
         if not existing_category:
-            return {"status": 404, "detail": "Category not found"}
+            return {"status": 404, "detail": "Category not found", "data": {}}
 
         existing_category.category_name = category_name.category_name
 
         db.commit()
 
-        return {"status": 200, "message": "Category name updated successfully!"}
+        return {"status": 200, "message": "Category name updated successfully!", "data": {"category_name": category_name.category_name}}
     except Exception as e:
 
+        return {"status": 500, "message": "Internal Server Error", "error": str(e)}
+
+
+@app.get('/getProductVariant/{variant_id}', response_model=schemas.ProductInput)
+def get_product_variant(variant_id: int, db: Session = Depends(get_db)):
+    try:
+        product_variant = db.query(models.ProductVariant).filter(
+            models.ProductVariant.variant_id == variant_id
+        ).first()
+
+        if not product_variant:
+            return JSONResponse(content={"status": 400, "message": "Product variant not found", "data": {}})
+
+        product = product_variant.product
+        product_input = schemas.ProductInput(
+            product_name=product.product_name,
+            brand_name=product_variant.brand_name,
+            description=product_variant.description,
+            category_name=product_variant.category_name,
+            image=product_variant.image,
+            variant_cost=product_variant.variant_cost,
+            discounted_cost=product_variant.discounted_cost,
+            stock=product_variant.stock,
+            quantity=product_variant.quantity,
+            measuring_unit=product_variant.measuring_unit
+        )
+
+        return JSONResponse(content={
+            "status": 200,
+            "message": "Product variant details retrieved successfully",
+            "data": product_input.dict()
+        })
+    except Exception as e:
         return {"status": 500, "message": "Internal Server Error", "error": str(e)}
 
 
@@ -2442,10 +2465,10 @@ def get_variants_by_categories(db: Session = Depends(get_db)):
 
         if not categories:
             return {"status": 204, "message": "No categories found", "data": []}
-        categories_with_variants = {}
+
+        response_data = []
 
         for category in categories:
-            category_id = category.category_id
             category_name = category.category_name
 
             variants = db.query(
@@ -2458,11 +2481,10 @@ def get_variants_by_categories(db: Session = Depends(get_db)):
                 models.CategoryProduct,
                 models.Products.product_id == models.CategoryProduct.product_id
             ).filter(
-                models.CategoryProduct.category_id == category_id
+                models.CategoryProduct.category_id == category.category_id
             ).all()
 
             if variants:
-
                 serialized_variants = [
                     {
                         "product_name": product_name,
@@ -2474,18 +2496,110 @@ def get_variants_by_categories(db: Session = Depends(get_db)):
                     for product_name, variant in variants
                 ]
 
-                categories_with_variants[category_name] = serialized_variants
+                category_data = {"category_name": category_name, "products": serialized_variants}
+                response_data.append(category_data)
 
-        if not categories_with_variants:
-            return {"status": 204, "message": "No variants found for any category", "data": {}}
+        if not response_data:
+            return {"status": 204, "message": "No variants found for any category", "data": []}
 
         return {
             "status": 200,
             "message": "Variants fetched successfully for all categories!",
-            "data": categories_with_variants
+            "data": response_data
         }
 
     except Exception as e:
         print(repr(e))
         return {"status": 500, "message": "Internal Server Error", "data": {}}
 
+
+@app.post("/orders/")
+async def create_order(order: OrderCreate):
+    db = SessionLocal()
+    try:
+        product_details = []
+
+        for product_data in order.product_list:
+            product_id = product_data.get("product_id")
+            variant_id = product_data.get("variant_id")
+            item_count = product_data.get("item_count")
+
+            product_variant = db.query(ProductVariant).filter(ProductVariant.product_id == product_id).one_or_none()
+
+            if product_variant:
+                if product_variant.stock_qty is not None and product_variant.stock_qty >= item_count:
+                    product_variant.stock_qty -= item_count
+                else:
+                    return {"status": 400, "message": f"Product with ID {product_id} is out of stock", "data": {}}
+            else:
+                return {"status": 400, "message": f"Product with ID {product_id} is not found", "data": {}}
+
+            variant_cost = product_variant.variant_cost if hasattr(product_variant, 'variant_cost') else 0.0
+
+            product_variant_data = {
+                "product_id": product_id,
+                "variant_id": variant_id,
+                "item_count": item_count,
+                "variant_cost": variant_cost,
+            }
+
+            product_details_db = db.query(Products.product_name, ProductVariant.measuring_unit,
+                                          ProductVariant.discount, ProductVariant.discounted_cost,
+                                          ProductVariant.image).\
+                join(ProductVariant, Products.product_id == ProductVariant.product_id).\
+                filter(Products.product_id == product_id, ProductVariant.variant_id == variant_id).first()
+
+            if product_details_db:
+                product_variant_data.update({
+                    "product_name": product_details_db.product_name,
+                    "measuring_unit": product_details_db.measuring_unit,
+                    "discount": product_details_db.discount,
+                    "discounted_cost": product_details_db.discounted_cost,
+                    "image": product_details_db.image,
+                })
+
+            product_details.append(product_variant_data)
+
+        total_order = sum(product["variant_cost"] * product["item_count"] for product in product_details)
+
+        db_order = Order(
+            order_no=order.order_no,
+            customer_contact=order.customer_contact,
+            product_list=product_details,
+            total_order=total_order,
+            gst_charges=order.gst_charges,
+            additional_charges=order.additional_charges,
+            to_pay=order.to_pay,
+        )
+
+        db.add(db_order)
+        db.commit()
+        db.refresh(db_order)
+
+        payment_type = order.payment_type
+        if payment_type:
+            payment_info = Payment(order_id=db_order.order_id, payment_type=payment_type)
+            db.add(payment_info)
+            db.commit()
+
+        response_data = {
+            "order_no": order.order_no,
+            "customer_contact": order.customer_contact,
+            "product_list": product_details,
+            "total_order": total_order,
+            "gst_charges": order.gst_charges,
+            "additional_charges": order.additional_charges,
+            "to_pay": order.to_pay,
+            "payment_type": payment_type,
+        }
+
+        return {"status": 200, "message": "Order created successfully", "data": response_data}
+    except HTTPException as e:
+        db.rollback()
+        raise e
+    except IntegrityError as e:
+        return {"status": 400, "message": "Error creating order", "data": {}}
+    except Exception as e:
+        return {"status": 500, "message": "Internal Server Error", "error": str(e)}
+    finally:
+        db.close()

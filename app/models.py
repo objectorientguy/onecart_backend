@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, BIGINT, Date, JSON, ForeignKey, Time, Boolean, Float, Integer, DateTime
+from sqlalchemy import Column, String, BIGINT, Date, JSON, ForeignKey, CheckConstraint,Time, Boolean, Float, Integer, DateTime
 from sqlalchemy.orm import validates, relationship
 from sqlalchemy.sql.expression import text
 from sqlalchemy.sql.sqltypes import TIMESTAMP
@@ -47,7 +47,6 @@ class Products(Base):
     brand_id = Column(BIGINT, ForeignKey(
         "brands.brand_id", ondelete="CASCADE"), nullable=False)
     product_name = Column(String, nullable=False)
-    details = Column(String, nullable=False)
 
     brand = relationship("Brand")
 
@@ -60,13 +59,15 @@ class ProductVariant(Base):
     variant_cost = Column(Float, nullable=False)
     # variant_name = Column(String, nullable=False)
     brand_name = Column(String, nullable=False)
-    count = Column(Integer, nullable=False)
+    quantity = Column(Integer, nullable=False)
     discounted_cost = Column(Float, nullable=True)
     discount = Column(BIGINT, nullable=True)
-    quantity = Column(String, nullable=False)
+    stock = Column(Integer, nullable=False)
     description = Column(String, nullable=False)
-    image = Column(JSON, nullable=False)
+    image = Column(JSON, nullable=True)
     ratings = Column(Integer, nullable=True)
+    measuring_unit = Column(String, nullable=False)
+    category_name = Column(String, nullable=False)
     product_id = Column(BIGINT, ForeignKey(
         "products.product_id", ondelete="CASCADE"), nullable=False)
 
@@ -439,3 +440,45 @@ class Role(Base):
     employee_id = Column(Integer, ForeignKey("employee.employee_id", ondelete="CASCADE"))
 
     employee = relationship("Employee")
+
+
+class Order(Base):
+    __tablename__ = "orders"
+
+    order_id = Column(Integer, primary_key=True, autoincrement=True)
+    order_no = Column(String, nullable=False, unique=True)
+    product_list = Column(JSON, nullable=False)
+    total_order = Column(Float, nullable=True)
+    gst_charges = Column(Float, nullable=False, server_default=text('25'))
+    additional_charges = Column(Float, nullable=False, server_default=text('25'))
+    to_pay = Column(Float, nullable=False)
+    customer_contact = Column(BIGINT, ForeignKey("customer.customer_contact", ondelete="CASCADE"), nullable=True)
+
+    customer = relationship("Customer")
+
+
+class Payment(Base):
+    __tablename__ = "payments"
+
+    payment_id = Column(Integer, primary_key=True, autoincrement=True)
+    order_id = Column(Integer, ForeignKey("orders.order_id", ondelete="CASCADE"), nullable=False)
+    payment_type = Column(String, nullable=False)
+
+    __table_args__ = (
+        CheckConstraint(
+            payment_type.in_(["Bankcard", "UPI", "Cash", "Other"]),
+            name="payment_type"
+        ),
+    )
+
+    order = relationship("Order")
+
+
+class Customer(Base):
+    __tablename__ = "customer"
+
+    customer_contact = Column(BIGINT, primary_key=True, nullable=True, unique=True)
+    customer_uniqueid = Column(BIGINT, primary_key=True, nullable=False, server_default=text("EXTRACT(EPOCH FROM NOW())::BIGINT"))
+    customer_name = Column(String, nullable=True)
+    customer_email = Column(String, nullable=True)
+
