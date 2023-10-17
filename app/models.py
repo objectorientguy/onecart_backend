@@ -383,15 +383,14 @@ class Review(Base):
 class Companies(Base):
     __tablename__ = "companies"
 
-    company_id = Column(String, nullable=True, autoincrement=True, unique=True)
-    # company_name = Column(String, nullable=False, primary_key=True, unique=True)
+    company_id = Column(String, primary_key=True, nullable=True, unique=True)
     company_name = Column(String, nullable=True, unique=True)
     company_password = Column(String,  nullable=False)
     company_domain = Column(String, nullable=True)
     company_logo = Column(JSON, nullable=True)
-    company_email = Column(String,  primary_key=True, nullable=False)
+    company_email = Column(String, unique=True, nullable=True)
     services = Column(String, nullable=True)
-    company_contact = Column(BIGINT, nullable=True)
+    company_contact = Column(BIGINT, unique=True, nullable=True)
     company_address = Column(String, nullable=True)
     white_labelled = Column(Boolean, nullable=True)
     onboarding_date = Column(TIMESTAMP(timezone=True), nullable=True, server_default=text('now()'))
