@@ -1,5 +1,6 @@
 from typing import List, Optional, Union
 import io
+import logging
 from uuid import uuid4
 from psycopg2.errors import DataError
 from contextlib import contextmanager
@@ -14,7 +15,6 @@ from fastapi import FastAPI, Response, Depends, File, Request, HTTPException, Bo
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import IntegrityError
 from starlette.responses import FileResponse
-import logging
 from sqlalchemy import select, func, update
 import shutil
 from datetime import timedelta
@@ -82,85 +82,43 @@ async def upload_images(upload_files: List[UploadFile] = File(...)):
     }
     return JSONResponse(content=response_data)
 
-@app.post("/upload_images/")
-async def upload_images(product_id: int, variant_id: int,upload_files: List[UploadFile] = File(...), db: Session = Depends(get_db)):
-    image_urls = []
 
+@app.post("/upload/images")
+async def upload_images(product_id: int, variant_id: int, upload_files: List[UploadFile] = File(...), replace_existing_images: bool = True,db: Session = Depends(get_db)):
+    image_urls = []
     for upload_file in upload_files:
         destination = os.path.join("app", "uploaded_images", upload_file.filename)
         save_upload_file(upload_file, destination)
-
-        # Upload the image to Firebase Storage
         bucket = storage.bucket()
         blob = bucket.blob(f"uploaded_images/{upload_file.filename}")
         blob.upload_from_filename(destination)
-
         image_url = blob.generate_signed_url(method="GET", expiration=timedelta(days=7))
         image_urls.append(image_url)
 
+    product_variant = db.query(models.ProductVariant).filter_by(
+        product_id=product_id, variant_id=variant_id
+    ).first()
+    if not product_variant:
+        return JSONResponse(content={"status": 404, "message": "Product variant not found"})
+    # existing_images = product_variant.image or []
+    # existing_images.extend(image_urls)
+    # product_variant.image = existing_images
+    if replace_existing_images:
+        product_variant.image = image_urls
+    else:
+        product_variant.image.extend(image_urls)
 
-        product_variant = db.query(models.ProductVariant).filter_by(
-                product_id=product_id, variant_id=variant_id
-            ).first()
-
-        if product_variant:
-                existing_images = product_variant.image or []
-                existing_images.append(image_url)
-                product_variant.image = existing_images
-                db.commit()
-
+    try:
+        db.commit()
+    except Exception as e:
+        logging.error(f"Database commit error: {e}")
+        db.rollback()
     response_data = {
         "status": 200,
         "message": "Images uploaded successfully.",
         "data": {"image_urls": image_urls}
     }
-
     return JSONResponse(content=response_data)
-
-def save_upload_file(upload_file: UploadFile, destination: str):
-    try:
-        with open(destination, "wb") as buffer:
-            shutil.copyfileobj(upload_file.file, buffer)
-    finally:
-        upload_file.file.close()
-
-
-
-# @app.post("/upload-image/")
-# async def upload_image(
-#     image: UploadFile = File(...),
-#     product_id: int = Form(...),
-#     variant_id: int = Form(...),
-#     db: Session = Depends(get_db),
-# ):
-#     try:
-#         # Upload the image to Firebase Storage
-#         bucket = storage.bucket()
-#         blob = bucket.blob(f"product_images/{product_id}/{variant_id}/{image.filename}")
-#         blob.upload_from_string(image.file.read(), content_type=image.content_type)
-#
-#         # Get the URL of the uploaded image from Firebase
-#         image_url = blob.public_url
-#
-#         image_url = image_url.replace("https://storage.googleapis.com", "")
-#
-#         # Store the image URL in your local database
-#         product_variant = db.query(models.ProductVariant).filter_by(
-#             product_id=product_id, variant_id=variant_id
-#         ).first()
-#
-#         if product_variant:
-#             existing_images = product_variant.image or []
-#             existing_images.append(image_url)
-#             product_variant.image = existing_images
-#             db.commit()
-#
-#         return {"image_url": image_url}
-#
-#     except Exception as e:
-#         print(repr(e))
-#         # Handle any errors that may occur during image upload or database update
-#         return {"error": str(e)}
 
 
 
@@ -218,58 +176,14 @@ async def upload_image(request: Request, files: List[UploadFile] = File(...), db
 
     return {"status": 200, "message": "Images uploaded successfully", "data": {"image_url": image_urls}}
 
-# @app.post("/product/image")
-# async def upload_image(request: Request, product_id: int, variant_id: int,  files: List[UploadFile] = File(...), db: Session = Depends(get_db)):
-#     image_urls = []
-#     for file in files:
-#         contents = await file.read()
-#         filename = file.filename
-#         file_path = os.path.join(UPLOAD_DIR, filename)
-#         with open(file_path, "wb") as f:
-#             f.write(contents)
-#
-#         image = Image(filename=filename, file_path=file_path)
-#         try:
-#             db.add(image)
-#             db.commit()
-#             db.refresh(image)
-#         except Exception as e:
-#             logging.error(f"Error storing image {filename}: {e}")
-#             db.rollback()
-#         finally:
-#             db.close()
-#
-#         base_url = request.base_url
-#         image_url = f"{base_url}images/{file.filename}"
-#         image_urls.append(image_url)
-#
-#     product_variant = db.query(ProductVariant).filter_by(product_id=product_id, variant_id=variant_id).first()
-#     if product_variant:
-#         existing_images = product_variant.image or []
-#         existing_images += image_urls
-#         product_variant.image = existing_images
-#         db.commit()
-#
-#     return {"status": 200, "message": "Images uploaded successfully", "data": {"image_urls": image_urls}}
-
 @app.post("/product/image")
-async def edit_product_images(
-    request: Request,
-    product_id: int,
-    variant_id: int,
-    new_files: List[UploadFile] = File(...),
-    remove_images: List[str] = Body(...),
-    db: Session = Depends(get_db)
-):
+async def edit_product_images(request: Request, product_id: int, variant_id: int, new_files: List[UploadFile] = File(...), db: Session = Depends(get_db)):
     try:
         product_variant = db.query(ProductVariant).filter_by(product_id=product_id, variant_id=variant_id).first()
         if not product_variant:
             return {"status": 404, "message": "Product variant not found"}
 
-        # Remove the specified images
-        existing_images = [image for image in product_variant.image if image not in remove_images]
-
-        # Upload new images
+        existing_images = [image for image in product_variant.image]
         new_image_urls = []
         for file in new_files:
             contents = await file.read()
@@ -282,18 +196,13 @@ async def edit_product_images(
             db.add(image)
             db.commit()
             db.refresh(image)
-
             base_url = request.base_url
             image_url = f"{base_url}images/{file.filename}"
             new_image_urls.append(image_url)
 
-        # Combine existing and new images
-        updated_images = existing_images + new_image_urls
-
-        # Update the product variant with the updated image URLs
+        updated_images = new_image_urls
         product_variant.image = updated_images
         db.commit()
-
         return {"status": 200, "message": "Images updated successfully", "data": {"image_urls": updated_images}}
     except Exception as e:
         print(repr(e))
