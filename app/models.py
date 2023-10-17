@@ -47,6 +47,7 @@ class Products(Base):
     brand_id = Column(BIGINT, ForeignKey(
         "brands.brand_id", ondelete="CASCADE"), nullable=False)
     product_name = Column(String, nullable=False)
+    details = Column(String, nullable=False)
 
     brand = relationship("Brand")
 
@@ -412,7 +413,7 @@ class Branch(Base):
     branch_address = Column(String, nullable=True)
     branch_email = Column(String, nullable=True)
     branch_number = Column(BIGINT, nullable=True)
-    company_name = Column(String, ForeignKey("companies.company_name", ondelete="CASCADE"))
+    company_id = Column(String, ForeignKey("companies.company_id", ondelete="CASCADE"))
 
     company = relationship("Companies")
 
@@ -420,7 +421,7 @@ class Employee(Base):
     __tablename__ = "employee"
 
     employee_id = Column(BIGINT, primary_key=True, autoincrement=True)
-    employee_name = Column(String, nullable=False)
+    employee_name = Column(String, nullable=True)
     employee_contact = Column(BIGINT, nullable=False)
     employee_password = Column(String, nullable=False)
     employee_gender = Column(String, nullable=True)
@@ -482,3 +483,24 @@ class Customer(Base):
     customer_name = Column(String, nullable=True)
     customer_email = Column(String, nullable=True)
 
+
+class NewUsers(Base):
+    __tablename__ = "new_users"
+
+    user_uniqueid = Column(BIGINT, primary_key=True, nullable=False, server_default=text("EXTRACT(EPOCH FROM NOW())::BIGINT"))
+    user_name = Column(String, nullable=True)
+    user_contact = Column(BIGINT, nullable=True)
+    user_birthdate = Column(Date, nullable=True)
+    created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('now()'))
+    user_image = Column(String, nullable=True)
+    user_emailId = Column(String, nullable=True)
+    user_password = Column(String, nullable=True)
+
+
+
+    @validates('user_contact', 'user_uniqueid')
+    def empty_string_to_null(self, key, value):
+        if isinstance(value, str) and value == '':
+            return None
+        else:
+            return value
