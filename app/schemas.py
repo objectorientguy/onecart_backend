@@ -72,11 +72,11 @@ class Product(BaseModel):
 class ProductVariant(BaseModel):
     variant_id: Optional[int] | None = None
     variant_cost: float
-    count: int
+    unit: str
     brand_name: str
     discounted_cost: float
     discount: int | None = None
-    quantity: str
+    quantity: int
     description: str
     discounted_cost: float
     image: List[str]
@@ -354,34 +354,73 @@ class Role(BaseModel):
     employee_id: int | None = None
 
 class ProductInput(BaseModel):
-    product_name: Optional[str] = None
-    brand_name: Optional[str] = None
-    details: Optional[str] = None
-    description: Optional[str] = None
-    category_name: Optional[str] = None
-    image: Optional[List[str]] = None
-    variant_cost: Optional[float] = None
-    discounted_cost: Optional[float] = None
-    quantity: Optional[str] = None
-    count: Optional[int] = None
+    product_name: str
+    brand_name: str
+    description: str
+    category_name: str
+    variant_cost: float
+    discounted_cost: float
+    stock: int
+    quantity: int
+    measuring_unit: str
+
 
 class ProductUpdateInput(BaseModel):
-    product_name: Optional[str] = None
-    description: Optional[str] = None
-    category_name: Optional[str] = None
-    image: Optional[str] = None
-    variant_cost: Optional[float] = None
-    discounted_price: Optional[float] = None
-    quantity: Optional[str] = None
-    count: Optional[int] = None
-    product_id: Optional[int] = None
-    brand_name: Optional[str] = None
+    variant_cost: float
+    quantity: int
+    discounted_cost: float
+    stock: int
+    measuring_unit: str
 
+class OrderSchema(BaseModel):
+    order_id: int
+    order_no: str
+    customer_contact: int
+    product_list: List[dict]
+    total_order: float
+    gst_charges: float
+    additional_charges: float
+    company_name: str
+    company: dict
+    customer: dict
 
+    class Config:
+        orm_mode = True
 
 class EditCategoryName(BaseModel):
     category_name: str
 
+class OrderCreate(BaseModel):
+    order_no: str
+    customer_contact: Optional[int]
+    product_list: List[dict]
+    total_order: float
+    gst_charges: float
+    additional_charges: float
+    to_pay: float
+    payment_type: str
+
+
+class ProductItem(BaseModel):
+    product_id: int
+    image: str
+    variant_cost: float
+    quantity: int
+    product_name: str
+    stock: int
+
+
+class ProductDetailResponse(BaseModel):
+    product_name: str
+    brand_name: str
+    description: str
+    category_name: str
+    image: list
+    variant_cost: float
+    discounted_cost: float
+    quantity: int
+    stock: int
+    measuring_unit: str
 
 class NewUsers(BaseModel):
     user_uniqueid: int | None = None
