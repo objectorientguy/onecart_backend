@@ -645,21 +645,18 @@ def delete_employee(response:Response, empID : int , branchID : int,  db: Sessio
         employee = db.query(models.Employee).filter(models.Employee.employee_id == empID)
         employee_exist = employee.first()
         if not employee_exist:
-            response.status_code = 204
-            return {"status": 204, "message": "Employee doesn't exists", "data": {}}
+            return {"status": 404, "message": "Employee doesn't exists", "data": {}}
 
         branch = db.query(models.Branch).filter(models.Branch.branch_id == branchID)
         branch_exist = branch.first()
         if not branch_exist:
-            response.status_code = 204
-            return {"status": 204, "message": "Branch doesn't exists", "data": {}}
+            return {"status": 404, "message": "Branch doesn't exists", "data": {}}
 
         employee.delete(synchronize_session=False)
         db.commit()
         return {"status": 200, "message": "Employee deleted!", "data":{}}
     except IntegrityError:
-        response.status_code = 404
-        return {"status": 404, "message": "Error", "data": {}}
+        return {"status": 500, "message": "Error", "data": {}}
 
 
 @app.post('/addCategory')
