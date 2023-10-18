@@ -42,6 +42,7 @@ proto-plus==1.22.3
 protobuf==4.24.4
 psycopg2==2.9.6
 pyasn1==0.5.0
+pandas==2.1.1
 pyasn1-modules==0.3.0
 pycparser==2.21
 pydantic==2.1.1
