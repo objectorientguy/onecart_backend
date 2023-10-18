@@ -13,7 +13,7 @@ from firebase_admin import credentials, db, storage
 from passlib.context import CryptContext
 from fastapi import FastAPI, Response, Depends, File, Request, HTTPException, Body, Path, UploadFile, Form, Query
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, NoResultFound
 from starlette.responses import FileResponse
 from sqlalchemy import select, func, update
 import shutil
@@ -2407,15 +2407,18 @@ async def create_order(order: OrderCreate):
             variant_id = product_data.get("variant_id")
             item_count = product_data.get("item_count")
 
-            product_variant = db.query(ProductVariant).filter(ProductVariant.product_id == product_id).one_or_none()
+            product_variant = db.query(ProductVariant).filter(
+                ProductVariant.product_id == product_id,
+                ProductVariant.variant_id == variant_id
+            ).first()
 
             if product_variant:
-                if product_variant.stock_qty is not None and product_variant.stock_qty >= item_count:
-                    product_variant.stock_qty -= item_count
+                if product_variant.stock is not None and product_variant.stock >= item_count:
+                    product_variant.stock -= item_count
                 else:
                     return {"status": 400, "message": f"Product with ID {product_id} is out of stock", "data": {}}
             else:
-                return {"status": 400, "message": f"Product with ID {product_id} is not found", "data": {}}
+                return {"status": 400, "message": f"Product ID {product_id} with variant ID {variant_id} is not found", "data": {}}
 
             variant_cost = product_variant.variant_cost if hasattr(product_variant, 'variant_cost') else 0.0
 
@@ -2436,9 +2439,7 @@ async def create_order(order: OrderCreate):
                 product_variant_data.update({
                     "product_name": product_details_db.product_name,
                     "measuring_unit": product_details_db.measuring_unit,
-                    "discount": product_details_db.discount,
                     "discounted_cost": product_details_db.discounted_cost,
-                    "image": product_details_db.image,
                 })
 
             product_details.append(product_variant_data)
@@ -2482,6 +2483,8 @@ async def create_order(order: OrderCreate):
         raise e
     except IntegrityError as e:
         return {"status": 400, "message": "Error creating order", "data": {}}
+    except NoResultFound as e:
+        return {"status": 400, "message": "Product or variant not found", "data": {}}
     except Exception as e:
         return {"status": 500, "message": "Internal Server Error", "error": str(e)}
     finally:
