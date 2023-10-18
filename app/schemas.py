@@ -401,7 +401,8 @@ class OrderCreate(BaseModel):
     additional_charges: float
     to_pay: float
     payment_type: str
-
+class ImageDeleteRequest(BaseModel):
+    image_url: str
 
 class ProductItem(BaseModel):
     product_id: int

@@ -1,6 +1,7 @@
 from typing import List, Optional, Union
 import io
-import logging
+from io import BytesIO
+import pandas as pd
 from uuid import uuid4
 from psycopg2.errors import DataError
 from contextlib import contextmanager
@@ -15,6 +16,7 @@ from fastapi import FastAPI, Response, Depends, File, Request, HTTPException, Bo
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import IntegrityError
 from starlette.responses import FileResponse
+import logging
 from sqlalchemy import select, func, update
 import shutil
 from datetime import timedelta
@@ -53,7 +55,8 @@ def save_image_to_db(db, filename, file_path):
     return image
 
 cred = credentials.Certificate("serviceAccountKey.json")
-firebase_admin.initialize_app(cred, {'storageBucket':'onecart-6156a.appspot.com','databaseURL':'https://onecart-6156a-default-rtdb.firebaseio.com/'})
+firebase_admin.initialize_app(cred, {'storageBucket':'onecart-6156a.appspot.com',
+                                     'databaseURL':'https://onecart-6156a-default-rtdb.firebaseio.com/'})
 
 @app.get('/')
 def root():
@@ -84,6 +87,25 @@ async def upload_images(upload_files: List[UploadFile] = File(...)):
     }
     return JSONResponse(content=response_data)
 
+@app.post("/delete_image/")
+async def delete_image(response: Response, product_id: int, variant_id: int, image_info: schemas.ImageDeleteRequest = Body(...), db: Session = Depends(get_db)):
+    image_url = image_info.image_url
+    product_variant = db.query(models.ProductVariant).filter_by(
+        product_id=product_id, variant_id=variant_id
+    ).first()
+    if not product_variant:
+        return{ "status_code" : 404, "message": "Product variant not found"}
+    updated_images = [img for img in product_variant.image if img != image_url]
+    if len(product_variant.image) != len(updated_images):
+        product_variant.image = updated_images
+        try:
+            db.commit()
+            return {"status": 200, "message": "Image deleted successfully"}
+        except Exception as e:
+            db.rollback()
+            return {"status_code": 500, "message" :" Database error"}
+    else:
+        return {"status_code": 404, "message": "Image URL not found in the product variant"}
 
 @app.post("/upload/images")
 async def upload_images(product_id: int, variant_id: int, upload_files: List[UploadFile] = File(...), replace_existing_images: bool = True,db: Session = Depends(get_db)):
@@ -102,14 +124,10 @@ async def upload_images(product_id: int, variant_id: int, upload_files: List[Upl
     ).first()
     if not product_variant:
         return JSONResponse(content={"status": 404, "message": "Product variant not found"})
-    # existing_images = product_variant.image or []
-    # existing_images.extend(image_urls)
-    # product_variant.image = existing_images
     if replace_existing_images:
         product_variant.image = image_urls
     else:
         product_variant.image.extend(image_urls)
-
     try:
         db.commit()
     except Exception as e:
@@ -422,9 +440,11 @@ def build_company_response(company, db):
         }
     }
     company_id = company.company_id
+    products = db.query(models.Products).filter(models.Branch.company_id == company_id).all
     branches = db.query(models.Branch).filter(models.Branch.company_id == company_id).all()
     employees = db.query(models.Employee).join(models.Branch).filter(models.Branch.company_id == company_id).all()
     response_data['data']['branches'] = [branch.__dict__ for branch in branches]
+    response_data['data']['products'] = [product.__dict__ for product in products]
     response_data['data']['company'] = company.__dict__
     response_data['data']['employees'] = [employee.__dict__ for employee in employees]
     return response_data
@@ -603,6 +623,7 @@ def add_employee(branch_id: int, employee_data: schemas.Employee, role_data: sch
             if employee_info:
                 employee_name, role_name, role_id = employee_info
                 employee_list.append({
+                    "employee_id": employee.employee_id,
                     "employee_name": employee_name,
                     "role_name": role_name,
                     "role_key": role_id
@@ -617,6 +638,28 @@ def add_employee(branch_id: int, employee_data: schemas.Employee, role_data: sch
         return {"status": 500, "message": "Internal Server Error", "data": {}}
     finally:
         db.close()
+
+@app.delete("/employee/delete")
+def delete_employee(response:Response, empID : int , branchID : int,  db: Session = Depends(get_db)):
+    try:
+        employee = db.query(models.Employee).filter(models.Employee.employee_id == empID)
+        employee_exist = employee.first()
+        if not employee_exist:
+            response.status_code = 204
+            return {"status": 204, "message": "Employee doesn't exists", "data": {}}
+
+        branch = db.query(models.Branch).filter(models.Branch.branch_id == branchID)
+        branch_exist = branch.first()
+        if not branch_exist:
+            response.status_code = 204
+            return {"status": 204, "message": "Branch doesn't exists", "data": {}}
+
+        employee.delete(synchronize_session=False)
+        db.commit()
+        return {"status": 200, "message": "Employee deleted!", "data":{}}
+    except IntegrityError:
+        response.status_code = 404
+        return {"status": 404, "message": "Error", "data": {}}
 
 
 @app.post('/addCategory')
@@ -2395,7 +2438,6 @@ def get_variants_by_categories(db: Session = Depends(get_db)):
         print(repr(e))
         return {"status": 500, "message": "Internal Server Error", "data": {}}
 
-
 @app.post("/orders/")
 async def create_order(order: OrderCreate):
     db = SessionLocal()
@@ -2486,3 +2528,25 @@ async def create_order(order: OrderCreate):
         return {"status": 500, "message": "Internal Server Error", "error": str(e)}
     finally:
         db.close()
+
+TABLE_NAME = "product_variants"
+@app.post("/upload_products_excel/")
+async def upload_products_excel(
+    response: Response,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    # Read the Excel file from the uploaded file
+    data = await file.read()
+    df = pd.read_excel(BytesIO(data))
+
+    # Define the database engine
+    # engine = create_engine(DATABASE_URL)
+
+    # Append the data to the database, avoiding duplicates
+    try:
+        df.to_sql(TABLE_NAME, engine, if_exists="append", index=False)
+        return {"message": "Products uploaded from Excel successfully"}
+    except Exception as e:
+        response.status_code = 500
+        return {"status_code": 500, "detail": str(e)}
