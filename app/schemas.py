@@ -318,6 +318,10 @@ class CompanyUpdateDetails(BaseModel):
     class Config:
         from_attributes = True
 
+class GetCompany(CompanyUpdateDetails):
+    class Config:
+        from_attributes = True
+
 
 class CompanySignUp(BaseModel):
     company_id: Optional[str] | None = None
@@ -334,9 +338,8 @@ class LoginFlow(BaseModel):
     company_email: str | None = None
     employee_contact: int | None = None
     login_password: str
-
-    class Config:
-        from_attributes = True
+class Config:
+    from_attributes = True
 
 
 class Branch(BaseModel):
@@ -454,3 +457,4 @@ class NewUsers(BaseModel):
     user_image: str | None = None
     user_emailId: str | None = None
     user_password: str
+

@@ -65,6 +65,11 @@ def root():
     return {'message': 'Hello world'}
 
 
+directory = "app/uploaded_images"
+if not os.path.exists(directory):
+    os.makedirs(directory)
+
+
 def save_upload_file(upload_file: UploadFile, destination: str):
     try:
         with open(destination, "wb") as buffer:
@@ -426,63 +431,57 @@ def signup(response: Response, company_data: schemas.CompanySignUp = Body(...),
         print(repr(e))
         return {"status": 500, "message": "Internal Server Error", "data": {}}
 
-@app.post('/login')
-def login_company(login_credentials: Union[str, int], login_data: schemas.LoginFlow, response: Response,
-                  db: Session = Depends(get_db)):
-    try:
-        user = (
-                db.query(models.Companies).filter(models.Companies.company_email == login_credentials).first()
-                or
-                db.query(models.Companies).filter(models.Companies.company_contact == login_credentials).first()
-                or
-                db.query(models.Employee).filter(models.Employee.employee_contact == login_credentials).first()
-        )
-        if user:
-            if pwd_context.verify(login_data.login_password, user.company_password if isinstance(user,
-                                                                                                 models.Companies) else user.employee_password):
-                if isinstance(user, models.Companies):
-                    return build_company_response(user, db)
-                else:
-                    return build_employee_response(user, db)
-            else:
-                return {"status": 401, "message": "Incorrect password", "data": {}}
-        return {"status": 400, "message": "Incorrect password", "data": {}}
-    except DataError as e:
-        return {"status": 400, "message": "Invalid login credential", "data": {}}
-    except Exception as e:
-        print(repr(e))
-        return {"status": 500, "message": "Internal Server Error", "data": {}}
-def build_company_response(company, db):
-    response_data = {
-        "status": 200,
-        "message": "Company logged in successfully!",
-        "data": {
-            "company_id": company.company_id,
-            "company_email": company.company_email,
-            "company_contact": company.company_contact
-        }
-    }
-    company_id = company.company_id
-    products = db.query(models.Products).filter(models.Branch.company_id == company_id).all()
-    branches = db.query(models.Branch).filter(models.Branch.company_id == company_id).all()
-    employees = db.query(models.Employee).join(models.Branch).filter(models.Branch.company_id == company_id).all()
-    response_data['data']['branches'] = [branch.__dict__ for branch in branches]
-    response_data['data']['products'] = [product.__dict__ for product in products]
-    response_data['data']['company'] = company.__dict__
-    response_data['data']['employees'] = [employee.__dict__ for employee in employees]
-    return response_data
-def build_employee_response(employee, db):
-    response_data = {
-        "status": 200,
-        "message": "Employee logged in successfully!",
-        "data": {
-            "employee_contact": employee.employee_contact
-        }
-    }
-    employee_contact = employee.employee_contact
-    employees = db.query(models.Employee).filter(models.Employee.employee_contact == employee_contact).all()
-    response_data['data']['employees'] = [employee.__dict__ for employee in employees]
-    return response_data
+# @app.post('/login')
+# def login_company(login_credentials: Union[str, int], login_data: schemas.LoginFlow, response: Response,
+#                   db: Session = Depends(get_db)):
+#     try:
+#         user = (
+#                 db.query(models.Companies).filter(models.Companies.company_email == login_credentials).first()
+#                 or
+#                 db.query(models.Companies).filter(models.Companies.company_contact == login_credentials).first()
+#                 or
+#                 db.query(models.Employee).filter(models.Employee.employee_contact == login_credentials).first()
+#         )
+#         if user:
+#             if pwd_context.verify(login_data.login_password, user.company_password if isinstance(user, models.Companies) else user.employee_password):
+#                 if isinstance(user, models.Companies):
+#                     return build_company_response(user, db)
+#                 else:
+#                     return build_employee_response(user, db)
+#             else:
+#                 return {"status": 401, "message": "Incorrect password", "data": {}}
+#         return {"status": 400, "message": "Incorrect password", "data": {}}
+#     except DataError as e:
+#         return {"status": 400, "message": "Invalid login credential", "data": {}}
+#     except Exception as e:
+#         print(repr(e))
+#         return {"status": 500, "message": "Internal Server Error", "data": {}}
+# def build_company_response(login_response: schemas.LoginResponse,  db):
+#     response_data = {
+#         "status": 200,
+#         "message": "Company logged in successfully!",
+#         "data": {"Company": login_response}
+#     }
+#     # company_id = login_response.company_id
+#     # products = db.query(models.Products).filter(models.Branch.company_id == company_id).all()
+#     # branches = db.query(models.Branch).filter(models.Branch.company_id == company_id).all()
+#     # employees = db.query(models.Employee).join(models.Branch).filter(models.Branch.company_id == company_id).all()
+#     # response_data['data']['branches'] = [branch.__dict__ for branch in branches]
+#     # response_data['data']['products'] = [product.__dict__ for product in products]
+#     # response_data['data']['employees'] = [employee.__dict__ for employee in employees]
+#     return response_data
+# def build_employee_response(employee, db):
+#     response_data = {
+#         "status": 200,
+#         "message": "Employee logged in successfully!",
+#         "data": {
+#             "employee_contact": employee.employee_contact
+#         }
+#     }
+#     employee_contact = employee.employee_contact
+#     employees = db.query(models.Employee).filter(models.Employee.employee_contact == employee_contact).all()
+#     response_data['data']['employees'] = [employee.__dict__ for employee in employees]
+#     return response_data
 
 @app.post("/company/logo")
 async def upload_company_logo(request: Request, logo: UploadFile = File(...), company_id: str = Form(...),
