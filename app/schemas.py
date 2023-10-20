@@ -26,6 +26,7 @@ class UserCompany(BaseModel):
     class Config:
         from_attributes = True
 
+
 class Shop(BaseModel):
     shop_name: str
     shop_description: str
@@ -51,13 +52,14 @@ class Category(BaseModel):
 class EditCategory(Category):
     pass
 
+
 class ProductCategory(BaseModel):
     product_id: int
     category_id: int
 
-
     class Config:
         from_attributes = True
+
 
 class Product(BaseModel):
     product_id: int | None = None
@@ -65,9 +67,9 @@ class Product(BaseModel):
     product_name: str
     details: str
 
-
     class Config:
         from_attributes = True
+
 
 class ProductVariant(BaseModel):
     variant_id: Optional[int] | None = None
@@ -150,6 +152,7 @@ class EditAddress(Address):
     class Config:
         from_attributes = True
 
+
 # class OrderItems(BaseModel):
 #     product_id: int
 #     variant: int
@@ -165,12 +168,14 @@ class CartItem(BaseModel):
     class Config:
         from_attributes = True
 
+
 class CartSchema(BaseModel):
     # id: int
     company_id: int
     customer_contact: int
     coupon_id: int
     products: str
+
     # creation_time: datetime
 
     class Config:
@@ -209,7 +214,6 @@ class Bookings(BaseModel):
     invoice_amount: float
     products: List[str]
 
-
     class Config:
         from_attributes = True
 
@@ -247,6 +251,7 @@ class Brand(BaseModel):
     brand_name: str
     brand_image: str
 
+
 class Deals(BaseModel):
     shop_id: int
     product_id: int
@@ -256,6 +261,7 @@ class Deals(BaseModel):
     deal_discount: int
     deal_start: str
     deal_end: str
+
 
 # class ShopASSociation(BaseModel):
 #
@@ -267,13 +273,16 @@ class Feature(BaseModel):
     shop_id: int
     feature_image: List[str]
 
+
 class FavItem(BaseModel):
     product_id: int
     variant_id: int
     shop_id: int
     user_id: int
+
     class Config:
         from_attributes = True
+
 
 class Review(BaseModel):
     rating: int
@@ -281,6 +290,7 @@ class Review(BaseModel):
 
     class Config:
         from_attributes = True
+
 
 class Companies(BaseModel):
     company_id: Optional[int] | None = None
@@ -297,6 +307,7 @@ class Companies(BaseModel):
     class Config:
         from_attributes = True
 
+
 class CompanyUpdateDetails(BaseModel):
     company_name: str
     company_domain: str
@@ -308,6 +319,8 @@ class CompanyUpdateDetails(BaseModel):
         from_attributes = True
 
 
+
+
 class CompanySignUp(BaseModel):
     company_id: Optional[str] | None = None
     company_email: str | None = None
@@ -317,14 +330,14 @@ class CompanySignUp(BaseModel):
     class Config:
         from_attributes = True
 
+
 class LoginFlow(BaseModel):
     company_contact: int | None = None
     company_email: str | None = None
     employee_contact: int | None = None
     login_password: str
-
-    class Config:
-        from_attributes = True
+class Config:
+    from_attributes = True
 
 
 class Branch(BaseModel):
@@ -403,7 +416,8 @@ class OrderSchema(BaseModel):
     customer: dict
 
     class Config:
-        orm_mode = True
+        from_attributes = True
+
 
 class OrderCreate(BaseModel):
     order_no: str

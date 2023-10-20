@@ -1,4 +1,5 @@
-from sqlalchemy import Column, String, BIGINT, Date, JSON, ForeignKey, CheckConstraint,Time, Boolean, Float, Integer, DateTime
+from sqlalchemy import Column, String, BIGINT, Date, JSON, ForeignKey, CheckConstraint, Time, Boolean, Float, Integer, \
+    DateTime
 from sqlalchemy.orm import validates, relationship
 from sqlalchemy.sql.expression import text
 from sqlalchemy.sql.sqltypes import TIMESTAMP
@@ -50,7 +51,6 @@ class Products(Base):
     # details = Column(String, nullable=False)
 
     brand = relationship("Brand")
-
 
 
 class ProductVariant(Base):
@@ -165,6 +165,7 @@ class Addresses(Base):
         else:
             return value
 
+
 class CartItem(Base):
     __tablename__ = "cart_items"
     cartItem_id = Column(Integer, primary_key=True, autoincrement=True)
@@ -181,8 +182,6 @@ class CartItem(Base):
     cart = relationship('Cart')
 
 
-
-
 class Cart(Base):
     __tablename__ = "carts"
     cart_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
@@ -195,7 +194,6 @@ class Cart(Base):
     company = relationship("Companies")
     user = relationship("User")
     cart_items = relationship('CartItem', back_populates='cart')
-
 
     # coupon = relationship("Coupon")
 
@@ -246,6 +244,7 @@ class Bookings(Base):
     cart = relationship("Cart")
     # track = relationship("TrackingStage")
 
+
 class TrackingStage(Base):
     __tablename__ = "tracking_stages"
 
@@ -264,6 +263,7 @@ class TrackingStage(Base):
             return None
         else:
             return value
+
 
 class Coupon(Base):
     __tablename__ = "coupons"
@@ -356,6 +356,7 @@ class FreatureList(Base):
 
     shop = relationship("Shops")
 
+
 class FavItem(Base):
     __tablename__ = "favitems"
 
@@ -377,6 +378,7 @@ class FavItem(Base):
         else:
             return value
 
+
 class Review(Base):
     __tablename__ = "reviews"
 
@@ -390,16 +392,17 @@ class Review(Base):
     product = relationship("Products")
     customer = relationship("User")
 
+
 class Companies(Base):
     __tablename__ = "companies"
 
-    company_id = Column(String, nullable=True, autoincrement=True, unique=True)
+    company_id = Column(String, nullable=True, primary_key=True, unique=True)
     # company_name = Column(String, nullable=False, primary_key=True, unique=True)
     company_name = Column(String, nullable=True, unique=True)
-    company_password = Column(String,  nullable=False)
+    company_password = Column(String, nullable=False)
     company_domain = Column(String, nullable=True)
     company_logo = Column(JSON, nullable=True)
-    company_email = Column(String,  primary_key=True, nullable=False)
+    company_email = Column(String,  nullable=True)
     services = Column(String, nullable=True)
     company_contact = Column(BIGINT, nullable=True)
     company_address = Column(String, nullable=True)
@@ -412,6 +415,7 @@ class Companies(Base):
             return None
         else:
             return value
+
 
 class Branch(Base):
     __tablename__ = "branch"
@@ -437,6 +441,7 @@ class Employee(Base):
     branch_id = Column(Integer, ForeignKey("branch.branch_id", ondelete="CASCADE"))
 
     branch = relationship("Branch")
+
 
 class Role(Base):
     __tablename__ = "role"
@@ -488,7 +493,8 @@ class Customer(Base):
     __tablename__ = "customer"
 
     customer_contact = Column(BIGINT, primary_key=True, nullable=True, unique=True)
-    customer_uniqueid = Column(BIGINT, primary_key=True, nullable=False, server_default=text("EXTRACT(EPOCH FROM NOW())::BIGINT"))
+    customer_uniqueid = Column(BIGINT, primary_key=True, nullable=False,
+                               server_default=text("EXTRACT(EPOCH FROM NOW())::BIGINT"))
     customer_name = Column(String, nullable=True)
     customer_email = Column(String, nullable=True)
 
@@ -496,7 +502,8 @@ class Customer(Base):
 class NewUsers(Base):
     __tablename__ = "new_users"
 
-    user_uniqueid = Column(BIGINT, primary_key=True, nullable=False, server_default=text("EXTRACT(EPOCH FROM NOW())::BIGINT"))
+    user_uniqueid = Column(BIGINT, primary_key=True, nullable=False,
+                           server_default=text("EXTRACT(EPOCH FROM NOW())::BIGINT"))
     user_name = Column(String, nullable=True)
     user_contact = Column(BIGINT, nullable=True)
     user_birthdate = Column(Date, nullable=True)
@@ -504,8 +511,6 @@ class NewUsers(Base):
     user_image = Column(String, nullable=True)
     user_emailId = Column(String, nullable=True)
     user_password = Column(String, nullable=True)
-
-
 
     @validates('user_contact', 'user_uniqueid')
     def empty_string_to_null(self, key, value):
