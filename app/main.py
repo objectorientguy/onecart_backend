@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import IntegrityError, NoResultFound
 from starlette.responses import FileResponse
 import logging
-from sqlalchemy import select, func, update
+from sqlalchemy import select, func, update, or_
 import shutil
 from datetime import timedelta
 import base64
@@ -356,6 +356,7 @@ def edit_address(editAddress: schemas.EditAddress, response: Response, db: Sessi
 @app.delete('/deleteAddress')
 def delete_user_address(response: Response, db: Session = Depends(get_db), addressId=int):
     try:
+
         delete_address = db.query(models.Addresses).filter(
             models.Addresses.address_id == addressId)
         address_exist = delete_address.first()
@@ -371,12 +372,32 @@ def delete_user_address(response: Response, db: Session = Depends(get_db), addre
         return {"status": "404", "message": "Error", "data": {}}
 
 @app.post('/signup')
-def signup(response: Response, company_data: schemas.CompanySignUp = Body(...), signup_credentials: Union[str, int] = Query(...), db: Session = Depends(get_db)):
+def signup(
+        response: Response,
+        company_data: schemas.CompanySignUp = Body(...),
+        signup_credentials: Union[str, int] = Query(...),
+        db: Session = Depends(get_db)
+):
     try:
         if signup_credentials.isdigit():
             company_data.company_contact = int(signup_credentials)
         else:
             company_data.company_email = signup_credentials
+
+        existing_company = db.query(models.Companies).filter(
+            or_(
+                models.Companies.company_contact == company_data.company_contact,
+                models.Companies.company_email == company_data.company_email
+            )
+        ).first()
+
+        if existing_company != None:
+            return {
+                "status": 400,
+                "message": "User already exists",
+                "data": {"company_id": existing_company.company_id}
+            }
+
         hashed_password = pwd_context.hash(company_data.company_password)
         company_id = uuid4().hex
         new_company = models.Companies(
@@ -390,20 +411,61 @@ def signup(response: Response, company_data: schemas.CompanySignUp = Body(...), 
             user_emailId=company_data.company_email,
             user_password=company_data.company_password
         )
-        with db.begin():
-            db.add(new_company)
-            db.add(new_user)
-            db.commit()
-        return {"status": 200, "message": "User Signed Up!", "data": {
-            "company_id": new_company.company_id,
-            "signup_credentials": signup_credentials
-        }}
-    except Exception as e:
-        return{"status_code":400, "message":"User already Exists!", "data":{}}
+        db.add(new_company)
+        db.add(new_user)
+        db.commit()
+
+        return {
+            "status": 200,
+            "message": "User Signed Up!",
+            "data": {"company_id": new_company.company_id, "signup_credentials": signup_credentials}
+        }
+
     except Exception as e:
         print(repr(e))
-        return{"status_code":500, "message":"Internal Server Error!", "data":{}}
+        return {"status": 500, "message": "Internal Server Error"}
 
+# @app.post('/signup')
+# def signup(
+#         response: Response,
+#         company_data: schemas.CompanySignUp = Body(...),
+#         signup_credentials: Union[str, int] = Query(...),
+#         db: Session = Depends(get_db)
+# ):
+#     try:
+#         if signup_credentials.isdigit():
+#             company_data.company_contact = int(signup_credentials)
+#         else:
+#             company_data.company_email = signup_credentials
+#
+#         hashed_password = pwd_context.hash(company_data.company_password)
+#         company_id = uuid4().hex
+#         new_company = models.Companies(
+#             company_id=company_id,
+#             company_email=company_data.company_email,
+#             company_contact=company_data.company_contact,
+#             company_password=hashed_password
+#         )
+#         new_user = models.NewUsers(
+#             user_contact=company_data.company_contact,
+#             user_emailId=company_data.company_email,
+#             user_password=company_data.company_password
+#         )
+#         db.add(new_company)
+#         db.add(new_user)
+#         db.commit()
+#
+#         return {
+#             "status": 200,
+#             "message": "User Signed Up!",
+#             "data": {"company_id": new_company.company_id, "signup_credentials": signup_credentials}
+#         }
+#     except HTTPException as e:
+#         print(repr(e))
+#         return {"status": 400, "message": "User already exists"}
+#     except Exception as e:
+#         print(repr(e))
+#         return {"status": 500, "message": "Internal Server Error"}
 
 @app.post('/logincompany')
 def login_company(login_credentials: Union[str, int], login_data: schemas.LoginFlow, response: Response, db: Session = Depends(get_db)):

@@ -26,6 +26,7 @@ class UserCompany(BaseModel):
     class Config:
         from_attributes = True
 
+
 class Shop(BaseModel):
     shop_name: str
     shop_description: str
@@ -51,13 +52,14 @@ class Category(BaseModel):
 class EditCategory(Category):
     pass
 
+
 class ProductCategory(BaseModel):
     product_id: int
     category_id: int
 
-
     class Config:
         from_attributes = True
+
 
 class Product(BaseModel):
     product_id: int | None = None
@@ -65,9 +67,9 @@ class Product(BaseModel):
     product_name: str
     details: str
 
-
     class Config:
         from_attributes = True
+
 
 class ProductVariant(BaseModel):
     variant_id: Optional[int] | None = None
@@ -150,6 +152,7 @@ class EditAddress(Address):
     class Config:
         from_attributes = True
 
+
 # class OrderItems(BaseModel):
 #     product_id: int
 #     variant: int
@@ -165,12 +168,14 @@ class CartItem(BaseModel):
     class Config:
         from_attributes = True
 
+
 class CartSchema(BaseModel):
     # id: int
     company_id: int
     customer_contact: int
     coupon_id: int
     products: str
+
     # creation_time: datetime
 
     class Config:
@@ -209,7 +214,6 @@ class Bookings(BaseModel):
     invoice_amount: float
     products: List[str]
 
-
     class Config:
         from_attributes = True
 
@@ -247,6 +251,7 @@ class Brand(BaseModel):
     brand_name: str
     brand_image: str
 
+
 class Deals(BaseModel):
     shop_id: int
     product_id: int
@@ -256,6 +261,7 @@ class Deals(BaseModel):
     deal_discount: int
     deal_start: str
     deal_end: str
+
 
 # class ShopASSociation(BaseModel):
 #
@@ -267,13 +273,16 @@ class Feature(BaseModel):
     shop_id: int
     feature_image: List[str]
 
+
 class FavItem(BaseModel):
     product_id: int
     variant_id: int
     shop_id: int
     user_id: int
+
     class Config:
         from_attributes = True
+
 
 class Review(BaseModel):
     rating: int
@@ -281,6 +290,7 @@ class Review(BaseModel):
 
     class Config:
         from_attributes = True
+
 
 class Companies(BaseModel):
     company_id: Optional[int] | None = None
@@ -296,6 +306,7 @@ class Companies(BaseModel):
 
     class Config:
         from_attributes = True
+
 
 class CompanyUpdateDetails(BaseModel):
     company_name: str
@@ -317,6 +328,7 @@ class CompanySignUp(BaseModel):
     class Config:
         from_attributes = True
 
+
 class LoginFlow(BaseModel):
     company_contact: int | None = None
     company_email: str | None = None
@@ -333,8 +345,10 @@ class Branch(BaseModel):
     branch_email: str
     branch_number: int
     company_id: str | None = None
+
     class Config:
         from_attributes = True
+
 
 class Employee(BaseModel):
     employee_id: int | None = None
@@ -344,6 +358,7 @@ class Employee(BaseModel):
     employee_gender: str | None = None
     branch_id: int | None = None
 
+
 class Role(BaseModel):
     role_id: int | None = None
     role_name: str
@@ -352,6 +367,7 @@ class Role(BaseModel):
     products_feature: bool | None = None
     insights_feature: bool | None = None
     employee_id: int | None = None
+
 
 class ProductInput(BaseModel):
     product_name: str
@@ -390,7 +406,8 @@ class OrderSchema(BaseModel):
     customer: dict
 
     class Config:
-        orm_mode = True
+        from_attributes = True
+
 
 class OrderCreate(BaseModel):
     order_no: str
@@ -401,8 +418,11 @@ class OrderCreate(BaseModel):
     additional_charges: float
     to_pay: float
     payment_type: str
+
+
 class ImageDeleteRequest(BaseModel):
     image_url: str
+
 
 class ProductItem(BaseModel):
     product_id: int
@@ -424,6 +444,7 @@ class ProductDetailResponse(BaseModel):
     quantity: int
     stock: int
     measuring_unit: str
+
 
 class NewUsers(BaseModel):
     user_uniqueid: int | None = None
