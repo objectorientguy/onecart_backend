@@ -318,9 +318,7 @@ class CompanyUpdateDetails(BaseModel):
     class Config:
         from_attributes = True
 
-class GetCompany(CompanyUpdateDetails):
-    class Config:
-        from_attributes = True
+
 
 
 class CompanySignUp(BaseModel):
