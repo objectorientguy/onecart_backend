@@ -68,11 +68,19 @@ class ProductVariant(Base):
     image = Column(JSON, nullable=True)
     ratings = Column(Integer, nullable=True)
     measuring_unit = Column(String, nullable=False)
-    category_name = Column(String, nullable=False)
+    category_id = Column(BIGINT, ForeignKey(
+        "categories.category_id", ondelete="CASCADE"), nullable=False)
     product_id = Column(BIGINT, ForeignKey(
         "products.product_id", ondelete="CASCADE"), nullable=False)
+    branch_id = Column(BIGINT, ForeignKey(
+        "branch.branch_id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(BIGINT, ForeignKey(
+        "new_users.user_uniqueid", ondelete="CASCADE"), nullable=False)
 
     product = relationship("Products")
+    category = relationship("Categories")
+    branch = relationship("Branch")
+    user = relationship("NewUsers")
 
 
 class Image(Base):
@@ -416,6 +424,7 @@ class Branch(Base):
     company_id = Column(String, ForeignKey("companies.company_id", ondelete="CASCADE"))
 
     company = relationship("Companies")
+
 
 class Employee(Base):
     __tablename__ = "employee"
