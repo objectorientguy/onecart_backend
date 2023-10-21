@@ -346,6 +346,7 @@ class Branch(BaseModel):
     branch_email: str
     branch_number: int
     company_id: str | None = None
+
     class Config:
         from_attributes = True
 
@@ -365,6 +366,21 @@ class Role(BaseModel):
     products_feature: bool | None = None
     insights_feature: bool | None = None
     employee_id: int | None = None
+
+class EditEmployee(BaseModel):
+    role_name: str
+    employee_name: str | None = None
+    employee_contact: int | None = None
+    employee_gender: str | None = None
+
+class NewUsers(BaseModel):
+    user_uniqueid: int | None = None
+    user_name: str | None = None
+    user_contact: str | None = None
+    user_birthdate: str | None = None
+    user_image: str | None = None
+    user_emailId: str | None = None
+    user_password: str
 
 class ProductInput(BaseModel):
     product_name: str
@@ -453,15 +469,6 @@ class ProductDetailResponse(BaseModel):
     quantity: int
     stock: int
     measuring_unit: str
-
-class NewUsers(BaseModel):
-    user_uniqueid: int | None = None
-    user_name: str | None = None
-    user_contact: str | None = None
-    user_birthdate: str | None = None
-    user_image: str | None = None
-    user_emailId: str | None = None
-    user_password: str
 
 class OrderResponse(BaseModel):
     order_id: int
