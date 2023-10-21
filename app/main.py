@@ -391,6 +391,7 @@ def build_company_response(company,  db):
             "companyId": company.company_id if company.company_id is not None else "",
             "company_contact": company.company_contact if company.company_contact is not None else "",
             "company_email": company.company_email if company.company_email is not None else "",
+            "company_name": company.company_name if company.company_name is not None else "",
             "role_id": 0000
         }
     }
@@ -515,6 +516,24 @@ def login_company(login_credentials: Union[str, int], login_data: schemas.LoginF
         return {"status": 400, "message": "Incorrect password", "data": {}}
     except DataError as e:
         return {"status": 400, "message": "Invalid login credential", "data": {}}
+    except Exception as e:
+        print(repr(e))
+        return {"status": 500, "message": "Internal Server Error", "data": {}}
+
+@app.get('/welcomescreen')
+def signup(response: Response,companyID :str, branchID: int, role_id:int, db: Session = Depends(get_db)):
+    try:
+        company = db.query(models.Companies).filter(models.Companies.company_id == companyID).first()
+        branch = db.query(models.Branch).filter(models.Branch.branch_id == branchID).first()
+        response_data = build_company_response(company, db)
+
+        return {
+                "status": 200,
+                "message": "User Signed Up!",
+                "data": {
+                         "response_data": response_data
+               }
+            }
     except Exception as e:
         print(repr(e))
         return {"status": 500, "message": "Internal Server Error", "data": {}}
