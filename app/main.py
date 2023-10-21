@@ -118,7 +118,7 @@ async def delete_image(response: Response, product_id: int, variant_id: int,
 
 
 @app.post("/upload/images")
-async def upload_images(product_id: int, variant_id: int, upload_files: List[UploadFile] = File(...),
+async def upload_images(upload_files: List[UploadFile] = File(...),
                         replace_existing_images: bool = True, db: Session = Depends(get_db)):
     image_urls = []
     for upload_file in upload_files:
@@ -127,23 +127,23 @@ async def upload_images(product_id: int, variant_id: int, upload_files: List[Upl
         bucket = storage.bucket()
         blob = bucket.blob(f"uploaded_images/{upload_file.filename}")
         blob.upload_from_filename(destination)
-        image_url = blob.generate_signed_url(method="GET", expiration=timedelta(days=7))
+        image_url = blob.generate_signed_url(method="GET", expiration=timedelta(days=120))
         image_urls.append(image_url)
 
-    product_variant = db.query(models.ProductVariant).filter_by(
-        product_id=product_id, variant_id=variant_id
-    ).first()
-    if not product_variant:
-        return JSONResponse(content={"status": 404, "message": "Product variant not found"})
-    if replace_existing_images:
-        product_variant.image = image_urls
-    else:
-        product_variant.image.extend(image_urls)
-    try:
-        db.commit()
-    except Exception as e:
-        logging.error(f"Database commit error: {e}")
-        db.rollback()
+    # product_variant = db.query(models.ProductVariant).filter_by(
+    #     product_id=product_id, variant_id=variant_id
+    # ).first()
+    # if not product_variant:
+    #     return JSONResponse(content={"status": 404, "message": "Product variant not found"})
+    # if replace_existing_images:
+    #     product_variant.image = image_urls
+    # else:
+    #     product_variant.image.extend(image_urls)
+    # try:
+    #     db.commit()
+    # except Exception as e:
+    #     logging.error(f"Database commit error: {e}")
+    #     db.rollback()
     response_data = {
         "status": 200,
         "message": "Images uploaded successfully.",
