@@ -371,6 +371,7 @@ class ProductInput(BaseModel):
     brand_name: str
     branch_id: int
     user_id: int
+    barcode_no: int
     description: str
     category_id: int
     variant_cost: float
@@ -378,6 +379,7 @@ class ProductInput(BaseModel):
     stock: int
     quantity: int
     measuring_unit: str
+
 
 class ProductEdit(BaseModel):
     product_name: Optional[str] = None
@@ -396,7 +398,7 @@ class ProductUpdateInput(BaseModel):
     discounted_cost: float
     stock: int
     measuring_unit: str
-
+    barcode_no: int
 
 
 class EditCategoryName(BaseModel):

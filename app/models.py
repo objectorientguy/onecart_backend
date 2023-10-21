@@ -68,6 +68,7 @@ class ProductVariant(Base):
     image = Column(JSON, nullable=True)
     ratings = Column(Integer, nullable=True)
     measuring_unit = Column(String, nullable=False)
+    barcode_no = Column(BIGINT, nullable=False, unique=True)
     category_id = Column(BIGINT, ForeignKey(
         "categories.category_id", ondelete="CASCADE"), nullable=False)
     product_id = Column(BIGINT, ForeignKey(
@@ -81,6 +82,7 @@ class ProductVariant(Base):
     category = relationship("Categories")
     branch = relationship("Branch")
     user = relationship("NewUsers")
+
 
 
 class Image(Base):

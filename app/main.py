@@ -2484,6 +2484,7 @@ def add_product(product_data: schemas.ProductInput, db: Session = Depends(get_db
             category_id=product_data.category_id,
             branch_id=product_data.branch_id,
             user_id=product_data.user_id,
+            barcode_no=product_data.barcode_no,
         )
 
         db.add(new_variant)
@@ -2520,29 +2521,29 @@ def add_product(product_data: schemas.ProductInput, db: Session = Depends(get_db
             raise
 
 
-
 @app.post('/addProductVariant/{product_id}')
 def add_product_variant(product_id: int, product_data: schemas.ProductUpdateInput, db: Session = Depends(get_db)):
     try:
-        existing_product = db.query(models.ProductVariant).filter(
+        existing_product_variant = db.query(models.ProductVariant).filter(
             models.ProductVariant.product_id == product_id
         ).first()
 
-        if not existing_product:
-            return JSONResponse(content={"status": 404, "message": "Product not found", "data": {}})
+        if not existing_product_variant:
+            return JSONResponse(content={"status": 404, "message": "Product variant not found", "data": {}})
 
         new_variant = models.ProductVariant(
             variant_cost=product_data.variant_cost,
-            brand_name=existing_product.brand_name,
-            branch_id=existing_product.branch_id,
-            user_id=existing_product.user_id,
+            brand_name=existing_product_variant.brand_name,
+            branch_id=existing_product_variant.branch_id,
+            user_id=existing_product_variant.user_id,
             discounted_cost=product_data.discounted_cost,
             stock=product_data.stock,
             quantity=product_data.quantity,
             measuring_unit=product_data.measuring_unit,
-            description=existing_product.description,
+            description=existing_product_variant.description,
             product_id=product_id,
-            category_id=existing_product.category_id,
+            category_id=existing_product_variant.category_id,
+            barcode_no=product_data.barcode_no,
         )
         db.add(new_variant)
         db.commit()
@@ -2937,7 +2938,8 @@ def get_all_orders(db: Session = Depends(get_db)):
                 "product_list": order.product_list,
                 "total_order": order.total_order,
                 "gst_charges": order.gst_charges,
-                "additional_charges": order.additional_charges
+                "additional_charges": order.additional_charges,
+                "to_pay": order.to_pay
             }
             for order in orders
         ]
