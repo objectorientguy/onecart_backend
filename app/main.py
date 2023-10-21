@@ -2485,6 +2485,7 @@ async def get_categories(response: Response, db: Session = Depends(get_db)):
         return {"status": "500", "message": "Internal Server Error", "data": {}}
 
 
+
 @app.post('/addProduct')
 def add_product(product_data: schemas.ProductInput, db: Session = Depends(get_db)):
     try:
@@ -2604,23 +2605,58 @@ def add_product_variant(product_id: int, product_data: schemas.ProductUpdateInpu
         return JSONResponse(content={"status": 500, "message": "Internal Server Error", "error": str(e)})
 
 
+# @app.put('/editProductVariant/')
+# def edit_product_variant(
+#     variant_data: schemas.ProductEdit,
+#     product_id: int = Query(..., description="Required product_id"),
+#     variant_id: int = Query(None, description="Optional variant_id"),
+#
+#     db: Session = Depends(get_db)
+# ):
+#     try:
+#
+#         existing_variant = db.query(models.ProductVariant).filter(
+#             models.ProductVariant.variant_id == variant_id,
+#             models.ProductVariant.product_id == product_id
+#         ).first()
+#
+#         if not existing_variant:
+#             return {"status": 400, "detail": "Product variant not found",  "data": {}}
+#
+#         for field, value in variant_data.dict().items():
+#             if value is not None:
+#                 setattr(existing_variant, field, value)
+#
+#         db.commit()
+#
+#         return {"status": 200, "message": "Product variant edited successfully!"}
+#     except IntegrityError as e:
+#         if "duplicate key value violates unique constraint" in str(e):
+#             return {"status": 400, "message": "Check the variant details", "data": {}}
+#         else:
+#             return {"status": 500, "message": "Internal Server Error", "error": str(e)}
+
+
 @app.put('/editProductVariant/')
 def edit_product_variant(
     variant_data: schemas.ProductEdit,
+    variant_id: int = Query(..., description="Required variant_id"),
     product_id: int = Query(..., description="Required product_id"),
-    variant_id: int = Query(None, description="Optional variant_id"),
-
+    branch_id: int = Query(..., description="Required branch_id"),
+    user_id: int = Query(..., description="Required user_id"),
     db: Session = Depends(get_db)
 ):
     try:
-
+        # Query the existing variant using all the provided parameters
         existing_variant = db.query(models.ProductVariant).filter(
             models.ProductVariant.variant_id == variant_id,
-            models.ProductVariant.product_id == product_id
+            models.ProductVariant.product_id == product_id,
+            models.ProductVariant.branch_id == branch_id,
+            models.ProductVariant.user_id == user_id
         ).first()
 
         if not existing_variant:
-            return {"status": 400, "detail": "Product variant not found",  "data": {}}
+            return {"status": 400, "detail": "Product variant not found", "data": {}}
 
         for field, value in variant_data.dict().items():
             if value is not None:
@@ -2692,7 +2728,6 @@ def get_product_variant(variant_id: int, db: Session = Depends(get_db)):
         })
     except Exception as e:
         return {"status": 500, "message": "Internal Server Error", "error": str(e)}
-
 
 
 @app.get("/variantsByCategories")
@@ -3036,4 +3071,54 @@ def delete_product(product_id: int, variant_id: int = None, db: Session = Depend
             return JSONResponse(content={"status": 200, "message": "Product deleted successfully", "data": {}})
     except Exception as e:
         return JSONResponse(content={"status": 500, "message": "Internal Server Error", "error": str(e)})
+
+@app.get("/search")
+def search_products(
+    query: str = Query(..., description="Search query for products"),
+    db: Session = Depends(get_db),
+):
+    products = (
+        db.query(models.Products, models.ProductVariant)
+        .filter(models.Products.product_name.ilike(f"%{query}%"))
+        .filter(models.Products.product_id == models.ProductVariant.product_id)
+        .all()
+    )
+
+    if not products:
+        return {"status": 204, "message": "No Products found", "data": []}
+
+    products_data = [
+        {
+            "product_id": product.Products.product_id,
+            "product_name": product.Products.product_name,
+            "image": product.ProductVariant.image,
+            "variant_cost": product.ProductVariant.variant_cost,
+            "variant_id": product.ProductVariant.variant_id,
+        }
+        for product in products
+    ]
+
+    return {"status": 200, "message": "Products found", "data": products_data}
+
+@app.get("/getallBranches")
+async def get_branches(response: Response, db: Session = Depends(get_db)):
+    try:
+        branches = db.query(models.Branch).all()
+        if not branches:
+            return {"status": 204, "message": "No branches found", "data": []}
+
+        serialized_branches = [
+            {
+                "branch_id": branch.branch_id,
+                "branch_name": branch.branch_name,
+                "company_id": branch.company_id,
+            }
+            for branch in branches
+        ]
+
+        return {"status": 200, "message": "All branches fetched!", "data": serialized_branches}
+    except Exception as e:
+        print(repr(e))
+        response.status_code = 500
+        return {"status": "500", "message": "Internal Server Error", "data": str(e)}
 
