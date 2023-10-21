@@ -369,6 +369,14 @@ class Role(BaseModel):
     insights_feature: bool | None = None
     employee_id: int | None = None
 
+class NewUsers(BaseModel):
+    user_uniqueid: int | None = None
+    user_name: str | None = None
+    user_contact: str | None = None
+    user_birthdate: str | None = None
+    user_image: str | None = None
+    user_emailId: str | None = None
+    user_password: str
 
 class ProductInput(BaseModel):
     product_name: str
@@ -447,12 +455,4 @@ class ProductDetailResponse(BaseModel):
     measuring_unit: str
 
 
-class NewUsers(BaseModel):
-    user_uniqueid: int | None = None
-    user_name: str | None = None
-    user_contact: str | None = None
-    user_birthdate: str | None = None
-    user_image: str | None = None
-    user_emailId: str | None = None
-    user_password: str
 
