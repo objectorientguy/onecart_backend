@@ -383,123 +383,7 @@ def delete_user_address(response: Response, db: Session = Depends(get_db), addre
         response.status_code = 404
         return {"status": "404", "message": "Error", "data": {}}
 
-
-def build_signup_response(company, db):
-    company_data = {
-        "company_id": company.company_id if company.company_id is not None else "",
-        "company_name": company.company_name if company.company_name is not None else "",
-    }
-    branches = db.query(models.Branch).filter(models.Branch.company_id == company.company_id).all()
-    products = db.query(models.Products).filter(models.Products.company_id == company.company_id).all()
-    employees = db.query(models.Employee).filter(models.Employee.company_id == company.company_id).all()
-
-    response_data = {
-        "status": 200,
-        "message": "Company logged in successfully!",
-        "data": {
-            "company": company_data,
-            "branches": [
-                {
-                    "branch_id": branch.branch_id if branch.branch_id is not None else "",
-                    "branch_name": branch.branch_name if branch.branch_name is not None else "",
-                }
-                for branch in branches
-            ],
-            "products": [
-                {
-                    "product_id": product.product_id if product.product_id is not None else "",
-                }
-                for product in products
-            ],
-            "employees": [
-                {
-                    "employee_id": employee.employee_id if employee.employee_id is not None else "",
-                    "employee_name": employee.employee_name if employee.employee_name is not None else "",
-                }
-                for employee in employees
-            ]
-        }
-    }
-    return response_data
-
-@app.post('/signup')
-def signup(response: Response, company_data: schemas.CompanySignUp = Body(...),
-           signup_credentials: Union[str, int] = Query(...), db: Session = Depends(get_db)):
-    try:
-        if signup_credentials.isdigit():
-            company_data.company_contact = int(signup_credentials)
-        else:
-            company_data.company_email = signup_credentials
-            company_exists = db.query(models.Companies).filter(
-                (models.Companies.company_email == signup_credentials)).first()
-
-        if company_exists:
-            return {
-                "status": 409,
-                "message": "Company already exists",
-                "data": {},
-            }
-        else:
-            hashed_password = pwd_context.hash(company_data.company_password)
-            company_id = uuid4().hex
-            new_company = models.Companies(
-                company_id=company_id,
-                company_email=company_data.company_email,
-                company_contact=company_data.company_contact,
-                company_password=hashed_password
-            )
-            new_user = models.NewUsers(
-                user_contact=company_data.company_contact,
-                user_emailId=company_data.company_email,
-                user_password=company_data.company_password
-            )
-            db.add(new_company)
-            db.add(new_user)
-            db.commit()
-
-            company = db.query(models.Companies).filter(models.Companies.company_id == company_id).first()
-            response_data = build_signup_response(company, db)
-
-            return {
-                "status": 200,
-                "message": "User Signed Up!",
-                "data": {"company_id": new_company.company_id,
-                         "company_name": new_company.company_name if company.company_name is not None else "",
-                         "signup_credentials": signup_credentials,
-                         "response_data": response_data
-               }
-            }
-    except Exception as e:
-        print(repr(e))
-        return {"status": 500, "message": "Internal Server Error", "data": {}}
-
-
-@app.post('/login')
-def login_company(login_credentials: Union[str, int], login_data: schemas.LoginFlow, response: Response,
-                  db: Session = Depends(get_db)):
-    try:
-        user = (
-                db.query(models.Companies).filter(models.Companies.company_email == login_credentials).first()
-                or
-                db.query(models.Companies).filter(models.Companies.company_contact == login_credentials).first()
-                # or
-                # db.query(models.Employee).filter(models.Employee.employee_contact == login_credentials).first()
-        )
-        if user:
-            if pwd_context.verify(login_data.login_password, user.company_password if isinstance(user, models.Companies) else user.employee_password):
-                if isinstance(user, models.Companies):
-                    return build_login_response(user, db)
-                else:
-                    return build_login_response(user, db)
-            else:
-                return {"status": 401, "message": "Incorrect password", "data": {}}
-        return {"status": 400, "message": "Incorrect password", "data": {}}
-    except DataError as e:
-        return {"status": 400, "message": "Invalid login credential", "data": {}}
-    except Exception as e:
-        print(repr(e))
-        return {"status": 500, "message": "Internal Server Error", "data": {}}
-def build_login_response(company,  db):
+def build_company_response(company,  db):
     response_data = {
         "status": 200,
         "message": "Company logged in successfully!",
@@ -562,6 +446,85 @@ def build_login_response(company,  db):
 #     ]
 #     return response_data
 
+@app.post('/signup')
+def signup(response: Response, company_data: schemas.CompanySignUp = Body(...),
+           signup_credentials: Union[str, int] = Query(...), db: Session = Depends(get_db)):
+    try:
+        if signup_credentials.isdigit():
+            company_data.company_contact = int(signup_credentials)
+            company_exists = db.query(models.Companies).filter(
+                (models.Companies.company_contact == signup_credentials)).first()
+        else:
+            company_data.company_email = signup_credentials
+            company_exists = db.query(models.Companies).filter(
+                (models.Companies.company_email == signup_credentials)).first()
+
+        if company_exists:
+            return {
+                "status": 409,
+                "message": "Company already exists",
+                "data": {},
+            }
+        else:
+            hashed_password = pwd_context.hash(company_data.company_password)
+            company_id = uuid4().hex
+            new_company = models.Companies(
+                company_id=company_id,
+                company_email=company_data.company_email,
+                company_contact=company_data.company_contact,
+                company_password=hashed_password
+            )
+            new_user = models.NewUsers(
+                user_contact=company_data.company_contact,
+                user_emailId=company_data.company_email,
+                user_password=company_data.company_password
+            )
+            db.add(new_company)
+            db.add(new_user)
+            db.commit()
+
+            company = db.query(models.Companies).filter(models.Companies.company_id == company_id).first()
+            response_data = build_company_response(company, db)
+
+            return {
+                "status": 200,
+                "message": "User Signed Up!",
+                "data": {
+                         "company_name": new_company.company_name if company.company_name is not None else "",
+                         "signup_credentials": signup_credentials,
+                         "response_data": response_data
+               }
+            }
+    except Exception as e:
+        print(repr(e))
+        return {"status": 500, "message": "Internal Server Error", "data": {}}
+
+
+@app.post('/login')
+def login_company(login_credentials: Union[str, int], login_data: schemas.LoginFlow, response: Response,
+                  db: Session = Depends(get_db)):
+    try:
+        user = (
+                db.query(models.Companies).filter(models.Companies.company_email == login_credentials).first()
+                or
+                db.query(models.Companies).filter(models.Companies.company_contact == login_credentials).first()
+                # or
+                # db.query(models.Employee).filter(models.Employee.employee_contact == login_credentials).first()
+        )
+        if user:
+            if pwd_context.verify(login_data.login_password, user.company_password if isinstance(user, models.Companies) else user.employee_password):
+                if isinstance(user, models.Companies):
+                    return build_company_response(user, db)
+                else:
+                    return build_company_response(user, db)
+            else:
+                return {"status": 401, "message": "Incorrect password", "data": {}}
+        return {"status": 400, "message": "Incorrect password", "data": {}}
+    except DataError as e:
+        return {"status": 400, "message": "Invalid login credential", "data": {}}
+    except Exception as e:
+        print(repr(e))
+        return {"status": 500, "message": "Internal Server Error", "data": {}}
 
 @app.post("/company/logo")
 async def upload_company_logo(request: Request, logo: UploadFile = File(...), company_id: str = Form(...),
