@@ -367,6 +367,12 @@ class Role(BaseModel):
     insights_feature: bool | None = None
     employee_id: int | None = None
 
+class EditEmployee(BaseModel):
+    role_name: str
+    employee_name: str | None = None
+    employee_contact: int | None = None
+    employee_gender: str | None = None
+
 class NewUsers(BaseModel):
     user_uniqueid: int | None = None
     user_name: str | None = None
