@@ -12,9 +12,9 @@ class Categories(Base):
 
     category_id = Column(BIGINT, nullable=False, primary_key=True, autoincrement=True, unique=True)
     category_name = Column(String, nullable=False)
-    category_image = Column(String, nullable=False)
+    # category_image = Column(String, nullable=False)
 
-    @validates('category_name', 'category_image')
+    @validates('category_name')
     def empty_string_to_null(self, key, value):
         if isinstance(value, str) and value == '':
             return None
@@ -68,7 +68,7 @@ class ProductVariant(Base):
     image = Column(JSON, nullable=True)
     ratings = Column(Integer, nullable=True)
     measuring_unit = Column(String, nullable=False)
-    barcode_no = Column(BIGINT, nullable=False, unique=True)
+    barcode_no = Column(BIGINT, nullable=True, unique=True)
     category_id = Column(BIGINT, ForeignKey(
         "categories.category_id", ondelete="CASCADE"), nullable=False)
     product_id = Column(BIGINT, ForeignKey(
