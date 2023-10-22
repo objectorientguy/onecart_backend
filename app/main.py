@@ -5,7 +5,6 @@ from collections import defaultdict
 from datetime import timedelta
 from io import BytesIO
 from typing import List, Optional, Union
-# from psycopg2.errors import DataError
 from urllib import response
 from uuid import uuid4
 
