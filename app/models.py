@@ -23,6 +23,7 @@ class Companies(Base):
     company_domain = Column(String, nullable=True)
     company_logo = Column(JSON, nullable=True)
     company_email = Column(String,  nullable=True)
+    company_description = Column(String, nullable=True)
     services = Column(String, nullable=True)
     company_contact = Column(BIGINT, nullable=True)
     company_address = Column(String, nullable=True)
@@ -72,12 +73,12 @@ class NewUsers(Base):
     user_image = Column(String, nullable=True)
     user_emailId = Column(String, nullable=True)
     user_password = Column(String, nullable=True)
-    @validates('user_contact', 'user_uniqueid')
-    def empty_string_to_null(self, key, value):
-        if isinstance(value, str) and value == '':
-            return None
-        else:
-            return value
+    # company_id = Column(String, ForeignKey("companies.company_id", ondelete="CASCADE"))
+    # branch_id = Column(BIGINT, ForeignKey("branch.branch_id", ondelete="CASCADE"))
+    #
+    # company = relationship("Companies")
+    # branch = relationship("Branch")
+
 class Categories(Base):
     __tablename__ = "categories"
     category_id = Column(BIGINT, nullable=False, primary_key=True, autoincrement=True, unique=True)

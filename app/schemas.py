@@ -9,6 +9,7 @@ class Companies(BaseModel):
     company_domain: str
     company_logo: str
     company_email: EmailStr | None = None
+    company_description: Optional[str] = None
     services: str
     company_contact: int
     company_address: str
@@ -23,6 +24,11 @@ class NewUsers(BaseModel):
     user_image: str | None = None
     user_emailId: str | None = None
     user_password: str
+class EditUser(BaseModel):
+    user_image: str | None = None
+    user_name: str | None = None
+    user_contact: str | None = None
+    user_emailId: str | None = None
 class CompanyUpdateDetails(BaseModel):
     company_name: str
     company_domain: str

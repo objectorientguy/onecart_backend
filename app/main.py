@@ -105,10 +105,11 @@ async def delete_image(response: Response, product_id: int, variant_id: int,
     else:
         return {"status_code": 404, "message": "Image URL not found in the product variant"}
 
-def build_company_response(company,  db):
+
+def build_company_response(company, db):
     response_data = {
         "status": 200,
-        "message": "Company logged in successfully!",
+        "message": "Success!",
         "data": {
             "companyId": company.company_id if company.company_id is not None else "",
             "company_contact": company.company_contact if company.company_contact is not None else "",
@@ -121,25 +122,26 @@ def build_company_response(company,  db):
     branches = db.query(models.Branch).filter(models.Branch.company_id == company_id).all()
     employees = db.query(models.Employee).join(models.Branch).filter(models.Branch.company_id == company_id).all()
     response_data['data']['branches'] = [
-        {**branches.__dict__,
-         'branch_id': branches.branch_id if branches.branch_id is not None else "",
-         'branch_email': branches.branch_email if branches.branch_email is not None else "",
-         'branch_name': branches.branch_name if branches.branch_name is not None else "",
-         'branch_number': branches.branch_number if branches.branch_number is not None else "",
-         'branch_address': branches.branch_address if branches.branch_address is not None else "",
-         }
+        {
+            'branch_id': branch.branch_id if branch.branch_id is not None else "",
+            'branch_email': branch.branch_email if branch.branch_email is not None else "",
+            'branch_name': branch.branch_name if branch.branch_name is not None else "",
+            'branch_number': branch.branch_number if branch.branch_number is not None else "",
+            'branch_address': branch.branch_address if branch.branch_address is not None else "",
+        }
         for branch in branches
     ]
     response_data['data']['employees'] = [
-        {**employee.__dict__,
-         'employeeID': employee.employee_id if employee.employee_id is not None else "",
-         'employee_name': employee.employee_name if employee.employee_name is not None else "",
-         'employee_contact': employee.employee_contact if employee.employee_contact is not None else "",
-         'employee_gender': employee.employee_gender if employee.employee_gender is not None else "",
-         }
+        {
+            'employeeID': employee.employee_id if employee.employee_id is not None else "",
+            'employee_name': employee.employee_name if employee.employee_name is not None else "",
+            'employee_contact': employee.employee_contact if employee.employee_contact is not None else "",
+            'employee_gender': employee.employee_gender if employee.employee_gender is not None else "",
+        }
         for employee in employees
     ]
     return response_data
+
 @app.post('/signup')
 def signup(response: Response, company_data: schemas.CompanySignUp = Body(...),
            signup_credentials: Union[str, int] = Query(...), db: Session = Depends(get_db)):
@@ -176,10 +178,8 @@ def signup(response: Response, company_data: schemas.CompanySignUp = Body(...),
             db.add(new_company)
             db.add(new_user)
             db.commit()
-
             company = db.query(models.Companies).filter(models.Companies.company_id == company_id).first()
             response_data = build_company_response(company, db)
-
             return {
                 "status": 200,
                 "message": "User Signed Up!",
@@ -221,7 +221,6 @@ def signup(response: Response,companyID :str, branchID: int, role_id:int, db: Se
         company = db.query(models.Companies).filter(models.Companies.company_id == companyID).first()
         branch = db.query(models.Branch).filter(models.Branch.branch_id == branchID).first()
         response_data = build_company_response(company, db)
-
         return {
                 "status": 200,
                 "message": "User Signed Up!",
@@ -233,8 +232,7 @@ def signup(response: Response,companyID :str, branchID: int, role_id:int, db: Se
         print(repr(e))
         return {"status": 500, "message": "Internal Server Error", "data": {}}
 @app.post('/company/details')
-def update_company_details(company_id: str, response: Response, request_body: schemas.CompanyUpdateDetails = Body(...),
-                           db: Session = Depends(get_db)):
+def update_company_details(company_id: str, response: Response, request_body: schemas.CompanyUpdateDetails = Body(...), db: Session = Depends(get_db)):
     try:
         company = db.query(models.Companies).filter(models.Companies.company_id == company_id).first()
         if company:
@@ -263,8 +261,7 @@ def add_branch(company_id: str, branch_data: schemas.Branch, db: Session = Depen
         if company is None:
             return {"status_code": 404, "message": "Company not found", "data": {}}
 
-        existing_branch = db.query(models.Branch).filter_by(company_id=company.company_id,
-                                                            branch_name=branch_data.branch_name).first()
+        existing_branch = db.query(models.Branch).filter_by(company_id=company.company_id, branch_name=branch_data.branch_name).first()
         if existing_branch:
             return {"status_code": 400, "message": "Branch with the same name already exists", "data": {}}
 
@@ -290,17 +287,14 @@ def get_employee_info(employee_id: int, db: Session):
 def add_employee(branch_id: int, employee_data: schemas.Employee, role_data: schemas.Role, response: Response,
                  db: Session = Depends(get_db)):
     try:
-
         employees = db.query(models.Employee).filter_by(branch_id=branch_id).all()
         branch = db.query(models.Branch).filter_by(branch_id=branch_id).first()
         if branch is None:
             return {"status": 404, "message": "Branch not found", "data": {}}
-
         existing_employee = db.query(models.Employee).filter(
             models.Employee.employee_contact == employee_data.employee_contact).first()
         if existing_employee:
             return {"status": 400, "message": "User already exists", "data": {}}
-
         existing_user = db.query(models.NewUsers).filter(
             models.NewUsers.user_contact == employee_data.employee_contact).first()
         if existing_user:
@@ -328,7 +322,6 @@ def add_employee(branch_id: int, employee_data: schemas.Employee, role_data: sch
         db.add(new_user)
         db.commit()
         unique_id = new_user.user_uniqueid
-
         return {"status": 200, "message": "New Employee added successfully",
                 "data": {"New_employee": employee_data, "role": role_data, "unique_id": unique_id}}
     except IntegrityError as e:
@@ -357,9 +350,7 @@ def get_employee_details(branch_id: int, db: Session = Depends(get_db)):
                     "role_name": role_name,
                     "role_key": role_id
                 })
-
         return {"status": 200, "message": "Employee details retrieved successfully", "data": response_data}
-
     except Exception as e:
         print(repr(e))
         return {"status": 500, "message": "Internal Server Error", "data": {}}
@@ -413,7 +404,6 @@ def add_product(branchID : int, userID : int, product_data: schemas.ProductInput
     try:
         branch = db.query(models.Branch).filter(models.Branch.branch_id == branchID)
         user = db.query(models.NewUsers).filter(models.NewUsers.user_uniqueid == userID)
-
         existing_product = db.query(models.Products).filter(models.Products.product_name == product_data.product_name).first()
         if existing_product:
             return JSONResponse(content={"status": 400, "message": "Product already exists!", "data": {}})
@@ -475,3 +465,40 @@ def add_product(branchID : int, userID : int, product_data: schemas.ProductInput
         else:
             print("Database Error:", str(e))
             raise
+
+@app.get("/company/description")
+def fetch_descriprion(response:Response, companyID : str, db: Session = Depends(get_db)):
+    try:
+        company = db.query(models.Companies).filter(models.Companies.company_id == companyID).first()
+        if company:
+            company_description = company.company_description if company.company_description is not None else ""
+            return {"status": 200, "message": "Company description fetched successfully!", "data": company_description}
+        else:
+            return {"status": 404, "message": "Company not found!","data": {}}
+    except Exception as e:
+        print(repr(e))
+        return { "status": 500, "message": "Internal Server Error!", "data": {}}
+
+
+# @app.post("/user/details")
+# def fetch_user_details(response : Response, userID : int,db: Session = Depends(get_db),editUser = schemas.EditUser):
+#     try:
+#         user = db.query(models.NewUsers).filter(models.NewUsers.user_uniqueid == userID).first()
+#         # company = db.query(models.Companies).filter(models.Companies.company_id == companyID).first()
+#         # branch = db.query(models.Branch).filter(models.Branch.branch_id == branchID).first()
+#         if user:
+#             if editUser.user_image is not None:
+#                 user.user_image = editUser.user_image
+#             if editUser.user_name is not None:
+#                 user.user_name = editUser.user_name
+#             if editUser.user_contact is not None:
+#                 user.user_contact = editUser.user_contact
+#             if editUser.user_emailId is not None:
+#                 user.user_emailId = editUser.user_emailId
+#             db.commit()
+#             return {"status": 200, "message": "User details updated successfully", "data": user}
+#         else:
+#             return {"status": 404, "message": "User not found", "data": {}}
+#     except Exception as e:
+#         print(repr(e))
+#         return {"status": 500, "message": "Internal Server Error", "data": {}}
