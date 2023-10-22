@@ -652,13 +652,13 @@ def add_employee(branch_id: int, employee_data: schemas.Employee, role_data: sch
         branch = db.query(models.Branch).filter_by(branch_id=branch_id).first()
         if branch is None:
             return {"status": 404, "message": "Branch not found",
-                    "data": {"New_employee": employee_data, "role": role_data, "unique_id": 0}}
+                    "data": {"New_employee": {}, "role": {}, "unique_id": 0}}
 
         existing_employee = db.query(models.Employee).filter(
             models.Employee.employee_contact == employee_data.employee_contact).first()
         if existing_employee:
             return {"status": 400, "message": "User already exists",
-                    "data": {"New_employee": employee_data, "role": role_data, "unique_id": 0}}
+                    "data": {"New_employee": {}, "role": {}, "unique_id": 0}}
 
         existing_user = db.query(models.NewUsers).filter(
             models.NewUsers.user_contact == employee_data.employee_contact).first()
