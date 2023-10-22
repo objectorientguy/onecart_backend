@@ -384,13 +384,11 @@ def delete_user_address(response: Response, db: Session = Depends(get_db), addre
 
 def build_company_response(company, db):
     response_data = {
-
         "companyId": company.company_id if company.company_id is not None else "",
         "company_contact": company.company_contact if company.company_contact is not None else "",
         "company_email": company.company_email if company.company_email is not None else "",
         "company_name": company.company_name if company.company_name is not None else "",
         "role_id": 0000
-
     }
 
     company_id = company.company_id
@@ -465,12 +463,7 @@ def signup(response: Response, company_data: schemas.CompanySignUp = Body(...),
         return {
             "status": 200,
             "message": "User Signed Up!",
-            "data": {
-                "company_name": new_company.company_name if company.company_name is not None else "",
-                "signup_credentials": signup_credentials,
-                "response_data": response_data
-            }
-        }
+            "data": response_data}
 
 
 # except Exception as e:
@@ -2834,8 +2827,8 @@ def get_products_by_categories(db: Session = Depends(get_db)):
                 category_data = {"category_name": category_name, "products": serialized_products}
                 response_data.append(category_data)
 
-        if not response_data:
-            return {"status": 204, "message": "No products found for any category", "data": []}
+        # if not response_data:
+        #     return {"status": 204, "message": "No products found for any category", "data": []}
 
         return {
             "status": 200,
