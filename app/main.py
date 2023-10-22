@@ -484,8 +484,6 @@ def login_company(login_credentials: Union[str, int], login_data: schemas.LoginF
                 db.query(models.Companies).filter(models.Companies.company_email == login_credentials).first()
                 or
                 db.query(models.Companies).filter(models.Companies.company_contact == login_credentials).first()
-            # or
-            # db.query(models.Employee).filter(models.Employee.employee_contact == login_credentials).first()
         )
         if user:
             if pwd_context.verify(login_data.login_password, user.company_password if isinstance(user,
