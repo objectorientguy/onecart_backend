@@ -695,7 +695,7 @@ def add_employee(branch_id: int, employee_data: schemas.Employee, role_data: sch
         print(repr(e))
         response.status_code = 500
         return {"status": 500, "message": "Internal Server Error",
-                "data": {"New_employee": employee_data, "role": role_data, "unique_id": unique_id}}
+                "data": {"New_employee": {}, "role": {}, "unique_id": 0}}
     finally:
         db.close()
 
