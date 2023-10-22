@@ -422,53 +422,53 @@ def build_company_response(company, db):
 @app.post('/signup')
 def signup(response: Response, company_data: schemas.CompanySignUp = Body(...),
            signup_credentials: Union[str, int] = Query(...), db: Session = Depends(get_db)):
-    # try:
-    if signup_credentials.isdigit():
-        company_data.company_contact = int(signup_credentials)
-        company_exists = db.query(models.Companies).filter(
-            (models.Companies.company_contact == signup_credentials)).first()
-    else:
-        company_data.company_email = signup_credentials
-        company_exists = db.query(models.Companies).filter(
-            (models.Companies.company_email == signup_credentials)).first()
+    try:
+        if signup_credentials.isdigit():
+            company_data.company_contact = int(signup_credentials)
+            company_exists = db.query(models.Companies).filter(
+                (models.Companies.company_contact == signup_credentials)).first()
+        else:
+            company_data.company_email = signup_credentials
+            company_exists = db.query(models.Companies).filter(
+                (models.Companies.company_email == signup_credentials)).first()
 
-    if company_exists:
-        return {
-            "status": 409,
-            "message": "Company already exists",
-            "data": {
-                "branches": [],
-                "employees": []}, }
-    else:
-        hashed_password = pwd_context.hash(company_data.company_password)
-        company_id = uuid4().hex
-        new_company = models.Companies(
-            company_id=company_id,
-            company_email=company_data.company_email,
-            company_contact=company_data.company_contact,
-            company_password=hashed_password
-        )
-        new_user = models.NewUsers(
-            user_contact=company_data.company_contact,
-            user_emailId=company_data.company_email,
-            user_password=company_data.company_password
-        )
-        db.add(new_company)
-        db.add(new_user)
-        db.commit()
+        if company_exists:
+            return {
+                "status": 409,
+                "message": "Company already exists",
+                "data": {
+                    "branches": [],
+                    "employees": []}, }
+        else:
+            hashed_password = pwd_context.hash(company_data.company_password)
+            company_id = uuid4().hex
+            new_company = models.Companies(
+                company_id=company_id,
+                company_email=company_data.company_email,
+                company_contact=company_data.company_contact,
+                company_password=hashed_password
+            )
+            new_user = models.NewUsers(
+                user_contact=company_data.company_contact,
+                user_emailId=company_data.company_email,
+                user_password=company_data.company_password
+            )
+            db.add(new_company)
+            db.add(new_user)
+            db.commit()
 
-        company = db.query(models.Companies).filter(models.Companies.company_id == company_id).first()
-        response_data = build_company_response(company, db)
+            company = db.query(models.Companies).filter(models.Companies.company_id == company_id).first()
+            response_data = build_company_response(company, db)
 
-        return {
-            "status": 200,
-            "message": "User Signed Up!",
-            "data": response_data}
+            return {
+                "status": 200,
+                "message": "User Signed Up!",
+                "data": response_data}
 
 
-# except Exception as e:
-#     print(repr(e))
-#     return {"status": 500, "message": "Internal Server Error", "data": {}}
+    except Exception as e:
+        print(repr(e))
+        return {"status": 500, "message": "Internal Server Error", "data": {}}
 
 
 @app.post('/login')
