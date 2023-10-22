@@ -1,33 +1,30 @@
-from typing import List, Optional, Union
-import io
-from io import BytesIO
-import pandas as pd
-from uuid import uuid4
-from psycopg2.errors import DataError
-from contextlib import contextmanager
-from urllib import response
-from collections import defaultdict
-import bcrypt
-from fastapi.responses import JSONResponse
-import firebase_admin
-from firebase_admin import credentials, db, storage
-from passlib.context import CryptContext
-from fastapi import FastAPI, Response, Depends, File, Request, HTTPException, Body, Path, UploadFile, Form, Query
-from sqlalchemy.orm import Session, joinedload
-from sqlalchemy.exc import IntegrityError, NoResultFound
-from starlette.responses import FileResponse
 import logging
-from sqlalchemy import select, func, update, or_
-import shutil
-from datetime import timedelta
-import base64
-from . import models, schemas
-from .models import Image, Products, ProductVariant, FavItem, CategoryProduct, Review, Categories, Order, Payment
-from .database import engine, get_db, SessionLocal
-from fastapi.middleware.cors import CORSMiddleware
 import os
+import shutil
+from collections import defaultdict
+from datetime import timedelta
+from io import BytesIO
+from typing import List, Optional, Union
+# from psycopg2.errors import DataError
+from urllib import response
+from uuid import uuid4
 
-from .schemas import OrderCreate, OrderSchema, OrderResponse, OrderList
+import firebase_admin
+import pandas as pd
+from fastapi import FastAPI, Response, Depends, File, Request, HTTPException, Body, UploadFile, Form, Query
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from firebase_admin import credentials, storage
+from passlib.context import CryptContext
+from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError, NoResultFound
+from sqlalchemy.orm import Session, joinedload
+from starlette.responses import FileResponse
+
+from . import models, schemas
+from .database import engine, get_db, SessionLocal
+from .models import Image, Products, ProductVariant, FavItem, CategoryProduct, Categories, Order, Payment
+from .schemas import OrderCreate, OrderList
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 models.Base.metadata.create_all(bind=engine)
@@ -54,9 +51,11 @@ def save_image_to_db(db, filename, file_path):
     db.refresh(image)
     return image
 
+
 cred = credentials.Certificate("serviceAccountKey.json")
-firebase_admin.initialize_app(cred, {'storageBucket':'onecart-6156a.appspot.com',
-                                     'databaseURL':'https://onecart-6156a-default-rtdb.firebaseio.com/'})
+firebase_admin.initialize_app(cred, {'storageBucket': 'onecart-6156a.appspot.com',
+                                     'databaseURL': 'https://onecart-6156a-default-rtdb.firebaseio.com/'})
+
 
 @app.get('/')
 def root():
@@ -152,7 +151,6 @@ async def upload_images(upload_files: List[UploadFile] = File(...),
     return JSONResponse(content=response_data)
 
 
-
 @app.post("/upload")
 async def upload_image(request: Request, file: UploadFile = File(...), db: Session = Depends(get_db)):
     image_data = file.file.read()
@@ -206,6 +204,7 @@ async def upload_image(request: Request, files: List[UploadFile] = File(...), db
         image_urls.append(image_url)
 
     return {"status": 200, "message": "Images uploaded successfully", "data": {"image_url": image_urls}}
+
 
 @app.post("/product/image")
 async def edit_product_images(request: Request, product_id: int, variant_id: int,
@@ -386,22 +385,20 @@ def delete_user_address(response: Response, db: Session = Depends(get_db), addre
 
 def build_company_response(company, db):
     response_data = {
-        "status": 200,
-        "message": "Success!",
-        "data": {
-            "companyId": company.company_id if company.company_id is not None else "",
-            "company_contact": company.company_contact if company.company_contact is not None else "",
-            "company_email": company.company_email if company.company_email is not None else "",
-            "company_name": company.company_name if company.company_name is not None else "",
-            "role_id": 0000
-        }
+
+        "companyId": company.company_id if company.company_id is not None else "",
+        "company_contact": company.company_contact if company.company_contact is not None else "",
+        "company_email": company.company_email if company.company_email is not None else "",
+        "company_name": company.company_name if company.company_name is not None else "",
+        "role_id": 0000
+
     }
 
     company_id = company.company_id
     branches = db.query(models.Branch).filter(models.Branch.company_id == company_id).all()
     employees = db.query(models.Employee).join(models.Branch).filter(models.Branch.company_id == company_id).all()
 
-    response_data['data']['branches'] = [
+    response_data['branches'] = [
         {
             'branch_id': branch.branch_id if branch.branch_id is not None else "",
             'branch_email': branch.branch_email if branch.branch_email is not None else "",
@@ -412,7 +409,7 @@ def build_company_response(company, db):
         for branch in branches
     ]
 
-    response_data['data']['employees'] = [
+    response_data['employees'] = [
         {
             'employeeID': employee.employee_id if employee.employee_id is not None else "",
             'employee_name': employee.employee_name if employee.employee_name is not None else "",
@@ -442,8 +439,9 @@ def signup(response: Response, company_data: schemas.CompanySignUp = Body(...),
             return {
                 "status": 409,
                 "message": "Company already exists",
-                "data": {},
-            }
+                "data": {
+                    "branches": [],
+                    "employees": []}, }
         else:
             hashed_password = pwd_context.hash(company_data.company_password)
             company_id = uuid4().hex
@@ -469,10 +467,10 @@ def signup(response: Response, company_data: schemas.CompanySignUp = Body(...),
                 "status": 200,
                 "message": "User Signed Up!",
                 "data": {
-                         "company_name": new_company.company_name if company.company_name is not None else "",
-                         "signup_credentials": signup_credentials,
-                         "response_data": response_data
-               }
+                    "company_name": new_company.company_name if company.company_name is not None else "",
+                    "signup_credentials": signup_credentials,
+                    "response_data": response_data
+                }
             }
     except Exception as e:
         print(repr(e))
@@ -487,41 +485,47 @@ def login_company(login_credentials: Union[str, int], login_data: schemas.LoginF
                 db.query(models.Companies).filter(models.Companies.company_email == login_credentials).first()
                 or
                 db.query(models.Companies).filter(models.Companies.company_contact == login_credentials).first()
-                # or
-                # db.query(models.Employee).filter(models.Employee.employee_contact == login_credentials).first()
+            # or
+            # db.query(models.Employee).filter(models.Employee.employee_contact == login_credentials).first()
         )
         if user:
-            if pwd_context.verify(login_data.login_password, user.company_password if isinstance(user, models.Companies) else user.employee_password):
+            if pwd_context.verify(login_data.login_password, user.company_password if isinstance(user,
+                                                                                                 models.Companies) else user.employee_password):
                 if isinstance(user, models.Companies):
                     return build_company_response(user, db)
                 else:
                     return build_company_response(user, db)
             else:
-                return {"status": 401, "message": "Incorrect password", "data": {}}
-        return {"status": 400, "message": "Incorrect password", "data": {}}
-    except DataError as e:
-        return {"status": 400, "message": "Invalid login credential", "data": {}}
+                return {"status": 401, "message": "Incorrect password", "data": {
+                    "branches": [],
+                    "employees": []}}
+        return {"status": 400, "message": "Incorrect password", "data": {
+            "branches": [],
+            "employees": []}}
     except Exception as e:
         print(repr(e))
-        return {"status": 500, "message": "Internal Server Error", "data": {}}
+        return {"status": 500, "message": "Internal Server Error", "data": {
+            "branches": [],
+            "employees": []}}
+
 
 @app.get('/welcomescreen')
-def signup(response: Response,companyID :str, branchID: int, role_id:int, db: Session = Depends(get_db)):
+def signup(companyID: str, branchID: int, role_id: int, db: Session = Depends(get_db)):
     try:
         company = db.query(models.Companies).filter(models.Companies.company_id == companyID).first()
         branch = db.query(models.Branch).filter(models.Branch.branch_id == branchID).first()
         response_data = build_company_response(company, db)
 
         return {
-                "status": 200,
-                "message": "User Signed Up!",
-                "data": {
-                         "response_data": response_data
-               }
-            }
+            "status": 200,
+            "message": "User Signed Up!",
+            "data": response_data
+
+        }
     except Exception as e:
         print(repr(e))
         return {"status": 500, "message": "Internal Server Error", "data": {}}
+
 
 @app.post("/company/logo")
 async def upload_company_logo(request: Request, logo: UploadFile = File(...), company_id: str = Form(...),
@@ -549,6 +553,8 @@ async def upload_company_logo(request: Request, logo: UploadFile = File(...), co
         return {"status": 500, "message": "Internal Server Error", "data": {}}
     finally:
         db.close()
+
+
 @app.delete("/company/logo")
 async def delete_company_logo(company_id: str, db: Session = Depends(get_db)):
     try:
@@ -575,11 +581,15 @@ async def delete_company_logo(company_id: str, db: Session = Depends(get_db)):
     finally:
         db.close()
 
+
 @app.post('/company/details')
 def update_company_details(company_id: str, response: Response, request_body: schemas.CompanyUpdateDetails = Body(...),
                            db: Session = Depends(get_db)):
     try:
         company = db.query(models.Companies).filter(models.Companies.company_id == company_id).first()
+        if not company:
+            return {"status": 404, "message": "Company not found", "data": {}}
+
         if company:
             existing_company = db.query(models.Companies).filter(
                 models.Companies.company_name == request_body.company_name).first()
@@ -632,6 +642,8 @@ def get_employee_info(employee_id: int, db: Session):
         .join(models.Role, models.Employee.employee_id == models.Role.employee_id) \
         .filter(models.Employee.employee_id == employee_id).first()
     return (result)
+
+
 @app.post("/branch/employee")
 def add_employee(branch_id: int, employee_data: schemas.Employee, role_data: schemas.Role, response: Response,
                  db: Session = Depends(get_db)):
@@ -640,17 +652,20 @@ def add_employee(branch_id: int, employee_data: schemas.Employee, role_data: sch
         employees = db.query(models.Employee).filter_by(branch_id=branch_id).all()
         branch = db.query(models.Branch).filter_by(branch_id=branch_id).first()
         if branch is None:
-            return {"status": 404, "message": "Branch not found", "data": {}}
+            return {"status": 404, "message": "Branch not found",
+                    "data": {"New_employee": employee_data, "role": role_data, "unique_id": 0}}
 
         existing_employee = db.query(models.Employee).filter(
             models.Employee.employee_contact == employee_data.employee_contact).first()
         if existing_employee:
-            return {"status": 400, "message": "User already exists", "data": {}}
+            return {"status": 400, "message": "User already exists",
+                    "data": {"New_employee": employee_data, "role": role_data, "unique_id": 0}}
 
         existing_user = db.query(models.NewUsers).filter(
             models.NewUsers.user_contact == employee_data.employee_contact).first()
         if existing_user:
-            return {"status": 400, "message": "User already exists", "data": {}}
+            return {"status": 400, "message": "User already exists",
+                    "data": {"New_employee": {}, "role": {}, "unique_id": 0}}
 
         hashed_password = pwd_context.hash(employee_data.employee_password)
         employee_data.employee_password = hashed_password
@@ -680,9 +695,11 @@ def add_employee(branch_id: int, employee_data: schemas.Employee, role_data: sch
     except IntegrityError as e:
         print(repr(e))
         response.status_code = 500
-        return {"status": 500, "message": "Internal Server Error", "data": {}}
+        return {"status": 500, "message": "Internal Server Error",
+                "data": {"New_employee": employee_data, "role": role_data, "unique_id": unique_id}}
     finally:
         db.close()
+
 
 @app.get("/branch/employee/details")
 def get_employee_details(branch_id: int, db: Session = Depends(get_db)):
@@ -711,6 +728,7 @@ def get_employee_details(branch_id: int, db: Session = Depends(get_db)):
         print(repr(e))
         return {"status": 500, "message": "Internal Server Error", "data": {}}
 
+
 @app.delete("/employee/delete")
 def delete_employee(response: Response, empID: int, branchID: int, db: Session = Depends(get_db)):
     try:
@@ -729,13 +747,16 @@ def delete_employee(response: Response, empID: int, branchID: int, db: Session =
         return {"status": 200, "message": "Employee deleted!", "data": {}}
     except IntegrityError:
         return {"status": 500, "message": "Error", "data": {}}
+
+
 @app.put("/branch/employee")
-def edit_employee(response: Response, branch_id: int, employee_id: int, request_body: schemas.EditEmployee = Body(...),db: Session = Depends(get_db)):
+def edit_employee(response: Response, branch_id: int, employee_id: int, request_body: schemas.EditEmployee = Body(...),
+                  db: Session = Depends(get_db)):
     try:
 
         employee = db.query(models.Employee).filter(models.Employee.employee_id == employee_id).first()
         if employee is None:
-            return {"status":404, "message":"Employee not found", "data": {}}
+            return {"status": 404, "message": "Employee not found", "data": {}}
         branch = db.query(models.Branch).filter(models.Branch.branch_id == branch_id).first()
         if branch is None:
             return {"status": 404, "message": "Branch not found", "data": {}}
@@ -757,6 +778,7 @@ def edit_employee(response: Response, branch_id: int, employee_id: int, request_
         return {"status": 500, "message": "Internal Server Error", "data": {}}
     finally:
         db.close()
+
 
 # @app.post("/branch/employee")
 # def add_employee(branch_id: int, employee_data: schemas.Employee, role_data: schemas.Role, response: Response,
@@ -2470,7 +2492,6 @@ async def get_categories(response: Response, db: Session = Depends(get_db)):
         return {"status": "500", "message": "Internal Server Error", "data": {}}
 
 
-
 @app.post('/addProduct')
 def add_product(product_data: schemas.ProductInput, db: Session = Depends(get_db)):
     try:
@@ -2493,7 +2514,6 @@ def add_product(product_data: schemas.ProductInput, db: Session = Depends(get_db
         ).first()
 
         if not category:
-
             category = models.Categories(category_id=product_data.category_id)
             db.add(category)
             db.commit()
@@ -2526,14 +2546,12 @@ def add_product(product_data: schemas.ProductInput, db: Session = Depends(get_db
         db.add(new_variant)
         db.commit()
 
-
         product_category = models.CategoryProduct(
             product_id=new_product.product_id,
             category_id=category.category_id,
         )
         db.add(product_category)
         db.commit()
-
 
         brand_name = brand.brand_name
         category_id = category.category_id
@@ -2624,12 +2642,12 @@ def add_product_variant(product_id: int, product_data: schemas.ProductUpdateInpu
 
 @app.put('/editProductVariant/')
 def edit_product_variant(
-    variant_data: schemas.ProductEdit,
-    variant_id: int = Query(..., description="Required variant_id"),
-    product_id: int = Query(..., description="Required product_id"),
-    branch_id: int = Query(..., description="Required branch_id"),
-    user_id: int = Query(..., description="Required user_id"),
-    db: Session = Depends(get_db)
+        variant_data: schemas.ProductEdit,
+        variant_id: int = Query(..., description="Required variant_id"),
+        product_id: int = Query(..., description="Required product_id"),
+        branch_id: int = Query(..., description="Required branch_id"),
+        user_id: int = Query(..., description="Required user_id"),
+        db: Session = Depends(get_db)
 ):
     try:
         # Query the existing variant using all the provided parameters
@@ -2659,9 +2677,9 @@ def edit_product_variant(
 
 @app.put("/editCategoryName/{category_id}")
 def edit_category_name(
-    category_id: int,
-    category_name: schemas.EditCategoryName,
-    db: Session = Depends(get_db)
+        category_id: int,
+        category_name: schemas.EditCategoryName,
+        db: Session = Depends(get_db)
 ):
     try:
 
@@ -2676,7 +2694,8 @@ def edit_category_name(
 
         db.commit()
 
-        return {"status": 200, "message": "Category name updated successfully!", "data": {"category_name": category_name.category_name}}
+        return {"status": 200, "message": "Category name updated successfully!",
+                "data": {"category_name": category_name.category_name}}
     except Exception as e:
 
         return {"status": 500, "message": "Internal Server Error", "error": str(e)}
@@ -2750,7 +2769,7 @@ def get_variants_by_categories(db: Session = Depends(get_db)):
                         "image": variant.image,
                         "product_id": variant.product_id
                     }
-                     for product_name, variant in variants
+                    for product_name, variant in variants
                 ]
 
                 category_data = {"category_name": category_name, "products": serialized_variants}
@@ -2912,8 +2931,8 @@ async def create_order(order: OrderCreate):
 
             product_details_db = db.query(Products.product_name, ProductVariant.measuring_unit,
                                           ProductVariant.discount, ProductVariant.discounted_cost,
-                                          ProductVariant.image).\
-                join(ProductVariant, Products.product_id == ProductVariant.product_id).\
+                                          ProductVariant.image). \
+                join(ProductVariant, Products.product_id == ProductVariant.product_id). \
                 filter(Products.product_id == product_id, ProductVariant.variant_id == variant_id).first()
 
             if product_details_db:
@@ -2970,12 +2989,15 @@ async def create_order(order: OrderCreate):
     finally:
         db.close()
 
+
 TABLE_NAME = "product_variants"
+
+
 @app.post("/upload_products_excel/")
 async def upload_products_excel(
-    response: Response,
-    file: UploadFile = File(...),
-    db: Session = Depends(get_db),
+        response: Response,
+        file: UploadFile = File(...),
+        db: Session = Depends(get_db),
 ):
     # Read the Excel file from the uploaded file
     data = await file.read()
@@ -3020,7 +3042,6 @@ def get_all_orders(db: Session = Depends(get_db)):
         return JSONResponse(content={"status": 500, "message": "Internal Server Error", "data": str(e)})
 
 
-
 @app.delete('/deleteProduct/')
 def delete_product(product_id: int, variant_id: int = None, db: Session = Depends(get_db)):
     try:
@@ -3032,11 +3053,10 @@ def delete_product(product_id: int, variant_id: int = None, db: Session = Depend
 
             db.query(models.ProductVariant).filter(models.ProductVariant.variant_id == variant_id).delete()
 
-
             is_last_variant = (
-                db.query(models.ProductVariant)
-                .filter(models.ProductVariant.product_id == product_id)
-                .count() == 1
+                    db.query(models.ProductVariant)
+                    .filter(models.ProductVariant.product_id == product_id)
+                    .count() == 1
             )
 
             if is_last_variant:
@@ -3057,10 +3077,11 @@ def delete_product(product_id: int, variant_id: int = None, db: Session = Depend
     except Exception as e:
         return JSONResponse(content={"status": 500, "message": "Internal Server Error", "error": str(e)})
 
+
 @app.get("/search")
 def search_products(
-    query: str = Query(..., description="Search query for products"),
-    db: Session = Depends(get_db),
+        query: str = Query(..., description="Search query for products"),
+        db: Session = Depends(get_db),
 ):
     products = (
         db.query(models.Products, models.ProductVariant)
@@ -3085,6 +3106,7 @@ def search_products(
 
     return {"status": 200, "message": "Products found", "data": products_data}
 
+
 @app.get("/getallBranches")
 async def get_branches(response: Response, db: Session = Depends(get_db)):
     try:
@@ -3106,4 +3128,3 @@ async def get_branches(response: Response, db: Session = Depends(get_db)):
         print(repr(e))
         response.status_code = 500
         return {"status": "500", "message": "Internal Server Error", "data": str(e)}
-
