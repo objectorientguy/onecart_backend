@@ -383,10 +383,11 @@ def delete_user_address(response: Response, db: Session = Depends(get_db), addre
         response.status_code = 404
         return {"status": "404", "message": "Error", "data": {}}
 
-def build_company_response(company,  db):
+
+def build_company_response(company, db):
     response_data = {
         "status": 200,
-        "message": "Company logged in successfully!",
+        "message": "Success!",
         "data": {
             "companyId": company.company_id if company.company_id is not None else "",
             "company_contact": company.company_contact if company.company_contact is not None else "",
@@ -395,50 +396,34 @@ def build_company_response(company,  db):
             "role_id": 0000
         }
     }
+
     company_id = company.company_id
     branches = db.query(models.Branch).filter(models.Branch.company_id == company_id).all()
     employees = db.query(models.Employee).join(models.Branch).filter(models.Branch.company_id == company_id).all()
+
     response_data['data']['branches'] = [
-        {**branches.__dict__,
-         'branch_id': branches.branch_id if branches.branch_id is not None else "",
-         'branch_email': branches.branch_email if branches.branch_email is not None else "",
-         'branch_name': branches.branch_name if branches.branch_name is not None else "",
-         'branch_number': branches.branch_number if branches.branch_number is not None else "",
-         'branch_address': branches.branch_address if branches.branch_address is not None else "",
-         }
+        {
+            'branch_id': branch.branch_id if branch.branch_id is not None else "",
+            'branch_email': branch.branch_email if branch.branch_email is not None else "",
+            'branch_name': branch.branch_name if branch.branch_name is not None else "",
+            'branch_number': branch.branch_number if branch.branch_number is not None else "",
+            'branch_address': branch.branch_address if branch.branch_address is not None else "",
+        }
         for branch in branches
     ]
+
     response_data['data']['employees'] = [
-        {**employee.__dict__,
-         'employeeID': employee.employee_id if employee.employee_id is not None else "",
-         'employee_name': employee.employee_name if employee.employee_name is not None else "",
-         'employee_contact': employee.employee_contact if employee.employee_contact is not None else "",
-         'employee_gender': employee.employee_gender if employee.employee_gender is not None else "",
-         }
+        {
+            'employeeID': employee.employee_id if employee.employee_id is not None else "",
+            'employee_name': employee.employee_name if employee.employee_name is not None else "",
+            'employee_contact': employee.employee_contact if employee.employee_contact is not None else "",
+            'employee_gender': employee.employee_gender if employee.employee_gender is not None else "",
+        }
         for employee in employees
     ]
+
     return response_data
 
-# def build_employee_response(employee, db):
-#     response_data = {
-#         "status": 200,
-#         "message": "Employee logged in successfully!",
-#         "data": {
-#             "employee_contact": employee.employee_contact if employee.employee_contact is not None else "",
-#         }
-#     }
-#     employee_contact = employee.employee_contact
-#     employees = db.query(models.Employee).filter(models.Employee.employee_contact == employee_contact).all()
-#     response_data['data']['employees'] = [
-#         {**employee.__dict__,
-#          'employeeID': employee.employee_id if employee.employee_id is not None else "",
-#          'employee_name': employee.employee_name if employee.employee_name is not None else "",
-#          'employee_contact': employee.employee_contact if employee.employee_contact is not None else "",
-#          'employee_gender': employee.employee_gender if employee.employee_gender is not None else "",
-#          }
-#         for employee in employees
-#     ]
-#     return response_data
 
 @app.post('/signup')
 def signup(response: Response, company_data: schemas.CompanySignUp = Body(...),
