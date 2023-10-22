@@ -105,11 +105,10 @@ async def delete_image(response: Response, product_id: int, variant_id: int,
     else:
         return {"status_code": 404, "message": "Image URL not found in the product variant"}
 
-
-def build_company_response(company, db):
+def build_company_response(company,  db):
     response_data = {
         "status": 200,
-        "message": "Success!",
+        "message": "Company logged in successfully!",
         "data": {
             "companyId": company.company_id if company.company_id is not None else "",
             "company_contact": company.company_contact if company.company_contact is not None else "",
@@ -178,8 +177,10 @@ def signup(response: Response, company_data: schemas.CompanySignUp = Body(...),
             db.add(new_company)
             db.add(new_user)
             db.commit()
+
             company = db.query(models.Companies).filter(models.Companies.company_id == company_id).first()
             response_data = build_company_response(company, db)
+
             return {
                 "status": 200,
                 "message": "User Signed Up!",
@@ -221,6 +222,7 @@ def signup(response: Response,companyID :str, branchID: int, role_id:int, db: Se
         company = db.query(models.Companies).filter(models.Companies.company_id == companyID).first()
         branch = db.query(models.Branch).filter(models.Branch.branch_id == branchID).first()
         response_data = build_company_response(company, db)
+
         return {
                 "status": 200,
                 "message": "User Signed Up!",
@@ -287,14 +289,17 @@ def get_employee_info(employee_id: int, db: Session):
 def add_employee(branch_id: int, employee_data: schemas.Employee, role_data: schemas.Role, response: Response,
                  db: Session = Depends(get_db)):
     try:
+
         employees = db.query(models.Employee).filter_by(branch_id=branch_id).all()
         branch = db.query(models.Branch).filter_by(branch_id=branch_id).first()
         if branch is None:
             return {"status": 404, "message": "Branch not found", "data": {}}
+
         existing_employee = db.query(models.Employee).filter(
             models.Employee.employee_contact == employee_data.employee_contact).first()
         if existing_employee:
             return {"status": 400, "message": "User already exists", "data": {}}
+
         existing_user = db.query(models.NewUsers).filter(
             models.NewUsers.user_contact == employee_data.employee_contact).first()
         if existing_user:
@@ -322,6 +327,7 @@ def add_employee(branch_id: int, employee_data: schemas.Employee, role_data: sch
         db.add(new_user)
         db.commit()
         unique_id = new_user.user_uniqueid
+
         return {"status": 200, "message": "New Employee added successfully",
                 "data": {"New_employee": employee_data, "role": role_data, "unique_id": unique_id}}
     except IntegrityError as e:
