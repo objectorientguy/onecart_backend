@@ -508,7 +508,27 @@ def fetch_user_details(userid: int, edituser: schemas.EditUser, db: Session = De
             db.commit()
             return {"status": 200, "message": "User details updated successfully", "data": edituser}
         else:
-            return {"status": 404,"message":"User not found", "data": {}}
+            return {"status": 404, "message": "User not found", "data": {}}
+    except Exception as e:
+        print(repr(e))
+        return {"status": 500, "message": "Internal Server Error!", "data": {}}
+def get_password_hash(password: str):
+    return pwd_context.hash(password)
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
+@app.put("/change-password")
+async def change_password(userid: int, password_data: schemas.ChangePassword, db: Session = Depends(get_db)):
+    try:
+        user = db.query(models.NewUsers).filter(models.NewUsers.user_uniqueid == userid).first()
+        if not user:
+            return {"status": 404, "message": "User not found", "data": {}}
+        if not verify_password(password_data.current_password, user.user_password):
+            return{"status_code": 400, "message": "Current password is incorrect"}
+        if password_data.new_password != password_data.confirm_password:
+            return{"status_code": 400, "message": "New password and confirm password do not match"}
+        user.user_password = get_password_hash(password_data.new_password)
+        db.commit()
+        return {"message": "Password changed successfully"}
     except Exception as e:
         print(repr(e))
         return {"status": 500, "message": "Internal Server Error!", "data": {}}

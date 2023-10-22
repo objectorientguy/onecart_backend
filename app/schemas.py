@@ -120,3 +120,8 @@ class ProductInput(BaseModel):
     stock: int
     quantity: int
     measuring_unit: str
+
+class ChangePassword(BaseModel):
+    current_password: str
+    new_password: str
+    confirm_password: str
