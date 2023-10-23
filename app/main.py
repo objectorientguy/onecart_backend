@@ -577,7 +577,6 @@ def update_company_details(company_id: str, response: Response, request_body: sc
         response.status_code = 500
         return {"status": 500, "message": "Internal Server Error", "data": {}}
 
-
 @app.post("/branch")
 def add_branch(company_id: str, branch_data: schemas.Branch, db: Session = Depends(get_db)):
     try:
@@ -604,35 +603,13 @@ def add_branch(company_id: str, branch_data: schemas.Branch, db: Session = Depen
     finally:
         db.close()
 
-
-def get_employee_info(employee_id: int, db: Session):
-    result = db.query(models.Employee.employee_name, models.Role.role_name, models.Role.role_id) \
-        .join(models.Role, models.Employee.employee_id == models.Role.employee_id) \
-        .filter(models.Employee.employee_id == employee_id).first()
-    return (result)
-
-
 @app.post("/branch/employee")
-def add_employee(branch_id: int, employee_data: schemas.Employee, role_data: schemas.Role, response: Response,
+def add_employee(branch_id: int, employee_data: schemas.Employee, role_data: schemas.Role,
                  db: Session = Depends(get_db)):
     try:
-
-        employees = db.query(models.Employee).filter_by(branch_id=branch_id).all()
         branch = db.query(models.Branch).filter_by(branch_id=branch_id).first()
         if branch is None:
             return {"status": 404, "message": "Branch not found",
-                    "data": {"New_employee": {}, "role": {}, "unique_id": 0}}
-
-        existing_employee = db.query(models.Employee).filter(
-            models.Employee.employee_contact == employee_data.employee_contact).first()
-        if existing_employee:
-            return {"status": 400, "message": "User already exists",
-                    "data": {"New_employee": {}, "role": {}, "unique_id": 0}}
-
-        existing_user = db.query(models.NewUsers).filter(
-            models.NewUsers.user_contact == employee_data.employee_contact).first()
-        if existing_user:
-            return {"status": 400, "message": "User already exists",
                     "data": {"New_employee": {}, "role": {}, "unique_id": 0}}
 
         hashed_password = pwd_context.hash(employee_data.employee_password)
@@ -641,14 +618,11 @@ def add_employee(branch_id: int, employee_data: schemas.Employee, role_data: sch
         new_employee = models.Employee(**employee_data.model_dump())
         db.add(new_employee)
         db.commit()
-
         new_employee_id = new_employee.employee_id
-        role_data.role_name = role_data.role_name
         new_role_name = models.Role(**role_data.model_dump())
         new_role_name.employee_id = new_employee_id
         db.add(new_role_name)
         db.commit()
-
         new_user = models.NewUsers(
             user_contact=employee_data.employee_contact,
             user_password=employee_data.employee_password,
@@ -657,17 +631,36 @@ def add_employee(branch_id: int, employee_data: schemas.Employee, role_data: sch
         db.add(new_user)
         db.commit()
         unique_id = new_user.user_uniqueid
-
-        return {"status": 200, "message": "New Employee added successfully",
-                "data": {"New_employee": employee_data, "role": role_data, "unique_id": unique_id}}
+        employee_id = new_employee.employee_id if new_employee.employee_id is not None else ""
+        role_id = new_role_name.role_id if new_role_name.role_id is not None else ""
+        response_data = {
+            "status": 200,
+            "message": "New Employee added successfully",
+            "data": {
+                "New_employee": {
+                    key: value for key, value in employee_data.model_dump().items() if value is not None
+                },
+                "role": {
+                    key: value for key, value in role_data.model_dump().items() if value is not None
+                },
+                "unique_id": unique_id,
+                "employee_id": employee_id,
+                "role_id": role_id
+            }
+        }
+        return response_data
     except IntegrityError as e:
         print(repr(e))
-        response.status_code = 500
         return {"status": 500, "message": "Internal Server Error",
                 "data": {"New_employee": {}, "role": {}, "unique_id": 0}}
     finally:
         db.close()
 
+def get_employee_info(employee_id: int, db: Session):
+    result = db.query(models.Employee.employee_name, models.Role.role_name, models.Role.role_id) \
+        .join(models.Role, models.Employee.employee_id == models.Role.employee_id) \
+        .filter(models.Employee.employee_id == employee_id).first()
+    return (result)
 
 @app.get("/branch/employee/details")
 def get_employee_details(branch_id: int, db: Session = Depends(get_db)):
@@ -698,7 +691,7 @@ def get_employee_details(branch_id: int, db: Session = Depends(get_db)):
 
 
 @app.delete("/employee/delete")
-def delete_employee(response: Response, empID: int, branchID: int, db: Session = Depends(get_db)):
+def delete_employee( empID: int, branchID: int, db: Session = Depends(get_db)):
     try:
         employee = db.query(models.Employee).filter(models.Employee.employee_id == empID)
         employee_exist = employee.first()
@@ -1229,3 +1222,4 @@ async def get_branches(db: Session = Depends(get_db)):
         print(repr(e))
         Response.status_code = 500
         return {"status": "500", "message": "Internal Server Error", "data": str(e)}
+

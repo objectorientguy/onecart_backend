@@ -586,3 +586,17 @@ class NewUsers(Base):
             return None
         else:
             return value
+
+class Stock(Base):
+    __tablename__ = "stock"
+
+    stock_id = Column(Integer, primary_key=True, nullable=False, autoincrement=True)
+    stock_order_count = Column(Integer, nullable=False)
+    seller = Column(Integer, nullable=True)
+    product_id = Column(Integer, ForeignKey("products.product_id", ondelete="CASCADE"), nullable=False)
+    variant_id = Column(Integer, ForeignKey("product_variants.variant_id", ondelete="CASCADE"), nullable=False)
+    date_of_shipment = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('now()'))
+    expiry_date = Column(String, nullable=False)
+
+    product = relationship("Products")
+    variant = relationship("ProductVariant")

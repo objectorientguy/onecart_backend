@@ -501,3 +501,5 @@ class OrderList(BaseModel):
     additional_charges: float
     to_pay: float
     customer_contact: int
+
+# class Inventory(BaseModel)
