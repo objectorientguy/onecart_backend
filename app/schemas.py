@@ -399,6 +399,10 @@ class ProductInput(BaseModel):
 
 
 class ProductEdit(BaseModel):
+    variant_id: int
+    product_id: int
+    branch_id: int
+    user_id: int
     product_name: Optional[str] = None
     brand_name: Optional[str] = None
     description: Optional[str] = None
