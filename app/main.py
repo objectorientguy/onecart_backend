@@ -448,7 +448,6 @@ def signup(company_data: schemas.CompanySignUp = Body(...),
                 "message": "User Signed Up!",
                 "data": response_data}
 
-
     except Exception as e:
         print(repr(e))
         return {"status": 500, "message": "Internal Server Error", "data": {}}
