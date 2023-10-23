@@ -74,46 +74,51 @@ def save_upload_file(upload_file: UploadFile, destination: str):
         upload_file.file.close()
 
 
-@app.post("/fire_base/image")
-async def upload_images(upload_files: List[UploadFile] = File(...)):
-    image_urls = []
-    for upload_file in upload_files:
-        destination = os.path.join("app", "uploaded_images", upload_file.filename)
-        save_upload_file(upload_file, destination)
-        bucket = storage.bucket()
-        blob = bucket.blob(f"uploaded_images/{upload_file.filename}")
-        blob.upload_from_filename(destination)
-        image_url = blob.generate_signed_url(method="GET", expiration=timedelta(days=7))
-        image_urls.append(image_url)
-    response_data = {
-        "status": 200,
-        "message": "Images uploaded successfully.",
-        "data": {"image_urls": image_urls}
-    }
-    return JSONResponse(content=response_data)
-
-
-@app.post("/delete_image/")
-async def delete_image(response: Response, product_id: int, variant_id: int,
-                       image_info: schemas.ImageDeleteRequest = Body(...), db: Session = Depends(get_db)):
-    image_url = image_info.image_url
-    product_variant = db.query(models.ProductVariant).filter_by(
-        product_id=product_id, variant_id=variant_id
-    ).first()
-    if not product_variant:
-        return {"status_code": 404, "message": "Product variant not found"}
-    updated_images = [img for img in product_variant.image if img != image_url]
-    if len(product_variant.image) != len(updated_images):
-        product_variant.image = updated_images
-        try:
-            db.commit()
-            return {"status": 200, "message": "Image deleted successfully"}
-        except Exception as e:
-            db.rollback()
-            return {"status_code": 500, "message": " Database error"}
-    else:
-        return {"status_code": 404, "message": "Image URL not found in the product variant"}
-
+# @app.post("/fire_base/image")
+# async def upload_images(upload_files: List[UploadFile] = File(...)):
+#     image_urls = []
+#     for upload_file in upload_files:
+#         destination = os.path.join("app", "uploaded_images", upload_file.filename)
+#         save_upload_file(upload_file, destination)
+#         bucket = storage.bucket()
+#         blob = bucket.blob(f"uploaded_images/{upload_file.filename}")
+#         blob.upload_from_filename(destination)
+#         image_url = blob.generate_signed_url(method="GET", expiration=timedelta(days=7))
+#         image_urls.append(image_url)
+#     response_data = {
+#         "status": 200,
+#         "message": "Images uploaded successfully.",
+#         "data": {"image_urls": image_urls}
+#     }
+#     return JSONResponse(content=response_data)
+#
+# def image_exists(image_filename):
+#     bucket = storage.bucket()
+#     blob = bucket.blob(f"uploaded_images/{image_filename}")
+#
+#     return blob.exists()
+# @app.delete("/delete/images")
+# async def delete_image(image_filename: str):
+#     if not image_exists(image_filename):
+#         raise HTTPException(status_code=404, detail="Image not found")
+#
+#     local_image_path = os.path.join("app", "uploaded_images", image_filename)
+#     os.remove(local_image_path)
+#
+#     bucket = storage.bucket()
+#     blob = bucket.blob(f"uploaded_images/{image_filename}")
+#
+#     try:
+#         blob.delete()
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail="Failed to delete image from cloud storage")
+#
+#     response_data = {
+#         "status": 200,
+#         "message": "Image deleted successfully.",
+#         "data": {"image_filename": image_filename}
+#     }
+#     return response_data
 
 @app.post("/upload/images")
 async def upload_images(upload_files: List[UploadFile] = File(...),
@@ -128,20 +133,7 @@ async def upload_images(upload_files: List[UploadFile] = File(...),
         image_url = blob.generate_signed_url(method="GET", expiration=timedelta(days=120))
         image_urls.append(image_url)
 
-    # product_variant = db.query(models.ProductVariant).filter_by(
-    #     product_id=product_id, variant_id=variant_id
-    # ).first()
-    # if not product_variant:
-    #     return JSONResponse(content={"status": 404, "message": "Product variant not found"})
-    # if replace_existing_images:
-    #     product_variant.image = image_urls
-    # else:
-    #     product_variant.image.extend(image_urls)
-    # try:
-    #     db.commit()
-    # except Exception as e:
-    #     logging.error(f"Database commit error: {e}")
-    #     db.rollback()
+
     response_data = {
         "status": 200,
         "message": "Images uploaded successfully.",
@@ -385,7 +377,7 @@ def delete_user_address(response: Response, db: Session = Depends(get_db), addre
 def build_company_response(company, db):
     response_data = {
         "companyId": company.company_id if company.company_id is not None else "",
-        "company_contact": company.company_contact if company.company_contact is not None else "",
+        "company_contact": str(company.company_contact) if company.company_contact is not None else "",
         "company_email": company.company_email if company.company_email is not None else "",
         "company_name": company.company_name if company.company_name is not None else "",
         "role_id": 0000
@@ -420,7 +412,7 @@ def build_company_response(company, db):
 
 
 @app.post('/signup')
-def signup(response: Response, company_data: schemas.CompanySignUp = Body(...),
+def signup(company_data: schemas.CompanySignUp = Body(...),
            signup_credentials: Union[str, int] = Query(...), db: Session = Depends(get_db)):
     try:
         if signup_credentials.isdigit():
@@ -438,7 +430,8 @@ def signup(response: Response, company_data: schemas.CompanySignUp = Body(...),
                 "message": "Company already exists",
                 "data": {
                     "branches": [],
-                    "employees": []}, }
+                    "employees": [], "role_id": 0
+                } }
         else:
             hashed_password = pwd_context.hash(company_data.company_password)
             company_id = uuid4().hex
@@ -480,6 +473,12 @@ def login_company(login_credentials: Union[str, int], login_data: schemas.LoginF
                 or
                 db.query(models.Companies).filter(models.Companies.company_contact == login_credentials).first()
         )
+        if not user:
+            return {"status": 404, "message": "User not Found!", "data": {
+                    "branches": [],
+                    "employees": [],
+                    "role_id": 0
+            }}
         if user:
             if pwd_context.verify(login_data.login_password, user.company_password if isinstance(user,
                                                                                                  models.Companies) else user.employee_password):
@@ -490,15 +489,16 @@ def login_company(login_credentials: Union[str, int], login_data: schemas.LoginF
             else:
                 return {"status": 401, "message": "Incorrect password", "data": {
                     "branches": [],
-                    "employees": []}}
+                    "employees": [],
+                    "role_id": 0}}
         return {"status": 400, "message": "Incorrect password", "data": {
             "branches": [],
-            "employees": []}}
+            "employees": [], "role_id": 0}}
     except Exception as e:
         print(repr(e))
         return {"status": 500, "message": "Internal Server Error", "data": {
             "branches": [],
-            "employees": []}}
+            "employees": [], "role_id": 0}}
 
 
 @app.get('/welcomescreen')
@@ -516,7 +516,11 @@ def signup(companyID: str, branchID: int, role_id: int, db: Session = Depends(ge
         }
     except Exception as e:
         print(repr(e))
-        return {"status": 500, "message": "Internal Server Error", "data": {}}
+        return {"status": 500, "message": "Internal Server Error", "data": {
+                    "branches": [],
+                    "employees": [],
+                    "role_id": 0
+            }}
 
 
 @app.post("/company/logo")
