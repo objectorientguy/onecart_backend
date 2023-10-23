@@ -71,8 +71,7 @@ def save_upload_file(upload_file: UploadFile, destination: str):
     finally:
         upload_file.file.close()
 
-
-@app.post("/fire_base/image")
+@app.post("/upload/images")
 async def upload_images(upload_files: List[UploadFile] = File(...)):
     image_urls = []
     for upload_file in upload_files:
@@ -81,7 +80,7 @@ async def upload_images(upload_files: List[UploadFile] = File(...)):
         bucket = storage.bucket()
         blob = bucket.blob(f"uploaded_images/{upload_file.filename}")
         blob.upload_from_filename(destination)
-        image_url = blob.generate_signed_url(method="GET", expiration=timedelta(days=7))
+        image_url = blob.generate_signed_url(method="GET", expiration=timedelta(days=120))
         image_urls.append(image_url)
     response_data = {
         "status": 200,
@@ -89,7 +88,6 @@ async def upload_images(upload_files: List[UploadFile] = File(...)):
         "data": {"image_urls": image_urls}
     }
     return JSONResponse(content=response_data)
-
 
 @app.post("/delete_image/")
 async def delete_image(product_id: int, variant_id: int,
@@ -111,27 +109,6 @@ async def delete_image(product_id: int, variant_id: int,
             return {"status_code": 500, "message": " Database error"}
     else:
         return {"status_code": 404, "message": "Image URL not found in the product variant"}
-
-
-@app.post("/upload/images")
-async def upload_images(upload_files: List[UploadFile] = File(...),
-                        ):
-    image_urls = []
-    for upload_file in upload_files:
-        destination = os.path.join("app", "uploaded_images", upload_file.filename)
-        save_upload_file(upload_file, destination)
-        bucket = storage.bucket()
-        blob = bucket.blob(f"uploaded_images/{upload_file.filename}")
-        blob.upload_from_filename(destination)
-        image_url = blob.generate_signed_url(method="GET", expiration=timedelta(days=120))
-        image_urls.append(image_url)
-
-    response_data = {
-        "status": 200,
-        "message": "Images uploaded successfully.",
-        "data": {"image_urls": image_urls}
-    }
-    return JSONResponse(content=response_data)
 
 
 @app.post("/upload")
@@ -368,7 +345,7 @@ async def edit_product_images(request: Request, product_id: int, variant_id: int
 def build_company_response(company, db):
     response_data = {
         "companyId": company.company_id if company.company_id is not None else "",
-        "company_contact": company.company_contact if company.company_contact is not None else "",
+        "company_contact": str(company.company_contact) if company.company_contact is not None else "",
         "company_email": company.company_email if company.company_email is not None else "",
         "company_name": company.company_name if company.company_name is not None else "",
         "role_id": 0000
@@ -421,7 +398,9 @@ def signup(company_data: schemas.CompanySignUp = Body(...),
                 "message": "Company already exists",
                 "data": {
                     "branches": [],
-                    "employees": []}, }
+                    "employees": [],
+                    "role_id": 0}}
+
         else:
             hashed_password = pwd_context.hash(company_data.company_password)
             company_id = uuid4().hex
@@ -450,7 +429,10 @@ def signup(company_data: schemas.CompanySignUp = Body(...),
 
     except Exception as e:
         print(repr(e))
-        return {"status": 500, "message": "Internal Server Error", "data": {}}
+        return {"status": 500, "message": "Internal Server Error", "data": {
+                    "branches": [],
+                    "employees": [],
+                    "role_id": 0}}
 
 
 @app.post('/login')
@@ -507,7 +489,10 @@ def signup(companyID: str, branchID: int, role_id: int, db: Session = Depends(ge
         }
     except Exception as e:
         print(repr(e))
-        return {"status": 500, "message": "Internal Server Error", "data": {}}
+        return {"status": 500, "message": "Internal Server Error", "data": {
+                    "branches": [],
+                    "employees": [],
+                    "role_id": 0}}
 
 
 @app.post("/company/logo")
