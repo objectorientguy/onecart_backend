@@ -455,33 +455,42 @@ def signup(company_data: schemas.CompanySignUp = Body(...),
 
 
 @app.post('/login')
-def login_company(login_credentials: Union[str, int], login_data: schemas.LoginFlow, response: Response,
-                  db: Session = Depends(get_db)):
+async def login(login_credentials: Union[str, int], login_data: schemas.LoginFlow, db: Session = Depends(get_db)):
     try:
-        user = (
-                db.query(models.Companies).filter(models.Companies.company_email == login_credentials).first()
-                or
-                db.query(models.Companies).filter(models.Companies.company_contact == login_credentials).first()
-        )
-        if user:
-            if pwd_context.verify(login_data.login_password, user.company_password if isinstance(user,
-                                                                                                 models.Companies) else user.employee_password):
-                if isinstance(user, models.Companies):
-                    return build_company_response(user, db)
-                else:
-                    return build_company_response(user, db)
-            else:
-                return {"status": 401, "message": "Incorrect password", "data": {
+        if login_credentials.isdigit():
+            company_contact = int(login_credentials)
+            company = db.query(models.Companies).filter(
+                models.Companies.company_contact == company_contact
+            ).first()
+        else:
+            company_email = login_credentials
+            company = db.query(models.Companies).filter(
+                models.Companies.company_email == company_email
+            ).first()
+
+        if not company:
+            return {
+                "status": 404,
+                "message": "User not found",
+                "data": {
                     "branches": [],
-                    "employees": []}}
-        return {"status": 400, "message": "Incorrect password", "data": {
-            "branches": [],
-            "employees": []}}
+                    "employees": [], "role_id": 0
+                }}
+
+        if pwd_context.verify(login_data.login_password, company.company_password if company else ""):
+            response_data = build_company_response(company, db)
+            return {"status": 200, "message": "Login successful", "data": response_data}
+        else:
+            return {"status": 401, "message": "Incorrect password", "data": {
+                "branches": [],
+                "employees": [],
+                "role_id": 0
+            }}
     except Exception as e:
         print(repr(e))
         return {"status": 500, "message": "Internal Server Error", "data": {
             "branches": [],
-            "employees": []}}
+            "employees": [], "role_id": 0}}
 
 
 @app.get('/welcomescreen')
