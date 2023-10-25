@@ -907,14 +907,18 @@ def add_product(product_data: ProductInput, db: Session = Depends(get_db)):
             raise
 
 
-@app.post('/addProductVariant')
+
+@app.post('/addProductVariant/{product_id}')
 def add_product_variant(product_id: int, product_data: ProductUpdateInput, db: Session = Depends(get_db)):
     try:
         existing_product_variant = db.query(models.ProductVariant).filter(
-            models.ProductVariant.product_id == product_id).first()
+            models.ProductVariant.product_id == product_id
+        ).first()
 
         if not existing_product_variant:
             return {"status": 204, "message": "Product variant not found", "data": {}}
+
+        product = existing_product_variant.product
 
         new_variant = models.ProductVariant(
             variant_cost=product_data.variant_cost,
@@ -926,10 +930,9 @@ def add_product_variant(product_id: int, product_data: ProductUpdateInput, db: S
             quantity=product_data.quantity,
             measuring_unit=product_data.measuring_unit,
             description=existing_product_variant.description,
-            product_id=product_id,
-            category_id=existing_product_variant.category_id,
-            # barcode_no=product_data.barcode_no,
-            image=product_data.image
+            product=product,
+            barcode_no=product_data.barcode_no,
+            image=product_data.image,
         )
         db.add(new_variant)
         db.commit()
