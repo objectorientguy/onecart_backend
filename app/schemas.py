@@ -350,6 +350,14 @@ class Branch(BaseModel):
     class Config:
         from_attributes = True
 
+
+class BranchUpdate(BaseModel):
+    branch_name: Optional[str] | None = None
+    branch_address: Optional[str] | None = None
+    branch_email: Optional[str] | None = None
+    branch_number: Optional[int] | None = None
+
+
 class Employee(BaseModel):
     employee_id: int | None = None
     employee_name: str | None = None

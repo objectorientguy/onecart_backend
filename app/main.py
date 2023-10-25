@@ -18,10 +18,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from starlette.responses import FileResponse
 
-from . import models, schemas
+from . import models, schemas, database
 from .database import engine, get_db
 from .models import Image, ProductVariant, Category, Products, Brand
-from .schemas import ProductInput, ProductUpdateInput
+from .schemas import ProductInput, ProductUpdateInput, BranchUpdate
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 models.Base.metadata.create_all(bind=engine)
@@ -1213,7 +1213,9 @@ async def get_branches(db: Session = Depends(get_db)):
         serialized_branches = [
             {"branch_id": branch.branch_id,
              "branch_name": branch.branch_name,
-             "company_id": branch.company_id}
+             "branch_address": branch.branch_address,
+             "branch_email": branch.branch_email,
+             "branch_number": branch.branch_number}
             for branch in branches
         ]
 
@@ -1223,3 +1225,47 @@ async def get_branches(db: Session = Depends(get_db)):
         Response.status_code = 500
         return {"status": "500", "message": "Internal Server Error", "data": str(e)}
 
+@app.put("/editBranch/")
+async def edit_branch(
+    branch_data: schemas.BranchUpdate,
+    branch_id: int = Query(..., title="Branch ID", description="The ID of the branch to edit", gt=0),
+    db: Session = Depends(get_db)
+):
+    try:
+        branch = db.query(models.Branch).filter(models.Branch.branch_id == branch_id).first()
+        if not branch:
+            return {"status": 204, "message": "Branch not found", "data": {}}
+
+        if branch_data.branch_name:
+            branch.branch_name = branch_data.branch_name
+        if branch_data.branch_address:
+            branch.branch_address = branch_data.branch_address
+        if branch_data.branch_email:
+            branch.branch_email = branch_data.branch_email
+        if branch_data.branch_number:
+            branch.branch_number = branch_data.branch_number
+
+        db.commit()
+        db.refresh(branch)
+
+        return {"status": 200, "message": "Branch updated successfully", "data": {}}
+    except Exception as e:
+        print(repr(e))
+        return {"status": 500, "message": "Internal Server Error", "data": str(e)}
+
+@app.delete("/deleteBranch/")
+async def delete_branch(
+    branch_id: int = Query(..., title="Branch ID", description="The ID of the branch to delete", gt=0),
+    db: Session = Depends(database.get_db)
+):
+    try:
+        branch = db.query(models.Branch).filter(models.Branch.branch_id == branch_id).first()
+        if not branch:
+            return {"status": 204, "message": "Branch Not Found", "data": {}}
+        db.delete(branch)
+        db.commit()
+
+        return {"status": 200, "message": "Branch deleted successfully", "data": {}}
+    except Exception as e:
+        print(repr(e))
+        return {"status": 500, "message": "Internal Server Error", "data": str(e)}

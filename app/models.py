@@ -489,10 +489,10 @@ class Branch(Base):
     __tablename__ = "branch"
 
     branch_id = Column(Integer, primary_key=True, autoincrement=True)
-    branch_name = Column(String, nullable=True)
-    branch_address = Column(String, nullable=True)
-    branch_email = Column(String, nullable=True)
-    branch_number = Column(BIGINT, nullable=True)
+    branch_name = Column(String, nullable=False)
+    branch_address = Column(String, nullable=False)
+    branch_email = Column(String, nullable=False)
+    branch_number = Column(BIGINT, nullable=False)
     company_id = Column(String, ForeignKey("companies.company_id", ondelete="CASCADE"))
 
     company = relationship("Companies")
