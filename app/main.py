@@ -943,10 +943,7 @@ def add_product_variant(product_id: int, product_data: ProductUpdateInput, db: S
 
 
 @app.put('/editProductVariant')
-def edit_product_variant(
-        variant_data: schemas.ProductEdit,
-        db: Session = Depends(get_db)
-):
+def edit_product_variant(variant_data: schemas.ProductEdit, db: Session = Depends(get_db)):
     try:
         existing_variant = db.query(models.ProductVariant).filter(
             models.ProductVariant.variant_id == variant_data.variant_id,
@@ -957,7 +954,8 @@ def edit_product_variant(
         if not existing_variant:
             return {"status": 204, "detail": "Product variant not found", "data": {}}
 
-        for field, value in variant_data.items():
+        # Update the fields based on the provided data
+        for field, value in variant_data.dict().items():
             if value is not None:
                 setattr(existing_variant, field, value)
 
@@ -1251,6 +1249,7 @@ async def get_branches(db: Session = Depends(get_db)):
         print(repr(e))
         Response.status_code = 500
         return {"status": "500", "message": "Internal Server Error", "data": str(e)}
+
 
 
 @app.put("/editBranch/")
