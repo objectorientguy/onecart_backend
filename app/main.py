@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from firebase_admin import credentials, storage
 from passlib.context import CryptContext
+from sqlalchemy import and_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from starlette.responses import FileResponse
@@ -21,7 +22,7 @@ from starlette.responses import FileResponse
 from . import models, schemas
 from .database import engine, get_db
 from .models import Image, ProductVariant, Category, Products, Brand
-from .schemas import ProductInput, ProductUpdateInput
+from .schemas import ProductInput, ProductUpdateInput, Product
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 models.Base.metadata.create_all(bind=engine)
@@ -71,6 +72,7 @@ def save_upload_file(upload_file: UploadFile, destination: str):
     finally:
         upload_file.file.close()
 
+
 @app.post("/upload/images")
 async def upload_images(upload_files: List[UploadFile] = File(...)):
     image_urls = []
@@ -88,6 +90,7 @@ async def upload_images(upload_files: List[UploadFile] = File(...)):
         "data": {"image_urls": image_urls}
     }
     return JSONResponse(content=response_data)
+
 
 @app.post("/delete_image/")
 async def delete_image(product_id: int, variant_id: int,
@@ -430,9 +433,9 @@ def signup(company_data: schemas.CompanySignUp = Body(...),
     except Exception as e:
         print(repr(e))
         return {"status": 500, "message": "Internal Server Error", "data": {
-                    "branches": [],
-                    "employees": [],
-                    "role_id": 0}}
+            "branches": [],
+            "employees": [],
+            "role_id": 0}}
 
 
 @app.post('/login')
@@ -490,9 +493,9 @@ def signup(companyID: str, branchID: int, role_id: int, db: Session = Depends(ge
     except Exception as e:
         print(repr(e))
         return {"status": 500, "message": "Internal Server Error", "data": {
-                    "branches": [],
-                    "employees": [],
-                    "role_id": 0}}
+            "branches": [],
+            "employees": [],
+            "role_id": 0}}
 
 
 @app.post("/company/logo")
@@ -761,18 +764,20 @@ def get_product_by_categories(db: Session = Depends(get_db)):
                 "products": []
             }
 
-            products = db.query(Products).filter(Products.category_id == category.category_id).all()
+            products = db.query(Products).filter(
+                and_(Products.category_id == Category.category_id, Category.category_id == category.category_id)).all()
 
             for product in products:
-                brand = db.query(Brand).filter(Brand.brand_id == product.brand_id).first()
+                brand = db.query(Brand).filter(
+                    and_(Brand.brand_id == Products.brand_id, Product.brand_id == product.brand_id)).first()
                 product_data = {
                     "product_id": product.product_id,
                     "product_name": product.product_name,
                     "brand_name": brand.brand_name,
-                    "variants": []
-                }
+                    "variants": []}
 
-                variants = db.query(ProductVariant).filter(ProductVariant.product_id == product.product_id).all()
+                variants = db.query(ProductVariant).filter(and_(ProductVariant.product_id == Product.product_id,
+                                                                Product.product_id == product.product_id)).all()
 
                 for variant in variants:
                     variant_data = {
@@ -1022,152 +1027,22 @@ def get_product_variants(product_id: int, db: Session = Depends(get_db)):
         return {"status": 500, "message": "Internal Server Error", "data": str(e)}
 
 
-# @app.post("/orders/")
-# async def create_order(order: OrderCreate):
-#     db = SessionLocal()
-#     try:
-#         product_details = []
-#
-#         for product_data in order.product_list:
-#             product_id = product_data.get("product_id")
-#             variant_id = product_data.get("variant_id")
-#             item_count = product_data.get("item_count")
-#
-#             product_variant = db.query(ProductVariant).filter(
-#                 ProductVariant.product_id == product_id,
-#                 ProductVariant.variant_id == variant_id
-#             ).first()
-#
-#             if product_variant:
-#                 if product_variant.stock is not None and product_variant.stock >= item_count:
-#                     product_variant.stock -= item_count
-#                 else:
-#                     return {"status": 400, "message": f"Product with ID {product_id} is out of stock", "data": {}}
-#             else:
-#                 return {"status": 400, "message": f"Product ID {product_id} with variant ID {variant_id} is not found",
-#                         "data": {}}
-#
-#             variant_cost = product_variant.variant_cost if hasattr(product_variant, 'variant_cost') else 0.0
-#
-#             product_variant_data = {
-#                 "product_id": product_id,
-#                 "variant_id": variant_id,
-#                 "item_count": item_count,
-#                 "variant_cost": variant_cost,
-#             }
-#
-#             product_details_db = db.query(Products.product_name, ProductVariant.measuring_unit,
-#                                           ProductVariant.discount, ProductVariant.discounted_cost,
-#                                           ProductVariant.image). \
-#                 join(ProductVariant, Products.product_id == ProductVariant.product_id). \
-#                 filter(Products.product_id == product_id, ProductVariant.variant_id == variant_id).first()
-#
-#             if product_details_db:
-#                 product_variant_data.update({
-#                     "product_name": product_details_db.product_name,
-#                     "measuring_unit": product_details_db.measuring_unit,
-#                     "discounted_cost": product_details_db.discounted_cost,
-#                 })
-#
-#             product_details.append(product_variant_data)
-#
-#         total_order = sum(product["variant_cost"] * product["item_count"] for product in product_details)
-#
-#         db_order = Order(
-#             order_no=order.order_no,
-#             customer_contact=order.customer_contact,
-#             product_list=product_details,
-#             total_order=total_order,
-#             gst_charges=order.gst_charges,
-#             additional_charges=order.additional_charges,
-#             to_pay=order.to_pay,
-#         )
-#
-#         db.add(db_order)
-#         db.commit()
-#         db.refresh(db_order)
-#
-#         payment_type = order.payment_type
-#         if payment_type:
-#             payment_info = Payment(order_id=db_order.order_id, payment_type=payment_type)
-#             db.add(payment_info)
-#             db.commit()
-#
-#         response_data = {
-#             "order_no": order.order_no,
-#             "product_list": product_details,
-#             "total_order": total_order,
-#             "gst_charges": order.gst_charges,
-#             "additional_charges": order.additional_charges,
-#             "to_pay": order.to_pay,
-#             "payment_type": payment_type,
-#         }
-#
-#         return {"status": 200, "message": "Order created successfully", "data": response_data}
-#     except HTTPException as e:
-#         db.rollback()
-#         raise e
-#     except IntegrityError as e:
-#         return {"status": 400, "message": "Error creating order", "data": {}}
-#     except NoResultFound as e:
-#         return {"status": 400, "message": "Product or variant not found", "data": {}}
-#     except Exception as e:
-#         return {"status": 500, "message": "Internal Server Error", "error": str(e)}
-#     finally:
-#         db.close()
-
-
 TABLE_NAME = "product_variants"
 
 
 @app.post("/upload_products_excel/")
 async def upload_products_excel(
         response: Response,
-        file: UploadFile = File(...),
-        db: Session = Depends(get_db),
-):
-    # Read the Excel file from the uploaded file
+        file: UploadFile = File(...)):
     data = await file.read()
     df = pd.read_excel(BytesIO(data))
 
-    # Define the database engine
-    # engine = create_engine(DATABASE_URL)
-
-    # Append the data to the database, avoiding duplicates
     try:
         df.to_sql(TABLE_NAME, engine, if_exists="append", index=False)
         return {"message": "Products uploaded from Excel successfully"}
     except Exception as e:
         response.status_code = 500
         return {"status_code": 500, "detail": str(e)}
-
-
-#
-# @app.get("/get_all_orders", response_model=OrderList)
-# def get_all_orders(db: Session = Depends(get_db)):
-#     try:
-#         orders = db.query(Order).all()
-#
-#         if not orders:
-#             return JSONResponse(content={"status": "204", "message": "No orders found", "data": []})
-#
-#         serialized_orders = [
-#             {
-#                 "order_id": order.order_id,
-#                 "order_no": order.order_no,
-#                 "product_list": order.product_list,
-#                 "total_order": order.total_order,
-#                 "gst_charges": order.gst_charges,
-#                 "additional_charges": order.additional_charges,
-#                 "to_pay": order.to_pay
-#             }
-#             for order in orders
-#         ]
-#
-#         return JSONResponse(
-#             content={"status": 200, "message": "Orders fetched successfully", "data": serialized_orders})
-#     except Exception as e:
-#         return JSONResponse(content={"status": 500, "message": "Internal Server Error", "data": str(e)})
 
 
 @app.delete('/deleteProduct')

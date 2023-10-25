@@ -153,13 +153,6 @@ class EditAddress(Address):
         from_attributes = True
 
 
-# class OrderItems(BaseModel):
-#     product_id: int
-#     variant: int
-#
-#     class Config:
-#         from_attributes = True
-
 class CartItem(BaseModel):
     cart_id: int
     product_id: int
@@ -175,8 +168,6 @@ class CartSchema(BaseModel):
     customer_contact: int
     coupon_id: int
     products: str
-
-    # creation_time: datetime
 
     class Config:
         from_attributes = True
@@ -292,20 +283,20 @@ class Review(BaseModel):
         from_attributes = True
 
 
-class Companies(BaseModel):
-    company_id: Optional[int] | None = None
-    company_name: str
-    company_password: str | None = None
-    company_domain: str
-    company_logo: str
-    company_email: EmailStr | None = None
-    services: str
-    company_contact: int
-    company_address: str
-    white_labelled: bool = True
-
-    class Config:
-        from_attributes = True
+# class Companies(BaseModel):
+#     company_id: Optional[int] | None = None
+#     company_name: str
+#     company_password: str | None = None
+#     company_domain: str
+#     company_logo: str
+#     company_email: EmailStr | None = None
+#     services: str
+#     company_contact: int
+#     company_address: str
+#     white_labelled: bool = True
+#
+#     class Config:
+#         from_attributes = True
 
 
 class CompanyUpdateDetails(BaseModel):
@@ -317,8 +308,6 @@ class CompanyUpdateDetails(BaseModel):
 
     class Config:
         from_attributes = True
-
-
 
 
 class CompanySignUp(BaseModel):
@@ -336,6 +325,8 @@ class LoginFlow(BaseModel):
     company_email: str | None = None
     employee_contact: int | None = None
     login_password: str
+
+
 class Config:
     from_attributes = True
 
@@ -350,6 +341,7 @@ class Branch(BaseModel):
     class Config:
         from_attributes = True
 
+
 class Employee(BaseModel):
     employee_id: int | None = None
     employee_name: str | None = None
@@ -357,6 +349,7 @@ class Employee(BaseModel):
     employee_password: str | None = None
     employee_gender: str | None = None
     branch_id: int | None = None
+
 
 class Role(BaseModel):
     role_id: int | None = None
@@ -367,11 +360,13 @@ class Role(BaseModel):
     insights_feature: bool | None = None
     employee_id: int | None = None
 
+
 class EditEmployee(BaseModel):
     role_name: str
     employee_name: str | None = None
     employee_contact: int | None = None
     employee_gender: str | None = None
+
 
 class NewUsers(BaseModel):
     user_uniqueid: int | None = None
@@ -382,20 +377,23 @@ class NewUsers(BaseModel):
     user_emailId: str | None = None
     user_password: str
 
+
 class ProductInput(BaseModel):
-    product_name: str
+    variant_id: int
+    variant_cost: float
     brand_name: str
+    quantity: int
+    discounted_cost: float
+    discount: int
+    stock: int
+    description: int
+    image: List[str]
+    ratings: int
+    measuring_unit: str
+    barcode_no: int | None = None
+    product_id: int
     branch_id: int
     user_id: int
-    barcode_no: Optional[int] = None
-    image: List[str]
-    description: str
-    category_name: str
-    variant_cost: float
-    discounted_cost: float
-    stock: int
-    quantity: int
-    measuring_unit: str
 
 
 class ProductEdit(BaseModel):
@@ -413,6 +411,7 @@ class ProductEdit(BaseModel):
     quantity: Optional[int] = None
     measuring_unit: Optional[str] = None
 
+
 class ProductUpdateInput(BaseModel):
     variant_cost: float
     discounted_cost: float
@@ -421,6 +420,7 @@ class ProductUpdateInput(BaseModel):
     measuring_unit: str
     barcode_no: Optional[int] = None
     image: List[str]
+
 
 class EditCategoryName(BaseModel):
     category_name: str
@@ -451,8 +451,11 @@ class OrderCreate(BaseModel):
     additional_charges: float
     to_pay: float
     payment_type: str
+
+
 class ImageDeleteRequest(BaseModel):
     image_url: str
+
 
 class ProductItem(BaseModel):
     product_id: int
@@ -475,6 +478,7 @@ class ProductDetailResponse(BaseModel):
     stock: int
     measuring_unit: str
 
+
 class OrderResponse(BaseModel):
     order_id: int
     order_no: str
@@ -485,12 +489,14 @@ class OrderResponse(BaseModel):
     additional_charges: float
     to_pay: float
 
+
 class ProductDetails(BaseModel):
     product_name: str
     description: str
     category_name: str
     stock: int
     quantity: int
+
 
 class OrderList(BaseModel):
     order_id: int

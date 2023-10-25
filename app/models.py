@@ -4,85 +4,8 @@ from sqlalchemy.orm import validates, relationship
 from sqlalchemy.sql.expression import text
 from sqlalchemy.sql.sqltypes import TIMESTAMP
 from .database import Base
-from sqlalchemy.orm import composite
 
 
-# class Categories(Base):
-#     __tablename__ = "categories"
-#
-#     category_id = Column(BIGINT, nullable=False, primary_key=True, autoincrement=True, unique=True)
-#     category_name = Column(String, nullable=False)
-#     # category_image = Column(String, nullable=False)
-#
-#     @validates('category_name')
-#     def empty_string_to_null(self, key, value):
-#         if isinstance(value, str) and value == '':
-#             return None
-#         else:
-#             return value
-
-#
-# class Shops(Base):
-#     __tablename__ = "shops"
-#
-#     shop_id = Column(BIGINT, nullable=False, primary_key=True, autoincrement=True)
-#     shop_name = Column(String, nullable=False)
-#     shop_description = Column(String, nullable=True)
-#     shop_image = Column(String, nullable=True)
-#     shop_contact = Column(BIGINT, nullable=False)
-#     shop_address = Column(String, nullable=True)
-#     shop_coordinates = Column(String, nullable=True)
-#     shop_mok = Column(String, nullable=True)
-#     shop_service = Column(String, nullable=True)
-#     is_available = Column(Boolean, nullable=False)
-#     company_name = Column(String, ForeignKey(
-#         "companies.company_name", ondelete="CASCADE"), nullable=False)
-#
-#     company = relationship("Companies")
-
-
-#
-# class Products(Base):
-#     __tablename__ = "products"
-#
-#     product_id = Column(BIGINT, nullable=False, primary_key=True, autoincrement=True, unique=True, index=True)
-#     brand_id = Column(BIGINT, ForeignKey(
-#         "brands.brand_id", ondelete="CASCADE"), nullable=False)
-#     product_name = Column(String, nullable=False)
-#     # details = Column(String, nullable=False)
-#
-#     brand = relationship("Brand")
-#
-#
-# class ProductVariant(Base):
-#     __tablename__ = "product_variants"
-#
-#     variant_id = Column(BIGINT, primary_key=True, index=True, autoincrement=True)
-#     variant_cost = Column(Float, nullable=False)
-#     # variant_name = Column(String, nullable=False)
-#     brand_name = Column(String, nullable=False)
-#     quantity = Column(Integer, nullable=False)
-#     discounted_cost = Column(Float, nullable=True)
-#     discount = Column(BIGINT, nullable=True)
-#     stock = Column(Integer, nullable=False)
-#     description = Column(String, nullable=False)
-#     image = Column(JSON, nullable=True)
-#     ratings = Column(Integer, nullable=True)
-#     measuring_unit = Column(String, nullable=False)
-#     barcode_no = Column(BIGINT, nullable=True, unique=True)
-#     category_id = Column(BIGINT, ForeignKey(
-#         "categories.category_id", ondelete="CASCADE"), nullable=False)
-#     product_id = Column(BIGINT, ForeignKey(
-#         "products.product_id", ondelete="CASCADE"), nullable=False)
-#     branch_id = Column(BIGINT, ForeignKey(
-#         "branch.branch_id", ondelete="CASCADE"), nullable=False)
-#     user_id = Column(BIGINT, ForeignKey(
-#         "new_users.user_uniqueid", ondelete="CASCADE"), nullable=False)
-#
-#     product = relationship("Products")
-#     category = relationship("Categories")
-#     branch = relationship("Branch")
-#     user = relationship("NewUsers")
 class Category(Base):
     __tablename__ = "categories"
 
@@ -103,6 +26,7 @@ class Products(Base):
     brand_id = Column(BIGINT, ForeignKey("brands.brand_id", ondelete="CASCADE"), nullable=False)
     product_name = Column(String, nullable=False)
     category_id = Column(BIGINT, ForeignKey("categories.category_id", ondelete="CASCADE"), nullable=False)
+
     category = relationship("Category")
     brand = relationship("Brand")
 
@@ -523,6 +447,7 @@ class Role(Base):
     employee_id = Column(Integer, ForeignKey("employee.employee_id", ondelete="CASCADE"))
 
     employee = relationship("Employee")
+
 
 #
 # class Order(Base):
