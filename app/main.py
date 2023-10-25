@@ -108,9 +108,9 @@ async def delete_image(product_id: int, variant_id: int,
             return {"status": 200, "message": "Image deleted successfully"}
         except Exception:
             db.rollback()
-            return {"status_code": 500, "message": " Database error"}
+            return {"status": 500, "message": " Database error"}
     else:
-        return {"status_code": 404, "message": "Image URL not found in the product variant"}
+        return {"status": 404, "message": "Image URL not found in the product variant"}
 
 
 @app.post("/upload")
@@ -200,7 +200,7 @@ async def edit_product_images(request: Request, product_id: int, variant_id: int
     except Exception as e:
         print(repr(e))
         db.rollback()
-        raise HTTPException(status_code=500, detail="Internal Server Error")
+        return {"status": 200, "message": "Internal Server error", "data": str(e)}
     finally:
         db.close()
 
