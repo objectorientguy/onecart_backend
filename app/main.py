@@ -20,7 +20,7 @@ from starlette.responses import FileResponse
 
 from . import models, schemas, database
 from .database import engine, get_db
-from .models import Image, ProductVariant, Category, Products, Brand
+from .models import Image, ProductVariant, Category, Products, Brand, Branch, NewUsers
 from .schemas import ProductInput, ProductUpdateInput, BranchUpdate
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -71,6 +71,7 @@ def save_upload_file(upload_file: UploadFile, destination: str):
     finally:
         upload_file.file.close()
 
+
 @app.post("/upload/images")
 async def upload_images(upload_files: List[UploadFile] = File(...)):
     image_urls = []
@@ -88,6 +89,7 @@ async def upload_images(upload_files: List[UploadFile] = File(...)):
         "data": {"image_urls": image_urls}
     }
     return JSONResponse(content=response_data)
+
 
 @app.post("/delete_image/")
 async def delete_image(product_id: int, variant_id: int,
@@ -430,9 +432,9 @@ def signup(company_data: schemas.CompanySignUp = Body(...),
     except Exception as e:
         print(repr(e))
         return {"status": 500, "message": "Internal Server Error", "data": {
-                    "branches": [],
-                    "employees": [],
-                    "role_id": 0}}
+            "branches": [],
+            "employees": [],
+            "role_id": 0}}
 
 
 @app.post('/login')
@@ -490,9 +492,9 @@ def signup(companyID: str, branchID: int, role_id: int, db: Session = Depends(ge
     except Exception as e:
         print(repr(e))
         return {"status": 500, "message": "Internal Server Error", "data": {
-                    "branches": [],
-                    "employees": [],
-                    "role_id": 0}}
+            "branches": [],
+            "employees": [],
+            "role_id": 0}}
 
 
 @app.post("/company/logo")
@@ -577,17 +579,18 @@ def update_company_details(company_id: str, response: Response, request_body: sc
         response.status_code = 500
         return {"status": 500, "message": "Internal Server Error", "data": {}}
 
+
 @app.post("/branch")
 def add_branch(company_id: str, branch_data: schemas.Branch, db: Session = Depends(get_db)):
     try:
         company = db.query(models.Companies).filter_by(company_id=company_id).first()
         if company is None:
-            return {"status_code": 404, "message": "Company not found", "data": {}}
+            return {"status": 404, "message": "Company not found", "data": {}}
 
         existing_branch = db.query(models.Branch).filter_by(company_id=company.company_id,
                                                             branch_name=branch_data.branch_name).first()
         if existing_branch:
-            return {"status_code": 400, "message": "Branch with the same name already exists", "data": {}}
+            return {"status": 400, "message": "Branch with the same name already exists", "data": {}}
 
         branch_data.company_id = company.company_id
         new_branch = models.Branch(**branch_data.model_dump())
@@ -602,6 +605,7 @@ def add_branch(company_id: str, branch_data: schemas.Branch, db: Session = Depen
         return {"status": 500, "message": "Internal Server Error", "data": {}}
     finally:
         db.close()
+
 
 @app.post("/branch/employee")
 def add_employee(branch_id: int, employee_data: schemas.Employee, role_data: schemas.Role,
@@ -656,11 +660,13 @@ def add_employee(branch_id: int, employee_data: schemas.Employee, role_data: sch
     finally:
         db.close()
 
+
 def get_employee_info(employee_id: int, db: Session):
     result = db.query(models.Employee.employee_name, models.Role.role_name, models.Role.role_id) \
         .join(models.Role, models.Employee.employee_id == models.Role.employee_id) \
         .filter(models.Employee.employee_id == employee_id).first()
     return (result)
+
 
 @app.get("/branch/employee/details")
 def get_employee_details(branch_id: int, db: Session = Depends(get_db)):
@@ -691,7 +697,7 @@ def get_employee_details(branch_id: int, db: Session = Depends(get_db)):
 
 
 @app.delete("/employee/delete")
-def delete_employee( empID: int, branchID: int, db: Session = Depends(get_db)):
+def delete_employee(empID: int, branchID: int, db: Session = Depends(get_db)):
     try:
         employee = db.query(models.Employee).filter(models.Employee.employee_id == empID)
         employee_exist = employee.first()
@@ -807,8 +813,8 @@ def add_product(product_data: ProductInput, db: Session = Depends(get_db)):
         if existing_product:
             return {"status": 400, "message": "Product already exists!", "data": {}}
 
-        brand = db.query(models.Brand).filter(
-            models.Brand.brand_name == product_data.brand_name).first()
+        brand = db.query(Brand).filter(
+            Brand.brand_name == product_data.brand_name).first()
 
         if not brand:
             return {"status": 204, "message": "Brand not found", "data": {}}
@@ -824,27 +830,29 @@ def add_product(product_data: ProductInput, db: Session = Depends(get_db)):
 
         barcode_no = product_data.barcode_no if product_data.barcode_no is not None else ""
 
-        user = db.query(models.NewUsers).filter(
-            models.NewUsers.user_uniqueid == product_data.user_id).first()
+        user = db.query(NewUsers).filter(
+            NewUsers.user_uniqueid == product_data.user_id).first()
 
         if not user:
             return {"status": 204, "message": "User not found", "data": {}}
 
-        branch = db.query(models.Branch).filter(
-            models.Branch.branch_id == product_data.branch_id).first()
+        branch = db.query(Branch).filter(
+            Branch.branch_id == product_data.branch_id).first()
 
         if not branch:
             return {"status": 204, "message": "Branch not found", "data": {}}
 
-        new_product = models.Products(
+        new_product = Products(
             product_name=product_data.product_name,
-            brand_id=brand.brand_id)
+            brand_id=brand.brand_id,
+            category_id=category.category_id
+        )
 
         db.add(new_product)
         db.commit()
         db.refresh(new_product)
 
-        new_variant = models.ProductVariant(
+        new_variant = ProductVariant(
             variant_cost=product_data.variant_cost,
             measuring_unit=product_data.measuring_unit,
             brand_name=product_data.brand_name,
@@ -853,13 +861,28 @@ def add_product(product_data: ProductInput, db: Session = Depends(get_db)):
             image=product_data.image,
             stock=product_data.stock,
             description=product_data.description,
-            product_id=new_product.product_id,
-            category_id=category.category_id,
+            product=new_product,
             branch_id=product_data.branch_id,
             user_id=product_data.user_id,
-            barcode_no=barcode_no)
+
+        )
         db.add(new_variant)
-        db.commit()
+
+
+        default_variant = ProductVariant(
+            variant_cost=product_data.variant_cost,
+            measuring_unit=product_data.measuring_unit,
+            brand_name=product_data.brand_name,
+            quantity=product_data.quantity,
+            stock=0,
+            description="",
+            product=new_product,
+            branch_id=product_data.branch_id,
+            user_id=product_data.user_id
+        )
+
+        db.add(default_variant)
+
         db.commit()
 
         brand_name = brand.brand_name
@@ -873,7 +896,8 @@ def add_product(product_data: ProductInput, db: Session = Depends(get_db)):
                 "product_name": new_product.product_name,
                 "description": product_data.description,
                 "category_name": category_name,
-                "brand": brand_name}
+                "brand": brand_name
+            }
         }
     except IntegrityError as e:
         if "duplicate key value violates unique constraint" in str(e):
@@ -904,7 +928,7 @@ def add_product_variant(product_id: int, product_data: ProductUpdateInput, db: S
             description=existing_product_variant.description,
             product_id=product_id,
             category_id=existing_product_variant.category_id,
-            barcode_no=product_data.barcode_no,
+            # barcode_no=product_data.barcode_no,
             image=product_data.image
         )
         db.add(new_variant)
@@ -1225,11 +1249,12 @@ async def get_branches(db: Session = Depends(get_db)):
         Response.status_code = 500
         return {"status": "500", "message": "Internal Server Error", "data": str(e)}
 
+
 @app.put("/editBranch/")
 async def edit_branch(
-    branch_data: schemas.BranchUpdate,
-    branch_id: int = Query(..., title="Branch ID", description="The ID of the branch to edit", gt=0),
-    db: Session = Depends(get_db)
+        branch_data: schemas.BranchUpdate,
+        branch_id: int = Query(..., title="Branch ID", description="The ID of the branch to edit", gt=0),
+        db: Session = Depends(get_db)
 ):
     try:
         branch = db.query(models.Branch).filter(models.Branch.branch_id == branch_id).first()
@@ -1253,10 +1278,11 @@ async def edit_branch(
         print(repr(e))
         return {"status": 500, "message": "Internal Server Error", "data": str(e)}
 
+
 @app.delete("/deleteBranch/")
 async def delete_branch(
-    branch_id: int = Query(..., title="Branch ID", description="The ID of the branch to delete", gt=0),
-    db: Session = Depends(database.get_db)
+        branch_id: int = Query(..., title="Branch ID", description="The ID of the branch to delete", gt=0),
+        db: Session = Depends(database.get_db)
 ):
     try:
         branch = db.query(models.Branch).filter(models.Branch.branch_id == branch_id).first()
