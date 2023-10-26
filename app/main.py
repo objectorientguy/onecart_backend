@@ -274,22 +274,39 @@ def login_signup_response(company, db):
         "company_contact": str(company.company_contact) if company.company_contact is not None else "",
         "company_email": company.company_email if company.company_email is not None else "",
         "company_name": company.company_name if company.company_name is not None else "",
-        "role_id": 0000
+        "role_id": 0000,
+        "branches": []
     }
 
+    products_available = False
     company_id = company.company_id
     branches = db.query(models.Branch).filter(models.Branch.company_id == company_id).all()
+    for branch in branches:
+        categories = db.query(Category).all()
 
-    response_data['branches'] = [
-        {
-            'branch_id': branch.branch_id if branch.branch_id is not None else "",
-            'branch_email': branch.branch_email if branch.branch_email is not None else "",
-            'branch_name': branch.branch_name if branch.branch_name is not None else "",
-            'branch_number': branch.branch_number if branch.branch_number is not None else "",
-            'branch_address': branch.branch_address if branch.branch_address is not None else "",
-        }
-        for branch in branches
-    ]
+        for category in categories:
+            products = db.query(Products).filter(Products.category_id == category.category_id).all()
+
+            for product in products:
+                variants = db.query(ProductVariant).filter(
+                    ProductVariant.product_id == product.product_id).filter(
+                    ProductVariant.branch_id == branch.branch_id).all()
+
+                if variants:
+                    products_available = True
+                else:
+                    products_available = False
+        response_data['branches'] = [
+            {
+                'branch_id': branch.branch_id if branch.branch_id is not None else "",
+                'branch_email': branch.branch_email if branch.branch_email is not None else "",
+                'branch_name': branch.branch_name if branch.branch_name is not None else "",
+                'branch_number': branch.branch_number if branch.branch_number is not None else "",
+                'branch_address': branch.branch_address if branch.branch_address is not None else "",
+                "products_available": products_available
+            }
+
+        ]
     return response_data
 
 
@@ -372,43 +389,57 @@ async def login(login_credentials: Union[str, int], login_data: schemas.LoginFlo
 
 
 @app.get('/welcome')
-def signup(companyId: str, role_id: int, db: Session = Depends(get_db)):
-    # try:
-    response_data = {}
-    branches = db.query(models.Branch).filter(models.Branch.company_id == companyId).all()
+def signup(companyId: str, branchId: int, role_id: int, db: Session = Depends(get_db)):
+    try:
+        response_data = {}
+        products_available = False
+        company = db.query(models.Companies).filter(models.Companies.company_id == companyId).first()
+        if company:
+            branches = db.query(models.Branch).filter(models.Branch.company_id == companyId).all()
+            if branches:
+                for branch in branches:
+                    branch_exists = db.query(models.Branch).filter(branch.branch_id == branchId).first()
+                    if branch_exists:
+                        categories = db.query(Category).all()
 
-    for branch in branches:
-        employees = db.query(Employee).filter(Employee.branch_id == branch.branch_id).all()
-        response_data['branches'] = [
-            {
-                'branch_id': branch.branch_id if branch.branch_id is not None else "",
-                'branch_email': branch.branch_email if branch.branch_email is not None else "",
-                'branch_name': branch.branch_name if branch.branch_name is not None else "",
-                'branch_number': branch.branch_number if branch.branch_number is not None else "",
-                'branch_address': branch.branch_address if branch.branch_address is not None else "",
-                "employee": [
-                    {
-                        "employeeID": employee.employee_id if employee.employee_id is not None else "",
-                        "employee_name": employee.employee_name if employee.employee_name is not None else "",
-                        "employee_contact": employee.employee_contact if employee.employee_contact is not None else "",
-                        "employee_gender": employee.employee_gender if employee.employee_gender is not None else "",
-                    } for employee in employees
-                ],
-                "products_available": welcome_api_product(branch.branch_id, db)
-            }
+                        for category in categories:
+                            products = db.query(Products).filter(Products.category_id == category.category_id).all()
 
-        ]
-        return {"status": 200,
-                "message": "Welcome API success",
-                "data": response_data}
+                            for product in products:
+                                variants = db.query(ProductVariant).filter(
+                                    ProductVariant.product_id == product.product_id).filter(
+                                    ProductVariant.branch_id == branch.branch_id).all()
 
+                                if variants:
+                                    products_available = True
+                                else:
+                                    products_available = False
+                        response_data['branches'] = {
+                            'branch_id': branch.branch_id if branch.branch_id is not None else "",
+                            'branch_email': branch.branch_email if branch.branch_email is not None else "",
+                            'branch_name': branch.branch_name if branch.branch_name is not None else "",
+                            'branch_number': branch.branch_number if branch.branch_number is not None else "",
+                            'branch_address': branch.branch_address if branch.branch_address is not None else "",
+                            "products_available": products_available
+                        }
 
-# except Exception as e:
-#     print(repr(e))
-#     return {"status": 500, "message": "Internal Server Error", "data": {
-#         "branches": [],
-#         "employees": [],
-#         "role_id": 0}}
+                        return {"status": 200,
+                                "message": "Welcome API success",
+                                "data": response_data}
+
+                    else:
+                        return {"status": 404, "message": "Branch does NOT exist",
+                                "data": {"branches": {}, "role_id": role_id}}
+
+            else:
+                return {"status": 404, "message": "No branches for this company",
+                        "data": {"branches": {}, "role_id": role_id}}
+
+        return {"status": 404, "message": "Comapny does NOT exist", "data": {"branches": {}, "role_id": role_id}}
+
+    except Exception as e:
+        print(repr(e))
+    return {"status": 500, "message": "Internal Server Error", "data": {"branches": {}, "role_id": role_id}}
 
 
 @app.post("/company/logo")
