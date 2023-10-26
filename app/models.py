@@ -1,5 +1,4 @@
-from sqlalchemy import Column, String, BIGINT, Date, JSON, ForeignKey, CheckConstraint, Time, Boolean, Float, Integer, \
-    DateTime
+from sqlalchemy import Column, String, BIGINT, Date, JSON, ForeignKey, CheckConstraint, Time, Boolean, Float, Integer, DateTime
 from sqlalchemy.orm import validates, relationship
 from sqlalchemy.sql.expression import text
 from sqlalchemy.sql.sqltypes import TIMESTAMP

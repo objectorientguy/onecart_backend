@@ -509,5 +509,14 @@ class OrderList(BaseModel):
     additional_charges: float
     to_pay: float
     customer_contact: int
-
-# class Inventory(BaseModel)
+class Inventory(BaseModel):
+    product_image: str
+    product_name: str
+    stock_qty_unit: str
+    stock_order_count: int
+    price: float
+    reorder_stock: int
+    supplier: str
+    barcode: int
+    date_of_shipment: str
+    expiry_of_product: str

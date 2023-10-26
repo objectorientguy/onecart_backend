@@ -1196,3 +1196,26 @@ async def delete_branch(
     except Exception as e:
         print(repr(e))
         return {"status": 500, "message": "Internal Server Error", "data": str(e)}
+
+@app.get("/barcode/product-name")
+def fetch_product_details(barcode_no: int, db: Session = Depends(get_db)):
+    try:
+        if not barcode_no:
+            return {"status": 400, "message": "Invalid barcode!", "data": {}}
+        product_variant = db.query(models.ProductVariant).filter(models.ProductVariant.barcode_no == barcode_no).first()
+        if not product_variant:
+            return {"status": 404, "message": "Product not found!", "data": {}}
+        product_id = product_variant.product_id
+        variant_id = product_variant.variant_id
+        product = db.query(models.Products).filter(models.Products.product_id == product_id).first()
+        if not product:
+            return {"status": 404, "message": "Product not found!", "data": {}}
+        product_name = product.product_name
+        return {
+            "status": 200,
+            "message": "Product details fetched successfully!",
+            "data": {"variant_name": product_name, "product_id": product_id, "variant_id": variant_id, "barcode": barcode_no}
+        }
+    except Exception as e:
+        print(repr(e))
+        return {"status": 500, "message": "Internal Server Error!", "data": {}}
