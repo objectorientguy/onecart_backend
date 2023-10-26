@@ -20,7 +20,7 @@ from starlette.responses import FileResponse
 
 from . import models, schemas, database
 from .database import engine, get_db
-from .models import Image, ProductVariant, Category, Products, Brand, Branch, NewUsers
+from .models import Image, ProductVariant, Category, Products, Brand, Branch, NewUsers, Employee
 from .schemas import ProductInput, ProductUpdateInput, BranchUpdate
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -99,7 +99,7 @@ async def delete_image(product_id: int, variant_id: int,
         product_id=product_id, variant_id=variant_id
     ).first()
     if not product_variant:
-        return {"status_code": 404, "message": "Product variant not found"}
+        return {"status": 404, "message": "Product variant not found"}
     updated_images = [img for img in product_variant.image if img != image_url]
     if len(product_variant.image) != len(updated_images):
         product_variant.image = updated_images
@@ -205,146 +205,70 @@ async def edit_product_images(request: Request, product_id: int, variant_id: int
         db.close()
 
 
-# @app.post('/userAuthenticate')
-# def create_user(loginSignupAuth: schemas.UserData, response: Response,
-#                 db: Session = Depends(get_db), companyName=str):
-#     try:
-#         user_data = db.query(models.User).get(
-#             loginSignupAuth.customer_contact)
-#
-#         if not user_data:
-#             # try:
-#             new_user_data = models.User(
-#                 **loginSignupAuth.model_dump())
-#             new_user_added = models.UserCompany(  # composite table
-#                 company_name=companyName,
-#                 user_contact=loginSignupAuth.customer_contact)
-#             db.add(new_user_data)
-#             db.add(new_user_added)
-#             db.commit()
-#             db.refresh(new_user_data)
-#             return {"status": 200, "message": "New user successfully created!", "data": new_user_data}
-#         # except IntegrityError:
-#         #     response.status_code = 200
-#         #     return {"status": 204, "message": "User is not registered please Sing up", "data": {}}
-#
-#         user_exists = db.query(models.UserCompany).filter(models.UserCompany.company_name == companyName).filter(
-#             models.UserCompany.user_contact == loginSignupAuth.customer_contact).first()
-#         print(user_exists)
-#         if not user_exists:
-#             try:
-#                 new_user_company = models.UserCompany(
-#                     company_name=companyName,
-#                     user_contact=loginSignupAuth.customer_contact)
-#                 db.add(new_user_company)
-#                 db.commit()
-#                 db.refresh(new_user_company)
-#                 return {"status": 200, "message": "New user successfully Logged in!", "data": user_data}
-#             except IntegrityError:
-#                 response.status_code = 200
-#                 return {"status": "204", "message": "User is not registered for this company please Sing up",
-#                         "data": {}}
-#
-#         return {"status": 200, "message": "New user successfully Logged in for this company!", "data": user_data}
-#
-#     except IntegrityError as e:
-#         print(repr(e))
-#         response.status_code = 404
-#         return {"status": 404, "message": "Error", "data": {}}
-#
-# @app.put('/editUser/{userId}')
-# def edit_user(userDetail: schemas.EditUserData, response: Response, db: Session = Depends(get_db),
-#               userId=int):
-#     try:
-#         edit_user_details = db.query(models.User).filter(models.User.customer_contact == userId)
-#
-#         user_exist = edit_user_details.first()
-#         if not user_exist:
-#             response.status_code = 200
-#             return {"status": 204, "message": "User doesn't exists", "data": {}}
-#
-#         edit_user_details.update(userDetail.model_dump(), synchronize_session=False)
-#         db.commit()
-#         return {"status": 200, "message": "user edited!", "data": edit_user_details.first()}
-#     except IntegrityError as e:
-#         print(repr(e))
-#         response.status_code = 404
-#         return {"status": 404, "message": "Error", "data": {}}
-#
-#
-# @app.post("/addAddress")
-# def add_address(user_contact: int, createAddress: schemas.AddAddress, response: Response,
-#                 db: Session = Depends(get_db)):
-#     try:
-#
-#         new_address = models.Addresses(**createAddress.model_dump())
-#         db.add(new_address)
-#         db.commit()
-#         db.refresh(new_address)
-#
-#         return {"status": "200", "message": "New address created!", "data": new_address}
-#     except IntegrityError as e:
-#         print(repr(e))
-#         response.status_code = 404
-#         return {"status": "404", "message": "Error", "data": {}}
-#
-#
-# @app.get('/getAllAddresses')
-# def get_address(response: Response, db: Session = Depends(get_db), userId=int):
-#     try:
-#         user_addresses = db.query(models.Addresses).filter(
-#             models.Addresses.user_contact == userId).all()
-#
-#         if not user_addresses:
-#             response.status_code = 200
-#             return {"status": "200", "message": "No address found", "data": []}
-#
-#         return {"status": "200", "message": "success", "data": user_addresses}
-#     except IntegrityError:
-#         response.status_code = 404
-#         return {"status": "404", "message": "Error", "data": {}}
-#
-#
-# @app.put('/editAddress')
-# def edit_address(editAddress: schemas.EditAddress, response: Response, db: Session = Depends(get_db), addressId=int):
-#     try:
-#         edit_user_address = db.query(models.Addresses).filter(
-#             models.Addresses.address_id == addressId)
-#         address_exist = edit_user_address.first()
-#         if not address_exist:
-#             response.status_code = 200
-#             return {"status": 204, "message": "Address doesn't exists", "data": {}}
-#
-#         edit_user_address.update(editAddress.model_dump(
-#             exclude_unset=True), synchronize_session=False)
-#         db.commit()
-#         return {"status": "200", "message": "address edited!", "data": edit_user_address.first()}
-#
-#     except IntegrityError as e:
-#         print(repr(e))
-#         response.status_code = 404
-#         return {"status": "404", "message": "Error", "data": {}}
-#
-#
-# @app.delete('/deleteAddress')
-# def delete_user_address(response: Response, db: Session = Depends(get_db), addressId=int):
-#     try:
-#         delete_address = db.query(models.Addresses).filter(
-#             models.Addresses.address_id == addressId)
-#         address_exist = delete_address.first()
-#         if not address_exist:
-#             response.status_code = 200
-#             return {"status": "204", "message": "Address doesn't exists", "data": {}}
-#
-#         delete_address.delete(synchronize_session=False)
-#         db.commit()
-#         return {"status": "200", "message": "Address deleted!"}
-#     except IntegrityError:
-#         response.status_code = 404
-#         return {"status": "404", "message": "Error", "data": {}}
-#
+def products_by_categories(branchId, db):
+    response_data = []
+    categories = db.query(Category).all()
 
-def build_company_response(company, db):
+    for category in categories:
+        category_data = {
+            "category_id": category.category_id,
+            "category_name": category.category_name,
+            "products": []
+        }
+
+        products = db.query(Products).filter(Products.category_id == category.category_id).all()
+
+        for product in products:
+            brand = db.query(Brand).filter(Brand.brand_id == product.brand_id).first()
+            variants = db.query(ProductVariant).filter(ProductVariant.product_id == product.product_id).filter(
+                ProductVariant.branch_id == branchId).all()
+
+            if variants:
+                product_data = {
+                    "product_id": product.product_id,
+                    "product_name": product.product_name,
+                    "brand_name": brand.brand_name,
+                    "variants": []
+                }
+                for variant in variants:
+                    variant_data = {
+                        "variant_id": variant.variant_id,
+                        "variant_cost": variant.variant_cost,
+                        "quantity": variant.quantity,
+                        "discounted_cost": variant.discounted_cost,
+                        "discount": variant.discount,
+                        "stock": variant.stock,
+                        "description": variant.description,
+                        "image": variant.image,
+                        "ratings": variant.ratings,
+                        "measuring_unit": variant.measuring_unit,
+                        "barcode_no": variant.barcode_no
+                    }
+
+                    product_data["variants"].append(variant_data)
+                    category_data["products"].append(product_data)
+
+        response_data.append(category_data)
+    return response_data
+
+
+def welcome_api_product(branchId, db):
+    categories = db.query(Category).all()
+
+    for category in categories:
+        products = db.query(Products).filter(Products.category_id == category.category_id).all()
+
+        for product in products:
+            variants = db.query(ProductVariant).filter(ProductVariant.product_id == product.product_id).filter(
+                ProductVariant.branch_id == branchId).all()
+
+            if variants:
+                return True
+            else:
+                return False
+
+
+def login_signup_response(company, db):
     response_data = {
         "companyId": company.company_id if company.company_id is not None else "",
         "company_contact": str(company.company_contact) if company.company_contact is not None else "",
@@ -355,7 +279,6 @@ def build_company_response(company, db):
 
     company_id = company.company_id
     branches = db.query(models.Branch).filter(models.Branch.company_id == company_id).all()
-    employees = db.query(models.Employee).join(models.Branch).filter(models.Branch.company_id == company_id).all()
 
     response_data['branches'] = [
         {
@@ -367,17 +290,6 @@ def build_company_response(company, db):
         }
         for branch in branches
     ]
-
-    response_data['employees'] = [
-        {
-            'employeeID': employee.employee_id if employee.employee_id is not None else "",
-            'employee_name': employee.employee_name if employee.employee_name is not None else "",
-            'employee_contact': employee.employee_contact if employee.employee_contact is not None else "",
-            'employee_gender': employee.employee_gender if employee.employee_gender is not None else "",
-        }
-        for employee in employees
-    ]
-
     return response_data
 
 
@@ -398,10 +310,7 @@ def signup(company_data: schemas.CompanySignUp = Body(...),
             return {
                 "status": 409,
                 "message": "Company already exists",
-                "data": {
-                    "branches": [],
-                    "employees": [],
-                    "role_id": 0}}
+                "data": {"branches": [], "role_id": 0}}
 
         else:
             hashed_password = pwd_context.hash(company_data.company_password)
@@ -422,7 +331,7 @@ def signup(company_data: schemas.CompanySignUp = Body(...),
             db.commit()
 
             company = db.query(models.Companies).filter(models.Companies.company_id == company_id).first()
-            response_data = build_company_response(company, db)
+            response_data = login_signup_response(company, db)
 
             return {
                 "status": 200,
@@ -431,10 +340,7 @@ def signup(company_data: schemas.CompanySignUp = Body(...),
 
     except Exception as e:
         print(repr(e))
-        return {"status": 500, "message": "Internal Server Error", "data": {
-            "branches": [],
-            "employees": [],
-            "role_id": 0}}
+        return {"status": 500, "message": "Internal Server Error", "data": {"branches": [], "role_id": 0}}
 
 
 @app.post('/login')
@@ -443,58 +349,66 @@ async def login(login_credentials: Union[str, int], login_data: schemas.LoginFlo
         if login_credentials.isdigit():
             company_contact = int(login_credentials)
             company = db.query(models.Companies).filter(
-                models.Companies.company_contact == company_contact
-            ).first()
+                models.Companies.company_contact == company_contact).first()
         else:
             company_email = login_credentials
             company = db.query(models.Companies).filter(
-                models.Companies.company_email == company_email
-            ).first()
+                models.Companies.company_email == company_email).first()
 
         if not company:
             return {
                 "status": 404,
                 "message": "User not found",
-                "data": {
-                    "branches": [],
-                    "employees": [], "role_id": 0
-                }}
+                "data": {"branches": [], "role_id": 0}}
 
         if pwd_context.verify(login_data.login_password, company.company_password if company else ""):
-            response_data = build_company_response(company, db)
+            response_data = login_signup_response(company, db)
             return {"status": 200, "message": "Login successful", "data": response_data}
         else:
-            return {"status": 401, "message": "Incorrect password", "data": {
-                "branches": [],
-                "employees": [],
-                "role_id": 0
-            }}
+            return {"status": 401, "message": "Incorrect password", "data": {"branches": [], "role_id": 0}}
     except Exception as e:
         print(repr(e))
-        return {"status": 500, "message": "Internal Server Error", "data": {
-            "branches": [],
-            "employees": [], "role_id": 0}}
+        return {"status": 500, "message": "Internal Server Error", "data": {"branches": [], "role_id": 0}}
 
 
-@app.get('/welcomescreen')
-def signup(companyID: str, branchID: int, role_id: int, db: Session = Depends(get_db)):
-    try:
-        company = db.query(models.Companies).filter(models.Companies.company_id == companyID).first()
-        branch = db.query(models.Branch).filter(models.Branch.branch_id == branchID).first()
-        response_data = build_company_response(company, db)
+@app.get('/welcome')
+def signup(companyId: str, role_id: int, db: Session = Depends(get_db)):
+    # try:
+    response_data = {}
+    branches = db.query(models.Branch).filter(models.Branch.company_id == companyId).all()
 
-        return {
-            "status": 200,
-            "message": "User Signed Up!",
-            "data": response_data
+    for branch in branches:
+        employees = db.query(Employee).filter(Employee.branch_id == branch.branch_id).all()
+        response_data['branches'] = [
+            {
+                'branch_id': branch.branch_id if branch.branch_id is not None else "",
+                'branch_email': branch.branch_email if branch.branch_email is not None else "",
+                'branch_name': branch.branch_name if branch.branch_name is not None else "",
+                'branch_number': branch.branch_number if branch.branch_number is not None else "",
+                'branch_address': branch.branch_address if branch.branch_address is not None else "",
+                "employee": [
+                    {
+                        "employeeID": employee.employee_id if employee.employee_id is not None else "",
+                        "employee_name": employee.employee_name if employee.employee_name is not None else "",
+                        "employee_contact": employee.employee_contact if employee.employee_contact is not None else "",
+                        "employee_gender": employee.employee_gender if employee.employee_gender is not None else "",
+                    } for employee in employees
+                ],
+                "products_available": welcome_api_product(branch.branch_id, db)
+            }
 
-        }
-    except Exception as e:
-        print(repr(e))
-        return {"status": 500, "message": "Internal Server Error", "data": {
-            "branches": [],
-            "employees": [],
-            "role_id": 0}}
+        ]
+        return {"status": 200,
+                "message": "Welcome API success",
+                "data": response_data}
+
+
+# except Exception as e:
+#     print(repr(e))
+#     return {"status": 500, "message": "Internal Server Error", "data": {
+#         "branches": [],
+#         "employees": [],
+#         "role_id": 0}}
 
 
 @app.post("/company/logo")
@@ -748,56 +662,13 @@ def edit_employee(response: Response, branch_id: int, employee_id: int, request_
 
 
 @app.get("/productByCategories")
-def get_product_by_categories(db: Session = Depends(get_db)):
+def get_product_by_categories(db: Session = Depends(get_db), branchId=int):
     try:
-        response_data = []
-        categories = db.query(Category).all()
-
-        for category in categories:
-            category_data = {
-                "category_id": category.category_id,
-                "category_name": category.category_name,
-                "products": []
-            }
-
-            products = db.query(Products).filter(Products.category_id == category.category_id).all()
-
-            for product in products:
-                brand = db.query(Brand).filter(Brand.brand_id == product.brand_id).first()
-                product_data = {
-                    "product_id": product.product_id,
-                    "product_name": product.product_name,
-                    "brand_name": brand.brand_name,
-                    "variants": []
-                }
-
-                variants = db.query(ProductVariant).filter(ProductVariant.product_id == product.product_id).all()
-
-                for variant in variants:
-                    variant_data = {
-                        "variant_id": variant.variant_id,
-                        "variant_cost": variant.variant_cost,
-                        "quantity": variant.quantity,
-                        "discounted_cost": variant.discounted_cost,
-                        "discount": variant.discount,
-                        "stock": variant.stock,
-                        "description": variant.description,
-                        "image": variant.image,
-                        "ratings": variant.ratings,
-                        "measuring_unit": variant.measuring_unit,
-                        "barcode_no": variant.barcode_no
-                    }
-
-                    product_data["variants"].append(variant_data)
-
-                category_data["products"].append(product_data)
-
-            response_data.append(category_data)
+        response_data = [products_by_categories(branchId, db)]
         return {
             "status": 200,
             "message": "Variants fetched successfully for all categories!",
-            "data": response_data
-        }
+            "data": response_data}
 
     except Exception as e:
         print(repr(e))
@@ -868,7 +739,6 @@ def add_product(product_data: ProductInput, db: Session = Depends(get_db)):
         )
         db.add(new_variant)
 
-
         default_variant = ProductVariant(
             variant_cost=product_data.variant_cost,
             measuring_unit=product_data.measuring_unit,
@@ -905,7 +775,6 @@ def add_product(product_data: ProductInput, db: Session = Depends(get_db)):
         else:
             print("Database Error:", str(e))
             raise
-
 
 
 @app.post('/addProductVariant/{product_id}')
@@ -1157,7 +1026,7 @@ async def upload_products_excel(
         return {"message": "Products uploaded from Excel successfully"}
     except Exception as e:
         response.status_code = 500
-        return {"status_code": 500, "detail": str(e)}
+        return {"status": 500, "detail": str(e)}
 
 
 #
@@ -1249,7 +1118,6 @@ async def get_branches(db: Session = Depends(get_db)):
         print(repr(e))
         Response.status_code = 500
         return {"status": "500", "message": "Internal Server Error", "data": str(e)}
-
 
 
 @app.put("/editBranch/")

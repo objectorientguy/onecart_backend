@@ -28,7 +28,6 @@ class Products(Base):
     product_name = Column(String, nullable=False)
     category_id = Column(BIGINT, ForeignKey("categories.category_id", ondelete="CASCADE"), nullable=False)
 
-
     category = relationship("Category")
     brand = relationship("Brand")
 
@@ -55,6 +54,7 @@ class ProductVariant(Base):
     product = relationship("Products")
     branch = relationship("Branch")
     user = relationship("NewUsers")
+
 
 # class Shops(Base):
 #     __tablename__ = "shops"

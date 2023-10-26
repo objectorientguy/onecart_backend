@@ -22,72 +22,72 @@ def session_scope():
 
 
 
-@app.post("/addShop/")
-def create_shop(response: Response, db: Session = Depends(get_db)):
-    try:
-        shops_data = [
-            {
-                "shop_name": "Sai Chanduram Bakery",
-                "shop_description": "Description 1",
-                "shop_image": "image1.jpg",
-                "shop_contact": 1234567890,
-                "shop_address": "123 Main St",
-                "shop_coordinates": "lat: 123, long: 456",
-                "shop_mok": "1234-5678-9012",
-                "shop_service": "Bakery",
-                "is_available": True,
-                "company_name": "OneCart",
-            },
-            {
-                "shop_name": "Nagpur Stores",
-                "shop_description": "Description 2",
-                "shop_image": "image2.jpg",
-                "shop_contact": 9876543210,
-                "shop_address": "456 Elm St",
-                "shop_coordinates": "lat: 789, long: 101",
-                "shop_mok": "5678-9012-3456",
-                "shop_service": "Grocery",
-                "is_available": False,
-                "company_name": "OneCart",
-            },
-            {
-                "shop_name": "Kirana King",
-                "shop_description": "Description 3",
-                "shop_image": "image3.jpg",
-                "shop_contact": 5555555555,
-                "shop_address": "789 Oak St",
-                "shop_coordinates": "lat: 246, long: 789",
-                "shop_mok": "9876-5432-1098",
-                "shop_service": "Grocery",
-                "is_available": True,
-                "company_name": "OneCart",
-            },
-            {
-                "shop_name": "Ajit Bakery",
-                "shop_description": "Description 4",
-                "shop_image": "image4.jpg",
-                "shop_contact": 3333333333,
-                "shop_address": "101 Pine St",
-                "shop_coordinates": "lat: 987, long: 654",
-                "shop_mok": "1234-5678-9012",
-                "shop_service": "Bakery",
-                "is_available": False,
-                "company_name": "OneCart",
-            },
-        ]
-
-        with session_scope() as session:
-            for shop_data in shops_data:
-                shop = models.Shops(**shop_data)
-                session.add(shop)
-                session.commit()
-                session.refresh(shop)
-
-        return {"message": "shops created successfully", "data": {}}
-
-    except Exception as e:
-        print(repr(e))
-        raise HTTPException(status_code=500, detail=str(e))
+# @app.post("/addShop/")
+# def create_shop(response: Response, db: Session = Depends(get_db)):
+#     try:
+#         shops_data = [
+#             {
+#                 "shop_name": "Sai Chanduram Bakery",
+#                 "shop_description": "Description 1",
+#                 "shop_image": "image1.jpg",
+#                 "shop_contact": 1234567890,
+#                 "shop_address": "123 Main St",
+#                 "shop_coordinates": "lat: 123, long: 456",
+#                 "shop_mok": "1234-5678-9012",
+#                 "shop_service": "Bakery",
+#                 "is_available": True,
+#                 "company_name": "OneCart",
+#             },
+#             {
+#                 "shop_name": "Nagpur Stores",
+#                 "shop_description": "Description 2",
+#                 "shop_image": "image2.jpg",
+#                 "shop_contact": 9876543210,
+#                 "shop_address": "456 Elm St",
+#                 "shop_coordinates": "lat: 789, long: 101",
+#                 "shop_mok": "5678-9012-3456",
+#                 "shop_service": "Grocery",
+#                 "is_available": False,
+#                 "company_name": "OneCart",
+#             },
+#             {
+#                 "shop_name": "Kirana King",
+#                 "shop_description": "Description 3",
+#                 "shop_image": "image3.jpg",
+#                 "shop_contact": 5555555555,
+#                 "shop_address": "789 Oak St",
+#                 "shop_coordinates": "lat: 246, long: 789",
+#                 "shop_mok": "9876-5432-1098",
+#                 "shop_service": "Grocery",
+#                 "is_available": True,
+#                 "company_name": "OneCart",
+#             },
+#             {
+#                 "shop_name": "Ajit Bakery",
+#                 "shop_description": "Description 4",
+#                 "shop_image": "image4.jpg",
+#                 "shop_contact": 3333333333,
+#                 "shop_address": "101 Pine St",
+#                 "shop_coordinates": "lat: 987, long: 654",
+#                 "shop_mok": "1234-5678-9012",
+#                 "shop_service": "Bakery",
+#                 "is_available": False,
+#                 "company_name": "OneCart",
+#             },
+#         ]
+#
+#         with session_scope() as session:
+#             for shop_data in shops_data:
+#                 shop = models.Shops(**shop_data)
+#                 session.add(shop)
+#                 session.commit()
+#                 session.refresh(shop)
+#
+#         return {"message": "shops created successfully", "data": {}}
+#
+#     except Exception as e:
+#         print(repr(e))
+#         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/create_categories/")
 def create_categories(response: Response, db: Session = Depends(get_db)):
