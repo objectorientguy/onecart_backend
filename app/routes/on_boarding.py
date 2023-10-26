@@ -152,11 +152,11 @@ async def login(login_credentials: Union[str, int], login_data: schemas.LoginFlo
 @router.get('/welcome')
 def signup(companyId: str, branchId: int, role_id: int, db: Session = Depends(get_db)):
     try:
-        response_data = {}
         products_available = False
         company = db.query(models.Companies).filter(models.Companies.company_id == companyId).first()
         if company:
-            branch = db.query(models.Branch).filter(models.Branch.branch_id == branchId).filter(models.Branch.company_id == companyId).first()
+            branch = db.query(models.Branch).filter(models.Branch.branch_id == branchId).filter(
+                models.Branch.company_id == companyId).first()
             if branch:
 
                 categories = db.query(Category).all()
@@ -172,22 +172,21 @@ def signup(companyId: str, branchId: int, role_id: int, db: Session = Depends(ge
                             products_available = True
                         else:
                             products_available = False
-                response_data['branches'] = {
-                    'branch_id': branch.branch_id if branch.branch_id is not None else "",
-                    'branch_email': branch.branch_email if branch.branch_email is not None else "",
-                    'branch_name': branch.branch_name if branch.branch_name is not None else "",
-                    'branch_number': branch.branch_number if branch.branch_number is not None else "",
-                    'branch_address': branch.branch_address if branch.branch_address is not None else "",
-                    "products_available": products_available
-                }
 
-                return {"status": 200,
-                        "message": "Welcome API success",
-                        "data": response_data}
+                response_data = {"companyId": company.company_id if company.company_id is not None else "",
+                                 "company_name": company.company_name if company.company_name is not None else "",
+                                 "role_id": 0,
+                                 'branch_id': branch.branch_id if branch.branch_id is not None else "",
+                                 'branch_email': branch.branch_email if branch.branch_email is not None else "",
+                                 'branch_name': branch.branch_name if branch.branch_name is not None else "",
+                                 'branch_number': branch.branch_number if branch.branch_number is not None else "",
+                                 'branch_address': branch.branch_address if branch.branch_address is not None else "",
+                                 "products_available": products_available}
+
+                return {"status": 200, "message": "Welcome API success", "data": response_data}
 
             else:
-                return {"status": 404, "message": "Branch does NOT exist",
-                        "data": {"branches": {}, "role_id": role_id}}
+                return {"status": 404, "message": "Branch does NOT exist", "data": {"branches": {}, "role_id": role_id}}
 
         return {"status": 404, "message": "Comapny does NOT exist", "data": {"branches": {}, "role_id": role_id}}
 

@@ -420,6 +420,13 @@ class ProductEdit(BaseModel):
     quantity: Optional[int] = None
     measuring_unit: Optional[str] = None
 
+class ProductUpdate(BaseModel):
+    branch_id: int
+    user_id: int
+    product_name: Optional[str] = None
+    description: Optional[str] = None
+    category_name: Optional[str] = None
+
 class ProductUpdateInput(BaseModel):
     variant_cost: float
     discounted_cost: float
