@@ -22,7 +22,7 @@ from . import models, schemas, database
 from .database import engine, get_db
 from .models import Image, ProductVariant, Category, Products, Brand, Branch, NewUsers, Employee
 from .schemas import ProductInput, ProductUpdateInput, BranchUpdate
-from .routes import on_boarding, inventory
+from .routes import on_boarding, inventory, profile
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 models.Base.metadata.create_all(bind=engine)
@@ -38,6 +38,7 @@ app.add_middleware(
 
 app.include_router(on_boarding.router)
 app.include_router(inventory.router)
+app.include_router(profile.router)
 
 UPLOAD_DIR = "app/images"
 logging.basicConfig(filename='app.log', level=logging.DEBUG)

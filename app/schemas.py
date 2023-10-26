@@ -390,6 +390,13 @@ class NewUsers(BaseModel):
     user_emailId: str | None = None
     user_password: str
 
+class EditUser(BaseModel):
+    user_image: str
+    user_name: str
+    user_emailId: int
+    user_contact: int
+
+
 class ProductInput(BaseModel):
     product_name: str
     brand_name: str
@@ -491,6 +498,7 @@ class ProductDetailResponse(BaseModel):
     stock: int
     measuring_unit: str
 
+
 class OrderResponse(BaseModel):
     order_id: int
     order_no: str
@@ -501,12 +509,14 @@ class OrderResponse(BaseModel):
     additional_charges: float
     to_pay: float
 
+
 class ProductDetails(BaseModel):
     product_name: str
     description: str
     category_name: str
     stock: int
     quantity: int
+
 
 class OrderList(BaseModel):
     order_id: int
@@ -517,6 +527,8 @@ class OrderList(BaseModel):
     additional_charges: float
     to_pay: float
     customer_contact: int
+
+
 class Inventory(BaseModel):
     product_image: str
     product_name: str
@@ -544,3 +556,9 @@ class AddEmployee(BaseModel):
     employee_password: str | None = None
     employee_gender: str | None = None
     role_name: str
+
+
+class ChangePassword(BaseModel):
+    current_password: str
+    new_password: str
+    confirm_password: str
