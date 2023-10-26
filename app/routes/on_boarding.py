@@ -57,17 +57,17 @@ def login_signup_response(company, db):
                     products_available = True
                 else:
                     products_available = False
-        response_data['branches'] = [
-            {
-                'branch_id': branch.branch_id if branch.branch_id is not None else "",
-                'branch_email': branch.branch_email if branch.branch_email is not None else "",
-                'branch_name': branch.branch_name if branch.branch_name is not None else "",
-                'branch_number': branch.branch_number if branch.branch_number is not None else "",
-                'branch_address': branch.branch_address if branch.branch_address is not None else "",
-                "products_available": products_available
-            }
+            response_data['branches'] = [
+                {
+                    'branch_id': branch.branch_id if branch.branch_id is not None else "",
+                    'branch_email': branch.branch_email if branch.branch_email is not None else "",
+                    'branch_name': branch.branch_name if branch.branch_name is not None else "",
+                    'branch_number': branch.branch_number if branch.branch_number is not None else "",
+                    'branch_address': branch.branch_address if branch.branch_address is not None else "",
+                    "products_available": products_available
+                }
 
-        ]
+            ]
     return response_data
 
 
@@ -156,44 +156,37 @@ def signup(companyId: str, branchId: int, role_id: int, db: Session = Depends(ge
         products_available = False
         company = db.query(models.Companies).filter(models.Companies.company_id == companyId).first()
         if company:
-            branches = db.query(models.Branch).filter(models.Branch.company_id == companyId).all()
-            if branches:
-                for branch in branches:
-                    branch_exists = db.query(models.Branch).filter(branch.branch_id == branchId).first()
-                    if branch_exists:
-                        categories = db.query(Category).all()
+            branch = db.query(models.Branch).filter(models.Branch.branch_id == branchId).filter(models.Branch.company_id == companyId).first()
+            if branch:
 
-                        for category in categories:
-                            products = db.query(Products).filter(Products.category_id == category.category_id).all()
+                categories = db.query(Category).all()
+                for category in categories:
+                    products = db.query(Products).filter(Products.category_id == category.category_id).all()
 
-                            for product in products:
-                                variants = db.query(ProductVariant).filter(
-                                    ProductVariant.product_id == product.product_id).filter(
-                                    ProductVariant.branch_id == branch.branch_id).all()
+                    for product in products:
+                        variants = db.query(ProductVariant).filter(
+                            ProductVariant.product_id == product.product_id).filter(
+                            ProductVariant.branch_id == branch.branch_id).all()
 
-                                if variants:
-                                    products_available = True
-                                else:
-                                    products_available = False
-                        response_data['branches'] = {
-                            'branch_id': branch.branch_id if branch.branch_id is not None else "",
-                            'branch_email': branch.branch_email if branch.branch_email is not None else "",
-                            'branch_name': branch.branch_name if branch.branch_name is not None else "",
-                            'branch_number': branch.branch_number if branch.branch_number is not None else "",
-                            'branch_address': branch.branch_address if branch.branch_address is not None else "",
-                            "products_available": products_available
-                        }
+                        if variants:
+                            products_available = True
+                        else:
+                            products_available = False
+                response_data['branches'] = {
+                    'branch_id': branch.branch_id if branch.branch_id is not None else "",
+                    'branch_email': branch.branch_email if branch.branch_email is not None else "",
+                    'branch_name': branch.branch_name if branch.branch_name is not None else "",
+                    'branch_number': branch.branch_number if branch.branch_number is not None else "",
+                    'branch_address': branch.branch_address if branch.branch_address is not None else "",
+                    "products_available": products_available
+                }
 
-                        return {"status": 200,
-                                "message": "Welcome API success",
-                                "data": response_data}
-
-                    else:
-                        return {"status": 404, "message": "Branch does NOT exist",
-                                "data": {"branches": {}, "role_id": role_id}}
+                return {"status": 200,
+                        "message": "Welcome API success",
+                        "data": response_data}
 
             else:
-                return {"status": 404, "message": "No branches for this company",
+                return {"status": 404, "message": "Branch does NOT exist",
                         "data": {"branches": {}, "role_id": role_id}}
 
         return {"status": 404, "message": "Comapny does NOT exist", "data": {"branches": {}, "role_id": role_id}}
