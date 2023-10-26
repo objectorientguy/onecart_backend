@@ -404,11 +404,10 @@ class ProductInput(BaseModel):
     stock: int
     quantity: int
     measuring_unit: str
+    is_published: bool
 
 
 class ProductEdit(BaseModel):
-    variant_id: int
-    product_id: int
     branch_id: int
     user_id: int
     product_name: Optional[str] = None
@@ -429,6 +428,8 @@ class ProductUpdateInput(BaseModel):
     measuring_unit: str
     barcode_no: Optional[int] = None
     image: List[str]
+    is_published: bool
+
 
 class EditCategoryName(BaseModel):
     category_name: str
