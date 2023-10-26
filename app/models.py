@@ -389,7 +389,6 @@ class Companies(Base):
     __tablename__ = "companies"
 
     company_id = Column(String, nullable=True, primary_key=True, unique=True)
-    # company_name = Column(String, nullable=False, primary_key=True, unique=True)
     company_name = Column(String, nullable=True, unique=True)
     company_password = Column(String, nullable=False)
     company_domain = Column(String, nullable=True)
@@ -416,7 +415,7 @@ class Branch(Base):
     branch_name = Column(String, nullable=False)
     branch_address = Column(String, nullable=False)
     branch_email = Column(String, nullable=False)
-    branch_number = Column(BIGINT, nullable=False)
+    branch_number = Column(BIGINT, nullable=False, unique=True)
     company_id = Column(String, ForeignKey("companies.company_id", ondelete="CASCADE"))
 
     company = relationship("Companies")
