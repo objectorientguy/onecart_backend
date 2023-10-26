@@ -363,25 +363,23 @@ def add_branch(company_id: str, branch_data: schemas.Branch, db: Session = Depen
 
 
 @app.post("/branch/employee")
-def add_employee(branch_id: int, employee_data: schemas.Employee, role_data: schemas.Role,
-                 db: Session = Depends(get_db)):
+def add_employee(branch_id: int, employee_data: schemas.AddEmployee, db: Session = Depends(get_db)):
     try:
-        branch = db.query(models.Branch).filter_by(branch_id=branch_id).first()
+        branch = db.query(models.Branch).filter(models.Branch.branch_id == branch_id).first()
         if branch is None:
-            return {"status": 404, "message": "Branch not found",
-                    "data": {"New_employee": {}, "role": {}, "unique_id": 0}}
+            return {"status_code": 404, "message": "Branch not found", "data":  {}}
 
         hashed_password = pwd_context.hash(employee_data.employee_password)
         employee_data.employee_password = hashed_password
-        employee_data.branch_id = branch.branch_id
-        new_employee = models.Employee(**employee_data.model_dump())
+
+        new_employee = models.Employee(branch_id=branch_id, **employee_data.model_dump(exclude={'role_name'}))
         db.add(new_employee)
-        db.commit()
-        new_employee_id = new_employee.employee_id
-        new_role_name = models.Role(**role_data.model_dump())
-        new_role_name.employee_id = new_employee_id
-        db.add(new_role_name)
-        db.commit()
+        db.flush()
+
+        new_role = models.Role(role_name=employee_data.role_name)
+        new_role.employee = new_employee
+        db.add(new_role)
+
         new_user = models.NewUsers(
             user_contact=employee_data.employee_contact,
             user_password=employee_data.employee_password,
@@ -389,39 +387,17 @@ def add_employee(branch_id: int, employee_data: schemas.Employee, role_data: sch
         )
         db.add(new_user)
         db.commit()
-        unique_id = new_user.user_uniqueid
-        employee_id = new_employee.employee_id if new_employee.employee_id is not None else ""
-        role_id = new_role_name.role_id if new_role_name.role_id is not None else ""
-        response_data = {
-            "status": 200,
-            "message": "New Employee added successfully",
-            "data": {
-                "New_employee": {
-                    key: value for key, value in employee_data.model_dump().items() if value is not None
-                },
-                "role": {
-                    key: value for key, value in role_data.model_dump().items() if value is not None
-                },
-                "unique_id": unique_id,
-                "employee_id": employee_id,
-                "role_id": role_id
-            }
-        }
+        response_data = {"status": 200, "message": "New Employee added successfully", "data": {}}
         return response_data
     except IntegrityError as e:
         print(repr(e))
-        return {"status": 500, "message": "Internal Server Error",
-                "data": {"New_employee": {}, "role": {}, "unique_id": 0}}
-    finally:
-        db.close()
-
+        return {"status_code": 500, "message": "Internal Server Error", "data": {}}
 
 def get_employee_info(employee_id: int, db: Session):
     result = db.query(models.Employee.employee_name, models.Role.role_name, models.Role.role_id) \
         .join(models.Role, models.Employee.employee_id == models.Role.employee_id) \
         .filter(models.Employee.employee_id == employee_id).first()
     return (result)
-
 
 @app.get("/branch/employee/details")
 def get_employee_details(branch_id: int, db: Session = Depends(get_db)):
@@ -1014,18 +990,39 @@ def fetch_product_details(barcode_no: int, db: Session = Depends(get_db)):
             return {"status": 400, "message": "Invalid barcode!", "data": {}}
         product_variant = db.query(models.ProductVariant).filter(models.ProductVariant.barcode_no == barcode_no).first()
         if not product_variant:
-            return {"status": 404, "message": "Product not found!", "data": {}}
+            return {"status": 404, "message": "Variant not found!", "data": {}}
         product_id = product_variant.product_id
         variant_id = product_variant.variant_id
         product = db.query(models.Products).filter(models.Products.product_id == product_id).first()
         if not product:
             return {"status": 404, "message": "Product not found!", "data": {}}
         product_name = product.product_name
-        return {
-            "status": 200,
-            "message": "Product details fetched successfully!",
-            "data": {"variant_name": product_name, "product_id": product_id, "variant_id": variant_id, "barcode": barcode_no}
-        }
+        return {"status": 200, "message": "Product details fetched successfully!", "data": {"product_name": product_name, "product_id": product_id, "variant_id": variant_id, "barcode": barcode_no}}
     except Exception as e:
         print(repr(e))
         return {"status": 500, "message": "Internal Server Error!", "data": {}}
+
+# @app.post("/add/stock")
+# def add_stock(product_id: int, variant_id: int, barcode_no: int, db: Session=Depends(get_db)):
+#     try:
+#         stock = db.query(models.Stock).filter(models.Stock.product_id == product_id, models.Stock.variant_id == variant_id, models.Stock.barcode == barcode_no).first()
+#         if not stock:
+#             return {"status": 404, "message": "Product not Found!", "data": {}}
+
+# @app.post("/add/stock")
+# async def add_stock(product_id: int, variant_id: int, barcode_no: int, quantity: int, db: Session = Depends(get_db)):
+#     try:
+#         product = db.query(models.Products).filter(models.Products.product_id == product_id).first()
+#         product_variant = db.query(models.ProductVariant).filter(models.ProductVariant.variant_id == variant_id).first()
+#         stock = db.query(models.Stock).filter(models.Stock.barcode == barcode_no).first()
+#
+#         if product and product_variant and stock:
+#             stock.stock_order_count += quantity
+#             db.commit()
+#
+#             return {"status": 200, "message": "Stock added successfully!", "data": {"stock_order_count": stock.stock_order_count}}
+#         else:
+#             return {"status": 404, "message": "Product, product variant, or stock not found!", "data": {}}
+#     except Exception as e:
+#         print(repr(e))
+#         return {"status": 500, "message": "Internal Server Error!", "data": {}}

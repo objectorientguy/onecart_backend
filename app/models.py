@@ -518,6 +518,7 @@ class Stock(Base):
     stock_id = Column(Integer, primary_key=True, nullable=False, autoincrement=True)
     stock_order_count = Column(Integer, nullable=False)
     seller = Column(Integer, nullable=True)
+    barcode = Column(Integer, nullable=False)
     product_id = Column(Integer, ForeignKey("products.product_id", ondelete="CASCADE"), nullable=False)
     variant_id = Column(Integer, ForeignKey("product_variants.variant_id", ondelete="CASCADE"), nullable=False)
     date_of_shipment = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('now()'))

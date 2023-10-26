@@ -520,3 +520,10 @@ class Inventory(BaseModel):
     barcode: int
     date_of_shipment: str
     expiry_of_product: str
+
+class AddEmployee(BaseModel):
+    employee_name: str | None = None
+    employee_contact: int | None = None
+    employee_password: str | None = None
+    employee_gender: str | None = None
+    role_name: str
