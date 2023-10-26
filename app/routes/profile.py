@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
-
 from app import schemas, models
 from app.database import get_db
 
