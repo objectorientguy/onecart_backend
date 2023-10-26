@@ -74,9 +74,9 @@ class Product(BaseModel):
 class ProductVariant(BaseModel):
     variant_id: Optional[int] | None = None
     variant_cost: float
-    unit: str
+    measuring_unit: str
     brand_name: str
-    discounted_cost: float
+    discounted_cost: float | None = None
     discount: int | None = None
     quantity: int
     description: str
@@ -84,6 +84,11 @@ class ProductVariant(BaseModel):
     image: List[str]
     ratings: int | None = None
     product_id: int
+    stock: int
+    is_published: bool
+    barcode_no: int
+    product_id: int
+    branch_id: int
 
     class Config:
         from_attributes = True
@@ -319,8 +324,6 @@ class CompanyUpdateDetails(BaseModel):
         from_attributes = True
 
 
-
-
 class CompanySignUp(BaseModel):
     company_id: Optional[str] | None = None
     company_email: str | None = None
@@ -336,6 +339,8 @@ class LoginFlow(BaseModel):
     company_email: str | None = None
     employee_contact: int | None = None
     login_password: str
+
+
 class Config:
     from_attributes = True
 
@@ -366,6 +371,7 @@ class Employee(BaseModel):
     employee_gender: str | None = None
     branch_id: int | None = None
 
+
 class Role(BaseModel):
     role_id: int | None = None
     role_name: str
@@ -375,11 +381,13 @@ class Role(BaseModel):
     insights_feature: bool | None = None
     employee_id: int | None = None
 
+
 class EditEmployee(BaseModel):
     role_name: str
     employee_name: str | None = None
     employee_contact: int | None = None
     employee_gender: str | None = None
+
 
 class NewUsers(BaseModel):
     user_uniqueid: int | None = None
@@ -389,6 +397,7 @@ class NewUsers(BaseModel):
     user_image: str | None = None
     user_emailId: str | None = None
     user_password: str
+
 
 class EditUser(BaseModel):
     user_image: str
@@ -401,7 +410,6 @@ class ProductInput(BaseModel):
     product_name: str
     brand_name: str
     branch_id: int
-    user_id: int
     barcode_no: Optional[int] = None
     image: List[str]
     description: str
@@ -427,12 +435,14 @@ class ProductEdit(BaseModel):
     quantity: Optional[int] = None
     measuring_unit: Optional[str] = None
 
+
 class ProductUpdate(BaseModel):
     branch_id: int
     user_id: int
     product_name: Optional[str] = None
     description: Optional[str] = None
     category_name: Optional[str] = None
+
 
 class ProductUpdateInput(BaseModel):
     variant_cost: float
@@ -474,8 +484,11 @@ class OrderCreate(BaseModel):
     additional_charges: float
     to_pay: float
     payment_type: str
+
+
 class ImageDeleteRequest(BaseModel):
     image_url: str
+
 
 class ProductItem(BaseModel):
     product_id: int
@@ -541,14 +554,17 @@ class Inventory(BaseModel):
     date_of_shipment: str
     expiry_of_product: str
 
+
 class Stock(BaseModel):
     stock_id: int | None = None
     stock_order_count: int
     seller: str
     expiry_date: str | None = ""
 
+
 class UpdateStock(BaseModel):
     stock_order_count: int
+
 
 class AddEmployee(BaseModel):
     employee_name: str | None = None

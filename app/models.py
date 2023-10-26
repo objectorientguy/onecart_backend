@@ -46,14 +46,12 @@ class ProductVariant(Base):
     ratings = Column(Integer, nullable=True)
     measuring_unit = Column(String, nullable=False)
     is_published = Column(Boolean, nullable=False)
-    barcode_no = Column(BIGINT, nullable=True, unique=True)
+    barcode_no = Column(BIGINT, nullable=False, unique=True)
     product_id = Column(BIGINT, ForeignKey("products.product_id", ondelete="CASCADE"), nullable=False)
     branch_id = Column(BIGINT, ForeignKey("branch.branch_id", ondelete="CASCADE"), nullable=False)
-    user_id = Column(BIGINT, ForeignKey("new_users.user_uniqueid", ondelete="CASCADE"), nullable=False)
 
     product = relationship("Products")
     branch = relationship("Branch")
-    user = relationship("NewUsers")
 
 
 # class Shops(Base):
