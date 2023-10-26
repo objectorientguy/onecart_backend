@@ -22,7 +22,7 @@ from . import models, schemas, database
 from .database import engine, get_db
 from .models import Image, ProductVariant, Category, Products, Brand, Branch, NewUsers, Employee
 from .schemas import ProductInput, ProductUpdateInput, BranchUpdate
-from .routes import on_boarding
+from .routes import on_boarding, branches
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 models.Base.metadata.create_all(bind=engine)
@@ -37,6 +37,7 @@ app.add_middleware(
     allow_headers=["*"])
 
 app.include_router(on_boarding.router)
+app.include_router(branches.router)
 
 UPLOAD_DIR = "app/images"
 logging.basicConfig(filename='app.log', level=logging.DEBUG)
@@ -336,31 +337,6 @@ def update_company_details(company_id: str, response: Response, request_body: sc
         return {"status": 500, "message": "Internal Server Error", "data": {}}
 
 
-@app.post("/branch")
-def add_branch(company_id: str, branch_data: schemas.Branch, db: Session = Depends(get_db)):
-    try:
-        company = db.query(models.Companies).filter_by(company_id=company_id).first()
-        if company is None:
-            return {"status": 404, "message": "Company not found", "data": {}}
-
-        existing_branch = db.query(models.Branch).filter_by(company_id=company.company_id,
-                                                            branch_name=branch_data.branch_name).first()
-        if existing_branch:
-            return {"status": 400, "message": "Branch with the same name already exists", "data": {}}
-
-        branch_data.company_id = company.company_id
-        new_branch = models.Branch(**branch_data.model_dump())
-        db.add(new_branch)
-        db.commit()
-        db.refresh(new_branch)
-
-        return {"status": 200, "message": "Branch added successfully", "data": new_branch}
-    except IntegrityError as e:
-        print(repr(e))
-        response.status_code = 500
-        return {"status": 500, "message": "Internal Server Error", "data": {}}
-    finally:
-        db.close()
 
 
 @app.post("/branch/employee")
@@ -943,75 +919,7 @@ def delete_product_variant(product_id: int, variant_id: int, db: Session = Depen
         return {"status": 500, "message": "Internal Server Error", "error": str(e)}
 
 
-@app.get("/getAllBranches")
-async def get_branches(db: Session = Depends(get_db)):
-    try:
-        branches = db.query(models.Branch).all()
-        if not branches:
-            return {"status": 204, "message": "No branches found", "data": []}
 
-        serialized_branches = [
-            {"branch_id": branch.branch_id,
-             "branch_name": branch.branch_name,
-             "branch_address": branch.branch_address,
-             "branch_email": branch.branch_email,
-             "branch_number": branch.branch_number,
-             "company_id": branch.company_id}
-            for branch in branches
-        ]
-
-        return {"status": 200, "message": "All branches fetched!", "data": serialized_branches}
-    except Exception as e:
-        print(repr(e))
-        Response.status_code = 500
-        return {"status": "500", "message": "Internal Server Error", "data": str(e)}
-
-
-@app.put("/editBranch/")
-async def edit_branch(
-        branch_data: schemas.BranchUpdate,
-        branch_id: int = Query(..., title="Branch ID", description="The ID of the branch to edit", gt=0),
-        db: Session = Depends(get_db)
-):
-    try:
-        branch = db.query(models.Branch).filter(models.Branch.branch_id == branch_id).first()
-        if not branch:
-            return {"status": 204, "message": "Branch not found", "data": {}}
-
-        if branch_data.branch_name:
-            branch.branch_name = branch_data.branch_name
-        if branch_data.branch_address:
-            branch.branch_address = branch_data.branch_address
-        if branch_data.branch_email:
-            branch.branch_email = branch_data.branch_email
-        if branch_data.branch_number:
-            branch.branch_number = branch_data.branch_number
-
-        db.commit()
-        db.refresh(branch)
-
-        return {"status": 200, "message": "Branch updated successfully", "data": {}}
-    except Exception as e:
-        print(repr(e))
-        return {"status": 500, "message": "Internal Server Error", "data": str(e)}
-
-
-@app.delete("/deleteBranch/")
-async def delete_branch(
-        branch_id: int = Query(..., title="Branch ID", description="The ID of the branch to delete", gt=0),
-        db: Session = Depends(database.get_db)
-):
-    try:
-        branch = db.query(models.Branch).filter(models.Branch.branch_id == branch_id).first()
-        if not branch:
-            return {"status": 204, "message": "Branch Not Found", "data": {}}
-        db.delete(branch)
-        db.commit()
-
-        return {"status": 200, "message": "Branch deleted successfully", "data": {}}
-    except Exception as e:
-        print(repr(e))
-        return {"status": 500, "message": "Internal Server Error", "data": str(e)}
 
 @app.get("/getallCategories")
 async def get_categories(response: Response, db: Session = Depends(get_db)):
@@ -1034,6 +942,113 @@ async def get_categories(response: Response, db: Session = Depends(get_db)):
         response.status_code = 500
         return {"status": "500", "message": "Internal Server Error", "data": {}}
 
+
+@app.get("/productsByCategories")
+def get_products_by_categories(db: Session = Depends(get_db)):
+    try:
+
+        category_names = (
+            db.query(Category.category_name)
+            .join(Products, Products.category_id == Category.category_id)
+            .join(ProductVariant, ProductVariant.product_id == Products.product_id)
+            .filter(ProductVariant.is_published.is_(True))
+            .distinct()
+            .all()
+        )
+
+        if not category_names:
+            return {"status": 204, "message": "No categories found with published products", "data": []}
+
+        response_data = []
+
+        for category_name in category_names:
+            category_name = category_name[0]
+
+            products = (
+                db.query(Products)
+                .join(ProductVariant, Products.product_id == ProductVariant.product_id)
+                .filter(
+                    Category.category_name == category_name,
+                    ProductVariant.is_published.is_(True)
+                )
+                .all()
+            )
+
+            if products:
+                serialized_products = []
+
+                for product in products:
+                    product_variant = (
+                        db.query(ProductVariant)
+                        .filter(
+                            ProductVariant.product_id == product.product_id,
+                            ProductVariant.is_published.is_(True)
+                        )
+                        .order_by(ProductVariant.variant_id)
+                        .first()
+                    )
+
+                    if product_variant:
+                        serialized_products.append({
+                            "product_id": product.product_id,
+                            "product_name": product.product_name,
+                            "variant_id": product_variant.variant_id,
+                            "image": product_variant.image,
+                        })
+
+                category_data = {"category_name": category_name, "products": serialized_products}
+                response_data.append(category_data)
+
+        if not response_data:
+            return {"status": 204, "message": "No products found for any category", "data": []}
+
+        return {
+            "status": 200,
+            "message": "Products fetched successfully for all categories with is_published = true",
+            "data": response_data
+        }
+
+    except Exception as e:
+        print(repr(e))
+        return {"status": 500, "message": "Internal Server Error", "data": {}}
+
+
+@app.get('/productVariants')
+def get_product_variants(
+        product_id: int = Query(..., title="Product ID", description="ID of the product to retrieve variants for",
+                                ge=1),
+        db: Session = Depends(get_db)
+):
+    try:
+        product = db.query(models.Products).filter(models.Products.product_id == product_id).first()
+
+        if not product:
+            return {"status": 200, "message": "Product Not Found", "data": {}}
+
+        variants = db.query(models.ProductVariant).filter(
+            models.ProductVariant.product_id == product_id,
+            models.ProductVariant.is_published.is_(True)
+        ).all()
+
+        response_data = {
+            "status": 200,
+            "message": "Product variants fetched successfully",
+            "data": [
+                {
+                    "image": variant.image,
+                    "product_name": product.product_name,
+                    "quantity": variant.quantity,
+                    "price": variant.variant_cost,
+                    "unit": variant.measuring_unit
+                }
+                for variant in variants
+            ]
+        }
+
+        return response_data
+    except Exception as e:
+        print(repr(e))
+        return {"status": 500, "message": "Internal Server Error", "data": {}}
 
 
 @app.get('/productVariantDetails')
