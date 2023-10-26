@@ -57,17 +57,13 @@ def login_signup_response(company, db):
                     products_available = True
                 else:
                     products_available = False
-            response_data['branches'] = [
-                {
-                    'branch_id': branch.branch_id if branch.branch_id is not None else "",
-                    'branch_email': branch.branch_email if branch.branch_email is not None else "",
-                    'branch_name': branch.branch_name if branch.branch_name is not None else "",
-                    'branch_number': branch.branch_number if branch.branch_number is not None else "",
-                    'branch_address': branch.branch_address if branch.branch_address is not None else "",
-                    "products_available": products_available
-                }
-
-            ]
+            response_data['branches'] = [{
+                'branch_id': branch.branch_id if branch.branch_id is not None else "",
+                'branch_email': branch.branch_email if branch.branch_email is not None else "",
+                'branch_name': branch.branch_name if branch.branch_name is not None else "",
+                'branch_number': branch.branch_number if branch.branch_number is not None else "",
+                'branch_address': branch.branch_address if branch.branch_address is not None else "",
+                "products_available": products_available}]
     return response_data
 
 
@@ -188,7 +184,7 @@ def signup(companyId: str, branchId: int, role_id: int, db: Session = Depends(ge
             else:
                 return {"status": 404, "message": "Branch does NOT exist", "data": {"branches": {}, "role_id": role_id}}
 
-        return {"status": 404, "message": "Comapny does NOT exist", "data": {"branches": {}, "role_id": role_id}}
+        return {"status": 404, "message": "Company does NOT exist", "data": {"branches": {}, "role_id": role_id}}
 
     except Exception as e:
         print(repr(e))
