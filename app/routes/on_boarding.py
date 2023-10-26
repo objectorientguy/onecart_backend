@@ -1,7 +1,7 @@
 from typing import Union
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, Body, Query
+from fastapi import APIRouter, Depends
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
@@ -68,8 +68,7 @@ def login_signup_response(company, db):
 
 
 @router.post('/signup')
-def signup(company_data: schemas.CompanySignUp = Body(...),
-           signup_credentials: Union[str, int] = Query(...), db: Session = Depends(get_db)):
+def signup(company_data: schemas.CompanySignUp, signup_credentials: Union[str, int], db: Session = Depends(get_db)):
     try:
         if signup_credentials.isdigit():
             company_data.company_contact = int(signup_credentials)

@@ -59,24 +59,17 @@ async def get_branches(companyId: str, db: Session = Depends(get_db)):
         return {"status": "500", "message": "Internal Server Error", "data": str(e)}
 
 
-@router.put("/editBranch/")
+@router.put("/editBranch")
 async def edit_branch(branch_data: schemas.BranchUpdate, branch_id: int, db: Session = Depends(get_db)):
     try:
-        branch = db.query(models.Branch).filter(models.Branch.branch_id == branch_id).first()
-        if not branch:
-            return {"status": 204, "message": "Branch not found", "data": {}}
+        branch = db.query(models.Branch).filter(models.Branch.branch_id == branch_id)
+        branch_exist = branch.first()
+        if not branch_exist:
+            Response.status_code = 404
+            return {"status": 404, "message": "Branch not found", "data": {}}
 
-        if branch_data.branch_name:
-            branch.branch_name = branch_data.branch_name
-        if branch_data.branch_address:
-            branch.branch_address = branch_data.branch_address
-        if branch_data.branch_email:
-            branch.branch_email = branch_data.branch_email
-        if branch_data.branch_number:
-            branch.branch_number = branch_data.branch_number
-
+        branch.update(branch_data.model_dump(), synchronize_session=False)
         db.commit()
-        db.refresh(branch)
 
         return {"status": 200, "message": "Branch updated successfully", "data": {}}
     except Exception as e:
@@ -84,13 +77,14 @@ async def edit_branch(branch_data: schemas.BranchUpdate, branch_id: int, db: Ses
         return {"status": 500, "message": "Internal Server Error", "data": str(e)}
 
 
-@router.delete("/deleteBranch/")
+@router.delete("/deleteBranch")
 async def delete_branch(branch_id: int, db: Session = Depends(get_db)):
     try:
-        branch = db.query(models.Branch).filter(models.Branch.branch_id == branch_id).first()
-        if not branch:
+        branch = db.query(models.Branch).filter(models.Branch.branch_id == branch_id)
+        branch_exist = branch.first()
+        if not branch_exist:
             return {"status": 204, "message": "Branch Not Found", "data": {}}
-        db.delete(branch)
+        branch.delete(synchronize_session=False)
         db.commit()
 
         return {"status": 200, "message": "Branch deleted successfully", "data": {}}

@@ -339,14 +339,12 @@ def update_company_details(company_id: str, response: Response, request_body: sc
         return {"status": 500, "message": "Internal Server Error", "data": {}}
 
 
-
-
 @app.post("/branch/employee")
 def add_employee(branch_id: int, employee_data: schemas.AddEmployee, db: Session = Depends(get_db)):
     try:
         branch = db.query(models.Branch).filter(models.Branch.branch_id == branch_id).first()
         if branch is None:
-            return {"status_code": 404, "message": "Branch not found", "data":  {}}
+            return {"status_code": 404, "message": "Branch not found", "data": {}}
 
         hashed_password = pwd_context.hash(employee_data.employee_password)
         employee_data.employee_password = hashed_password
@@ -372,11 +370,13 @@ def add_employee(branch_id: int, employee_data: schemas.AddEmployee, db: Session
         print(repr(e))
         return {"status_code": 500, "message": "Internal Server Error", "data": {}}
 
+
 def get_employee_info(employee_id: int, db: Session):
     result = db.query(models.Employee.employee_name, models.Role.role_name, models.Role.role_id) \
         .join(models.Role, models.Employee.employee_id == models.Role.employee_id) \
         .filter(models.Employee.employee_id == employee_id).first()
     return (result)
+
 
 @app.get("/branch/employee/details")
 def get_employee_details(branch_id: int, db: Session = Depends(get_db)):
@@ -623,7 +623,7 @@ def edit_product_variant(variant_data: schemas.ProductEdit, db: Session = Depend
             return {"status": 204, "detail": "Product variant not found", "data": {}}
 
         # Update the fields based on the provided data
-        for field, value in variant_data.dict().items():
+        for field, value in variant_data.model_dump().items():
             if value is not None:
                 setattr(existing_variant, field, value)
 
@@ -896,8 +896,6 @@ def delete_product_variant(product_id: int, variant_id: int, db: Session = Depen
         return {"status": 500, "message": "Internal Server Error", "error": str(e)}
 
 
-
-
 @app.get("/getallCategories")
 async def get_categories(response: Response, db: Session = Depends(get_db)):
     try:
@@ -1051,7 +1049,6 @@ def get_product_variant_details(
         if not variant.is_published:
             return {"status": 204, "message": "Product Variant is not Published", "data": {}}
 
-
         category = product.category
         category_name = category.category_name
 
@@ -1080,9 +1077,10 @@ def get_product_variant_details(
         return {"status": 500, "message": "Internal Server Error", "data": {}}
 
 
-
 @app.put('/editProductVariant/')
-def edit_product_variant(variant_data: schemas.ProductEdit,variant_id: int = Query(..., description="The ID of the product variant to edit."), db: Session = Depends(get_db)):
+def edit_product_variant(variant_data: schemas.ProductEdit,
+                         variant_id: int = Query(..., description="The ID of the product variant to edit."),
+                         db: Session = Depends(get_db)):
     try:
         existing_variant = db.query(models.ProductVariant).filter(
             models.ProductVariant.variant_id == variant_id).first()
@@ -1212,9 +1210,9 @@ def get_products_by_categories(db: Session = Depends(get_db)):
 
 @app.put('/editProduct')
 def edit_product(
-    product_data: schemas.ProductUpdate,
-    product_id: int = Query(..., description="The ID of the product to edit"),
-    db: Session = Depends(get_db)
+        product_data: schemas.ProductUpdate,
+        product_id: int = Query(..., description="The ID of the product to edit"),
+        db: Session = Depends(get_db)
 ):
     try:
         existing_product = db.query(models.Products).filter(
@@ -1239,14 +1237,11 @@ def edit_product(
                 db.commit()
                 db.refresh(new_category)
 
-
                 existing_product.category_id = new_category.category_id
-
 
         for field, value in product_data.dict().items():
             if value is not None:
                 setattr(existing_product, field, value)
-
 
         product_variant = db.query(models.ProductVariant).filter(
             models.ProductVariant.product_id == existing_product.product_id
@@ -1263,4 +1258,6 @@ def edit_product(
             return {"status": 400, "message": "Check the product details", "data": {}}
         else:
             return {"status": 500, "message": "Internal Server Error", "error": str(e)}
+
+
 
