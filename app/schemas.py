@@ -522,6 +522,15 @@ class Inventory(BaseModel):
     date_of_shipment: str
     expiry_of_product: str
 
+class Stock(BaseModel):
+    stock_id: int | None = None
+    stock_order_count: int
+    seller: str
+    expiry_date: str | None = ""
+
+class UpdateStock(BaseModel):
+    stock_order_count: int
+
 class AddEmployee(BaseModel):
     employee_name: str | None = None
     employee_contact: int | None = None
