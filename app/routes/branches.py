@@ -3,7 +3,6 @@ from fastapi.openapi.models import Response
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
-
 from app import schemas, models
 from app.database import get_db
 

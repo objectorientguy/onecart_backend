@@ -274,14 +274,6 @@ class Brand(Base):
     brand_image = Column(String, nullable=False)
 
 
-# class ProductCompositeKey:
-#     def __init__(self, product_id, category_id):
-#         self.product_id = product_id
-#         self.category_id = category_id
-#
-#     def __composite_values__(self):
-#         return self.product_id, self.category_id
-
 
 # class CategoryProduct(Base):
 #     __tablename__ = "product_categories"
