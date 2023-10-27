@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Union
 from pydantic import BaseModel, EmailStr
 from datetime import date, time, datetime
 
@@ -74,9 +74,9 @@ class Product(BaseModel):
 class ProductVariant(BaseModel):
     variant_id: Optional[int] | None = None
     variant_cost: float
-    unit: str
+    measuring_unit: str
     brand_name: str
-    discounted_cost: float
+    discounted_cost: float | None = None
     discount: int | None = None
     quantity: int
     description: str
@@ -84,6 +84,11 @@ class ProductVariant(BaseModel):
     image: List[str]
     ratings: int | None = None
     product_id: int
+    stock: int
+    is_published: bool
+    barcode_no: int
+    product_id: int
+    branch_id: int
 
     class Config:
         from_attributes = True
@@ -153,6 +158,13 @@ class EditAddress(Address):
         from_attributes = True
 
 
+# class OrderItems(BaseModel):
+#     product_id: int
+#     variant: int
+#
+#     class Config:
+#         from_attributes = True
+
 class CartItem(BaseModel):
     cart_id: int
     product_id: int
@@ -168,6 +180,8 @@ class CartSchema(BaseModel):
     customer_contact: int
     coupon_id: int
     products: str
+
+    # creation_time: datetime
 
     class Config:
         from_attributes = True
@@ -283,20 +297,20 @@ class Review(BaseModel):
         from_attributes = True
 
 
-# class Companies(BaseModel):
-#     company_id: Optional[int] | None = None
-#     company_name: str
-#     company_password: str | None = None
-#     company_domain: str
-#     company_logo: str
-#     company_email: EmailStr | None = None
-#     services: str
-#     company_contact: int
-#     company_address: str
-#     white_labelled: bool = True
-#
-#     class Config:
-#         from_attributes = True
+class Companies(BaseModel):
+    company_id: Optional[int] | None = None
+    company_name: str
+    company_password: str | None = None
+    company_domain: str
+    company_logo: str
+    company_email: EmailStr | None = None
+    services: str
+    company_contact: int
+    company_address: str
+    white_labelled: bool = True
+
+    class Config:
+        from_attributes = True
 
 
 class CompanyUpdateDetails(BaseModel):
@@ -342,6 +356,13 @@ class Branch(BaseModel):
         from_attributes = True
 
 
+class BranchUpdate(BaseModel):
+    branch_name: Optional[str] | None = None
+    branch_address: Optional[str] | None = None
+    branch_email: Optional[str] | None = None
+    branch_number: Optional[int] | None = None
+
+
 class Employee(BaseModel):
     employee_id: int | None = None
     employee_name: str | None = None
@@ -378,27 +399,30 @@ class NewUsers(BaseModel):
     user_password: str
 
 
+class EditUser(BaseModel):
+    user_image: str
+    user_name: str
+    user_emailId: int
+    user_contact: int
+
+
 class ProductInput(BaseModel):
-    variant_id: int
-    variant_cost: float
+    product_name: str
     brand_name: str
-    quantity: int
-    discounted_cost: float
-    discount: int
-    stock: int
-    description: int
-    image: List[str]
-    ratings: int
-    measuring_unit: str
-    barcode_no: int | None = None
-    product_id: int
     branch_id: int
-    user_id: int
+    barcode_no: Optional[int] = None
+    image: List[str]
+    description: str
+    category_name: str
+    variant_cost: float
+    discounted_cost: float
+    stock: int
+    quantity: int
+    measuring_unit: str
+    is_published: bool
 
 
 class ProductEdit(BaseModel):
-    variant_id: int
-    product_id: int
     branch_id: int
     user_id: int
     product_name: Optional[str] = None
@@ -412,6 +436,14 @@ class ProductEdit(BaseModel):
     measuring_unit: Optional[str] = None
 
 
+class ProductUpdate(BaseModel):
+    branch_id: int
+    user_id: int
+    product_name: Optional[str] = None
+    description: Optional[str] = None
+    category_name: Optional[str] = None
+
+
 class ProductUpdateInput(BaseModel):
     variant_cost: float
     discounted_cost: float
@@ -420,6 +452,7 @@ class ProductUpdateInput(BaseModel):
     measuring_unit: str
     barcode_no: Optional[int] = None
     image: List[str]
+    is_published: bool
 
 
 class EditCategoryName(BaseModel):
@@ -507,3 +540,45 @@ class OrderList(BaseModel):
     additional_charges: float
     to_pay: float
     customer_contact: int
+
+
+class Inventory(BaseModel):
+    product_image: str
+    product_name: str
+    stock_qty_unit: str
+    stock_order_count: int
+    price: float
+    reorder_stock: int
+    supplier: str
+    barcode: int
+    date_of_shipment: str
+    expiry_of_product: str
+
+
+class Stock(BaseModel):
+    stock_id: int | None = None
+    stock_order_count: int
+    seller: str
+    expiry_date: str | None = ""
+
+
+class UpdateStock(BaseModel):
+    stock_order_count: int
+
+
+class AddEmployee(BaseModel):
+    employee_name: str | None = None
+    employee_contact: int | None = None
+    employee_password: str | None = None
+    employee_gender: str | None = None
+    role_name: str
+
+
+class ChangePassword(BaseModel):
+    current_password: str
+    new_password: str
+    confirm_password: str
+
+# class Billing(BaseModel):
+#     category_name: Category.category_name
+#     category_id: Category.category_id

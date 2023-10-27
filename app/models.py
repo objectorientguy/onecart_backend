@@ -1,5 +1,4 @@
-from sqlalchemy import Column, String, BIGINT, Date, JSON, ForeignKey, CheckConstraint, Time, Boolean, Float, Integer, \
-    DateTime
+from sqlalchemy import Column, String, BIGINT, Date, JSON, ForeignKey, CheckConstraint, Time, Boolean, Float, Integer, DateTime
 from sqlalchemy.orm import validates, relationship
 from sqlalchemy.sql.expression import text
 from sqlalchemy.sql.sqltypes import TIMESTAMP
@@ -45,34 +44,32 @@ class ProductVariant(Base):
     image = Column(JSON, nullable=True)
     ratings = Column(Integer, nullable=True)
     measuring_unit = Column(String, nullable=False)
-    barcode_no = Column(BIGINT, nullable=True, unique=True)
+    is_published = Column(Boolean, nullable=False)
+    barcode_no = Column(BIGINT, nullable=False, unique=True)
     product_id = Column(BIGINT, ForeignKey("products.product_id", ondelete="CASCADE"), nullable=False)
     branch_id = Column(BIGINT, ForeignKey("branch.branch_id", ondelete="CASCADE"), nullable=False)
-    user_id = Column(BIGINT, ForeignKey("new_users.user_uniqueid", ondelete="CASCADE"), nullable=False)
 
     product = relationship("Products")
     branch = relationship("Branch")
-    user = relationship("NewUsers")
 
 
-# class ProductCompositeKey:
-#     def __init__(self, product_id, category_id):
-#         self.product_id = product_id
-#         self.category_id = category_id
+# class Shops(Base):
+#     __tablename__ = "shops"
 #
-#     def __composite_values__(self):
-#         return self.product_id, self.category_id
+#     shop_id = Column(BIGINT, nullable=False, primary_key=True, autoincrement=True)
+#     shop_name = Column(String, nullable=False)
+#     shop_description = Column(String, nullable=True)
+#     shop_image = Column(String, nullable=True)
+#     shop_contact = Column(BIGINT, nullable=False)
+#     shop_address = Column(String, nullable=True)
+#     shop_coordinates = Column(String, nullable=True)
+#     shop_mok = Column(String, nullable=True)
+#     shop_service = Column(String, nullable=True)
+#     is_available = Column(Boolean, nullable=False)
+#     company_name = Column(String, ForeignKey(
+#         "companies.company_name", ondelete="CASCADE"), nullable=False)
 #
-#
-# class CategoryProduct(Base):
-#     __tablename__ = "product_categories"
-#
-#     product_id = Column(BIGINT, ForeignKey("products.product_id", ondelete="CASCADE"), nullable=False, primary_key=True)
-#     category_id = Column(BIGINT, ForeignKey("categories.category_id", ondelete="CASCADE"), nullable=False,
-#                          primary_key=True)
-#     composite_key = composite(ProductCompositeKey, product_id, category_id)
-#     product = relationship("Product", back_populates="categories")
-#     category = relationship("Category", back_populates="products")
+#     company = relationship("Companies")
 
 
 class Image(Base):
@@ -276,14 +273,6 @@ class Brand(Base):
     brand_image = Column(String, nullable=False)
 
 
-# class ProductCompositeKey:
-#     def __init__(self, product_id, category_id):
-#         self.product_id = product_id
-#         self.category_id = category_id
-#
-#     def __composite_values__(self):
-#         return self.product_id, self.category_id
-
 
 # class CategoryProduct(Base):
 #     __tablename__ = "product_categories"
@@ -389,7 +378,6 @@ class Companies(Base):
     __tablename__ = "companies"
 
     company_id = Column(String, nullable=True, primary_key=True, unique=True)
-    # company_name = Column(String, nullable=False, primary_key=True, unique=True)
     company_name = Column(String, nullable=True, unique=True)
     company_password = Column(String, nullable=False)
     company_domain = Column(String, nullable=True)
@@ -413,10 +401,10 @@ class Branch(Base):
     __tablename__ = "branch"
 
     branch_id = Column(Integer, primary_key=True, autoincrement=True)
-    branch_name = Column(String, nullable=True)
-    branch_address = Column(String, nullable=True)
-    branch_email = Column(String, nullable=True)
-    branch_number = Column(BIGINT, nullable=True)
+    branch_name = Column(String, nullable=False)
+    branch_address = Column(String, nullable=False)
+    branch_email = Column(String, nullable=False)
+    branch_number = Column(BIGINT, nullable=False, unique=True)
     company_id = Column(String, ForeignKey("companies.company_id", ondelete="CASCADE"))
 
     company = relationship("Companies")
@@ -511,3 +499,19 @@ class NewUsers(Base):
             return None
         else:
             return value
+
+
+class Stock(Base):
+    __tablename__ = "stock"
+
+    stock_id = Column(Integer, primary_key=True, nullable=False, autoincrement=True)
+    stock_order_count = Column(Integer, nullable=False)
+    seller = Column(String, nullable=True)
+    barcode_no = Column(Integer, nullable=False)
+    product_id = Column(Integer, ForeignKey("products.product_id", ondelete="CASCADE"), nullable=False)
+    variant_id = Column(Integer, ForeignKey("product_variants.variant_id", ondelete="CASCADE"), nullable=False)
+    date_of_shipment = Column(TIMESTAMP(timezone=True), nullable=True, server_default=text('now()'))
+    expiry_date = Column(String, nullable=True)
+
+    product = relationship("Products")
+    variant = relationship("ProductVariant")
