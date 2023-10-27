@@ -438,37 +438,36 @@ class Role(Base):
     employee = relationship("Employee")
 
 
-#
-# class Order(Base):
-#     __tablename__ = "orders"
-#
-#     order_id = Column(Integer, primary_key=True, autoincrement=True)
-#     order_no = Column(String, nullable=False, unique=True)
-#     product_list = Column(JSON, nullable=False)
-#     total_order = Column(Float, nullable=True)
-#     gst_charges = Column(Float, nullable=False, server_default=text('25'))
-#     additional_charges = Column(Float, nullable=False, server_default=text('25'))
-#     to_pay = Column(Float, nullable=False)
-#     customer_contact = Column(BIGINT, ForeignKey("customer.customer_contact", ondelete="CASCADE"), nullable=True)
-#
-#     customer = relationship("Customer")
-#
-#
-# class Payment(Base):
-#     __tablename__ = "payments"
-#
-#     payment_id = Column(Integer, primary_key=True, autoincrement=True)
-#     order_id = Column(Integer, ForeignKey("orders.order_id", ondelete="CASCADE"), nullable=False)
-#     payment_type = Column(String, nullable=False)
-#
-#     __table_args__ = (
-#         CheckConstraint(
-#             payment_type.in_(["Bankcard", "UPI", "Cash", "Other"]),
-#             name="payment_type"
-#         ),
-#     )
-#
-#     order = relationship("Order")
+class Order(Base):
+    __tablename__ = "orders"
+
+    order_id = Column(Integer, primary_key=True, autoincrement=True)
+    order_no = Column(String, nullable=False, unique=True)
+    product_list = Column(JSON, nullable=False)
+    total_order = Column(Float, nullable=True)
+    gst_charges = Column(Float, nullable=False, server_default=text('25'))
+    additional_charges = Column(Float, nullable=False, server_default=text('25'))
+    to_pay = Column(Float, nullable=False)
+    customer_contact = Column(BIGINT, ForeignKey("customer.customer_contact", ondelete="CASCADE"), nullable=True)
+
+    customer = relationship("Customer")
+
+
+class Payment(Base):
+    __tablename__ = "payments"
+
+    payment_id = Column(Integer, primary_key=True, autoincrement=True)
+    order_id = Column(Integer, ForeignKey("orders.order_id", ondelete="CASCADE"), nullable=False)
+    payment_type = Column(String, nullable=False)
+
+    __table_args__ = (
+        CheckConstraint(
+            payment_type.in_(["Bankcard", "UPI", "Cash", "Other"]),
+            name="payment_type"
+        ),
+    )
+
+    order = relationship("Order")
 
 
 class Customer(Base):

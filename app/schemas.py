@@ -3,20 +3,6 @@ from pydantic import BaseModel, EmailStr
 from datetime import date, time, datetime
 
 
-class Companies(BaseModel):
-    company_id: int | None = None
-    company_name: str
-    company_domain: str
-    company_logo: str
-    password: str
-    email: str
-    services: str
-    contact_number: int
-    company_contact: int
-    company_address: str
-
-    class Config:
-        from_attributes = True
 
 
 class UserCompany(BaseModel):
@@ -477,12 +463,13 @@ class OrderSchema(BaseModel):
 
 class OrderCreate(BaseModel):
     order_no: str
-    customer_contact: Optional[int] = None
     product_list: List[dict]
-    total_order: float
-    gst_charges: float
+    item_total: int
+    gst: float
     additional_charges: float
-    to_pay: float
+    total: float
+    customer_contact: Optional[int] = None
+    # to_pay: float
     payment_type: str
 
 
@@ -579,6 +566,8 @@ class ChangePassword(BaseModel):
     new_password: str
     confirm_password: str
 
-# class Billing(BaseModel):
-#     category_name: Category.category_name
-#     category_id: Category.category_id
+
+# class GetBilling(BaseModel):
+#     category: Category
+#     product: Product
+#     product_variant: ProductVariant
