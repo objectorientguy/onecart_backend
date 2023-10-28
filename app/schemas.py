@@ -2,7 +2,7 @@ from typing import Optional, List, Union
 from pydantic import BaseModel, EmailStr
 from datetime import date, time, datetime
 
-
+from app.models import Products
 
 
 class UserCompany(BaseModel):
@@ -47,14 +47,14 @@ class EditCategory(Category):
 #         from_attributes = True
 
 
-# class Product(BaseModel):
-#     product_id: int | None = None
-#     brand_id: int
-#     product_name: str
-#     details: str
-#
-#     class Config:
-#         from_attributes = True
+class Product(BaseModel):
+    product_id: int | None = None
+    brand_id: int
+    product_name: str
+    details: str
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class ProductVariant(BaseModel):
@@ -407,6 +407,9 @@ class ProductInput(BaseModel):
     measuring_unit: str
     is_published: bool
 
+    class Config:
+        arbitrary_types_allowed = True
+
 
 class ProductEdit(BaseModel):
     branch_id: int
@@ -421,6 +424,9 @@ class ProductEdit(BaseModel):
     quantity: Optional[int] = None
     measuring_unit: Optional[str] = None
 
+    class Config:
+        arbitrary_types_allowed = True
+
 
 class ProductUpdate(BaseModel):
     branch_id: int
@@ -428,6 +434,9 @@ class ProductUpdate(BaseModel):
     product_name: Optional[str] = None
     description: Optional[str] = None
     category_name: Optional[str] = None
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class EditCategoryName(BaseModel):
@@ -527,7 +536,7 @@ class ChangePassword(BaseModel):
     confirm_password: str
 
 
-# class GetBilling(BaseModel):
-#     category: Category
-#     product: Product
-#     product_variant: ProductVariant
+class GetBilling(BaseModel):
+    category: Category
+    product: Products
+    product_variant: ProductVariant
