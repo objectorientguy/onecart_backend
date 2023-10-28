@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.orm import Session
 from app import models, schemas
 from app.database import engine, get_db
@@ -50,7 +51,7 @@ def products_by_categories(branch_id, db):
 
 
 @router.get("/product/categories")
-def get_product_by_categories(branch_id=int, db: Session = Depends(get_db), response_model=schemas.GetBilling):
+def get_product_by_categories(branch_id=int, db: Session = Depends(get_db)):
     try:
         branches = db.query(models.Branch).filter(models.Branch.branch_id == branch_id).all()
         if not branches:

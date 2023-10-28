@@ -50,7 +50,7 @@ class ProductVariant(Base):
     product_id = Column(BIGINT, ForeignKey("products.product_id", ondelete="CASCADE"), nullable=False)
     branch_id = Column(BIGINT, ForeignKey("branch.branch_id", ondelete="CASCADE"), nullable=False)
 
-    product = relationship("Products")
+    product = relationship("ProductsTable")
     branch = relationship("Branch")
 
 
@@ -513,5 +513,5 @@ class Stock(Base):
     date_of_shipment = Column(TIMESTAMP(timezone=True), nullable=True, server_default=text('now()'))
     expiry_date = Column(String, nullable=True)
 
-    product = relationship("Products")
+    product = relationship("ProductsTable")
     variant = relationship("ProductVariant")
