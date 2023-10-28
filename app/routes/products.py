@@ -195,12 +195,12 @@ def delete_product_by_id(product_id: int = Query(None, description="Product ID t
         if product_id is None:
             return {"status": 400, "message": "product_id is required", "data": {}}
 
-        product = db.query(models.Products).filter(models.Products.product_id == product_id).first()
+        product = db.query(models.ProductsTable).filter(models.ProductsTable.product_id == product_id).first()
 
         if not product:
             return {"status": 204, "message": "Product not found", "data": {}}
 
-        db.query(models.Products).filter(models.Products.product_id == product_id).delete()
+        db.query(models.ProductsTable).filter(models.ProductsTable.product_id == product_id).delete()
         db.commit()
 
         return {"status": 200, "message": "Product deleted successfully", "data": {}}
@@ -257,7 +257,7 @@ def get_product_variant_details(
         db: Session = Depends(get_db)
 ):
     try:
-        product = db.query(models.Products).filter(models.Products.product_id == product_id).first()
+        product = db.query(models.ProductsTable).filter(models.ProductsTable.product_id == product_id).first()
 
         if not product:
             return {"status": 204, "message": "Product Not Found", "data": {}}
@@ -304,7 +304,7 @@ def get_product_variant_details(
 @router.get("/productsByCategory")
 def get_products_by_categories(db: Session = Depends(get_db)):
     try:
-        # Find all distinct category names with is_published = true
+
         category_names = (
             db.query(Category.category_name)
             .join(Products, Products.category_id == Category.category_id)
@@ -389,8 +389,8 @@ def edit_product(
         db: Session = Depends(get_db)
 ):
     try:
-        existing_product = db.query(models.Products).filter(
-            models.Products.product_id == product_id
+        existing_product = db.query(models.ProductsTable).filter(
+            models.ProductsTable.product_id == product_id
         ).first()
 
         if not existing_product:

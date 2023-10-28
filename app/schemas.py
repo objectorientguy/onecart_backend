@@ -2,8 +2,6 @@ from typing import Optional, List, Union
 from pydantic import BaseModel, EmailStr
 from datetime import date, time, datetime
 
-from app.models import Products
-
 
 class UserCompany(BaseModel):
     company_name: str
@@ -39,15 +37,15 @@ class EditCategory(Category):
     pass
 
 
-# class ProductCategory(BaseModel):
-#     product_id: int
-#     category_id: int
-#
-#     class Config:
-#         from_attributes = True
+class ProductCategory(BaseModel):
+    product_id: int
+    category_id: int
+
+    class Config:
+        from_attributes = True
 
 
-class Product(BaseModel):
+class ProductSchema(BaseModel):
     product_id: int | None = None
     brand_id: int
     product_name: str
@@ -536,7 +534,7 @@ class ChangePassword(BaseModel):
     confirm_password: str
 
 
-class GetBilling(BaseModel):
-    category: Category
-    product: Products
-    product_variant: ProductVariant
+# class GetBilling(BaseModel):
+#     category: Category
+#     # product: Products
+#     product_variant: ProductVariant
