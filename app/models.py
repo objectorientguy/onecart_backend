@@ -50,7 +50,7 @@ class ProductVariant(Base):
     product_id = Column(BIGINT, ForeignKey("products.product_id", ondelete="CASCADE"), nullable=False)
     branch_id = Column(BIGINT, ForeignKey("branch.branch_id", ondelete="CASCADE"), nullable=False)
 
-    product = relationship("Products")
+    product = relationship("ProductsTable")
     branch = relationship("Branch")
 
 
@@ -513,7 +513,7 @@ class Stock(Base):
     reorder_stock_at = Column(Integer, nullable=True)
     perishable = Column(Boolean, nullable=True)
 
-    product = relationship("Products")
+    product = relationship("ProductsTable")
     variant = relationship("ProductVariant")
 
 

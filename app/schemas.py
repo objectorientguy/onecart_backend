@@ -47,14 +47,14 @@ class ProductCategory(BaseModel):
         from_attributes = True
 
 
-class Product(BaseModel):
+class ProductSchema(BaseModel):
     product_id: int | None = None
     brand_id: int
     product_name: str
     details: str
 
     class Config:
-        from_attributes = True
+        arbitrary_types_allowed = True
 
 
 class ProductVariant(BaseModel):
@@ -80,8 +80,8 @@ class ProductVariant(BaseModel):
         from_attributes = True
 
 
-class EditProduct(Product):
-    pass
+# class EditProduct(Product):
+#     pass
 
 
 class UserData(BaseModel):
@@ -380,7 +380,7 @@ class ProductInput(BaseModel):
     product_name: str
     brand_name: str
     branch_id: int
-    barcode_no: Optional[int] = None
+    barcode_no: int
     image: List[str]
     description: str
     category_name: str
@@ -390,6 +390,9 @@ class ProductInput(BaseModel):
     quantity: int
     measuring_unit: str
     is_published: bool
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class ProductEdit(BaseModel):
@@ -405,6 +408,9 @@ class ProductEdit(BaseModel):
     quantity: Optional[int] = None
     measuring_unit: Optional[str] = None
 
+    class Config:
+        arbitrary_types_allowed = True
+
 
 class ProductUpdate(BaseModel):
     branch_id: int
@@ -413,16 +419,8 @@ class ProductUpdate(BaseModel):
     description: Optional[str] = None
     category_name: Optional[str] = None
 
-
-class ProductUpdateInput(BaseModel):
-    variant_cost: float
-    discounted_cost: float
-    stock: int
-    quantity: int
-    measuring_unit: str
-    barcode_no: Optional[int] = None
-    image: List[str]
-    is_published: bool
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class EditCategoryName(BaseModel):
@@ -461,28 +459,6 @@ class ImageDeleteRequest(BaseModel):
     image_url: str
 
 
-class ProductItem(BaseModel):
-    product_id: int
-    image: str
-    variant_cost: float
-    quantity: int
-    product_name: str
-    stock: int
-
-
-class ProductDetailResponse(BaseModel):
-    product_name: str
-    brand_name: str
-    description: str
-    category_name: str
-    image: list
-    variant_cost: float
-    discounted_cost: float
-    quantity: int
-    stock: int
-    measuring_unit: str
-
-
 class OrderResponse(BaseModel):
     order_id: int
     order_no: str
@@ -493,13 +469,6 @@ class OrderResponse(BaseModel):
     additional_charges: float
     to_pay: float
 
-
-class ProductDetails(BaseModel):
-    product_name: str
-    description: str
-    category_name: str
-    stock: int
-    quantity: int
 
 
 class OrderList(BaseModel):
