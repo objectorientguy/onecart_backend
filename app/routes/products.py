@@ -10,24 +10,25 @@ router = APIRouter()
 @router.post('/addProduct')
 def add_product(product_data: ProductInput, db: Session = Depends(get_db)):
     try:
-        existing_product = db.query(models.Products).filter(
-            models.Products.product_name == product_data.product_name).first()
-        if existing_product:
-            return {"status": 400, "message": "Product with the same name already exists", "data": {}}
-        existing_variant = db.query(models.ProductVariant).filter(
-            models.ProductVariant.barcode_no == product_data.barcode_no).first()
-        if existing_variant:
-            return {"status": 400, "message": "Product with the same barcode number already exists", "data": {}}
         brand = db.query(models.Brand).filter(models.Brand.brand_name == product_data.brand_name).first()
         if not brand:
-            return {"status": 400, "message": "Brand not found", "data": {}}
+            return {"status": 400, "message": "Brand Not Found", "data": {}}
+
         category = db.query(models.Category).filter(models.Category.category_name == product_data.category_name).first()
         if not category:
-            return {"status": 400, "message": "Category not found", "data": {}}
             category = models.Category(category_name=product_data.category_name)
             db.add(category)
             db.commit()
             db.refresh(category)
+
+        existing_product = db.query(models.Products).filter(models.Products.product_name == product_data.product_name).first()
+        if existing_product:
+            return {"status": 400, "message": "Product With same name already exist", "data": {}}
+
+        existing_variant = db.query(models.ProductVariant).filter(models.ProductVariant.barcode_no == product_data.barcode_no).first()
+        if existing_variant:
+            return {"status": 400, "message": "Product With same barcode number already exist", "data": {}}
+
         new_product = models.Products(
             product_name=product_data.product_name,
             brand_id=brand.brand_id,
@@ -36,6 +37,7 @@ def add_product(product_data: ProductInput, db: Session = Depends(get_db)):
         db.add(new_product)
         db.commit()
         db.refresh(new_product)
+
         new_variant = models.ProductVariant(
             variant_cost=product_data.variant_cost,
             measuring_unit=product_data.measuring_unit,
@@ -52,27 +54,26 @@ def add_product(product_data: ProductInput, db: Session = Depends(get_db)):
         )
         db.add(new_variant)
         db.commit()
-        db.refresh(new_variant)
-        new_stock = models.Stock(
-            product_id=new_product.product_id,
-            variant_id=new_variant.variant_id,
-            current_stock_count=new_variant.stock,
-            barcode_no=product_data.barcode_no
-        )
-        db.add(new_stock)
+
+        db.add(new_variant)
         db.commit()
+
         brand_name = brand.brand_name
         category_name = category.category_name
-        return {"status": 200,  "message": "New product added successfully!",
-                "data": {
-                    "product_id": new_product.product_id,
-                    "product_name": new_product.product_name,
-                    "description": product_data.description,
-                    "category_name": category_name,
-                    "brand": brand_name }}
-    except IntegrityError as e:
-            return {"status": 500, "message": "Internal Server Error", "data": {}}
 
+        return {
+            "status": 200,
+            "message": "New product added successfully!",
+            "data": {
+                "product_id": new_product.product_id,
+                "product_name": new_product.product_name,
+                "description": product_data.description,
+                "category_name": category_name,
+                "brand": brand_name
+            }
+        }
+    except IntegrityError as e:
+        return {"status": 500, "message": "Internal Server Error", "data": {}}
 
 @router.post('/addProductVariant')
 def add_product_variant(product_id: int, product_data: schemas.ProductVariant, db: Session = Depends(get_db)):
@@ -255,7 +256,7 @@ def get_product_variant_details(
 @router.get("/productsByCategory")
 def get_products_by_categories(db: Session = Depends(get_db)):
     try:
-        # Find all distinct category names with is_published = true
+
         category_names = (
             db.query(models.Category.category_name)
             .join(models.Products, models.Products.category_id == models.Category.category_id)
