@@ -57,28 +57,38 @@ class ProductSchema(BaseModel):
         arbitrary_types_allowed = True
 
 
+# class ProductVariant(BaseModel):
+#     variant_id: Optional[int] | None = None
+#     variant_cost: float
+#     measuring_unit: str
+#     brand_name: str
+#     discounted_cost: float | None = None
+#     discount: int | None = None
+#     quantity: int
+#     description: str
+#     discounted_cost: float
+#     image: List[str]
+#     ratings: int | None = None
+#     product_id: int
+#     stock: int
+#     is_published: bool
+#     barcode_no: int
+#     product_id: int
+#     branch_id: int
+#
+#     class Config:
+#         from_attributes = True
+
+
 class ProductVariant(BaseModel):
-    variant_id: Optional[int] | None = None
     variant_cost: float
-    measuring_unit: str
-    brand_name: str
-    discounted_cost: float | None = None
-    discount: int | None = None
-    quantity: int
-    description: str
     discounted_cost: float
-    image: List[str]
-    ratings: int | None = None
-    product_id: int
     stock: int
-    is_published: bool
+    quantity: int
+    measuring_unit: str
+    image: List[str]
     barcode_no: int
-    product_id: int
-    branch_id: int
-
-    class Config:
-        from_attributes = True
-
+    is_published: bool
 
 # class EditProduct(Product):
 #     pass
@@ -397,11 +407,11 @@ class ProductInput(BaseModel):
 
 class ProductEdit(BaseModel):
     branch_id: int
-    user_id: int
     product_name: Optional[str] = None
     brand_name: Optional[str] = None
     description: Optional[str] = None
     category_name: Optional[str] = None
+    barcode_no: Optional[int] = None
     variant_cost: Optional[float] = None
     discounted_cost: Optional[float] = None
     stock: Optional[int] = None
@@ -414,10 +424,10 @@ class ProductEdit(BaseModel):
 
 class ProductUpdate(BaseModel):
     branch_id: int
-    user_id: int
     product_name: Optional[str] = None
     description: Optional[str] = None
     category_name: Optional[str] = None
+
 
     class Config:
         arbitrary_types_allowed = True
