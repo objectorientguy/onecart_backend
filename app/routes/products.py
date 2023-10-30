@@ -55,9 +55,6 @@ def add_product(product_data: ProductInput, db: Session = Depends(get_db)):
         db.add(new_variant)
         db.commit()
 
-        db.add(new_variant)
-        db.commit()
-
         brand_name = brand.brand_name
         category_name = category.category_name
 
