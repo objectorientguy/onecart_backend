@@ -69,9 +69,7 @@ def add_product(product_data: ProductInput, db: Session = Depends(get_db)):
                     "product_name": new_product.product_name,
                     "description": product_data.description,
                     "category_name": category_name,
-                    "brand": brand_name
-                }
-                }
+                    "brand": brand_name }}
     except IntegrityError as e:
             return {"status": 500, "message": "Internal Server Error", "data": {}}
 

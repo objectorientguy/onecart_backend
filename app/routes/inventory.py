@@ -5,17 +5,45 @@ from app.database import get_db
 router = APIRouter()
 
 
+@router.get("/stock")
+def fetch_stock(db: Session = Depends(get_db)):
+    try:
+        stock = db.query(models.Stock).all()
+        if not stock:
+            return {"status": 404, "message": "No stock data found"}
+        stock_data = []
+        for item in stock:
+            variant = db.query(models.ProductVariant).filter(models.ProductVariant.variant_id == item.variant_id).first()
+            product = db.query(models.Products).filter(models.Products.product_id == item.product_id).first()
+            stock_data.append({
+                "stock_id": item.stock_id,
+                "product_id": item.product_id,
+                "product_name": product.product_name,
+                "product_image": variant.image,
+                "stock": variant.stock,
+                "qt_unit": str(variant.quantity) + " " + variant.measuring_unit,
+                "selling_price": variant.discounted_cost,
+                "variant_id": item.variant_id,
+                "current_stock_count": item.current_stock_count,
+                "barcode_no": item.barcode_no,
+                "reorder_stock_at": item.reorder_stock_at if item.reorder_stock_at else 0,
+                "perishable": item.perishable if item.perishable else ""
+            })
+        return {"status": 200, "message": "Stock data retrieved successfully", "data": stock_data}
+    except Exception as e:
+        print(repr(e))
+        return {"status": 500, "message": "Internal Server Error", "data": {}}
+
+
 @router.get("/barcode/product-name")
 def fetch_product_details(barcode_no: int, db: Session = Depends(get_db)):
     try:
-        if not barcode_no:
-            return {"status": 400, "message": "Invalid barcode!", "data": {}}
         product_variant = db.query(models.ProductVariant).filter(models.ProductVariant.barcode_no == barcode_no).first()
         if not product_variant:
             return {"status": 404, "message": "Variant not found!", "data": {}}
         product_id = product_variant.product_id
         variant_id = product_variant.variant_id
-        product = db.query(models.Products).filter(models.Products.product_id == product_id).first()
+        product = db.query(models.Products).filter_by(models.Products.product_id == product_id).first()
         if not product:
             return {"status": 404, "message": "Product not found!", "data": {}}
         product_name = product.product_name
