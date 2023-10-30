@@ -31,6 +31,7 @@ class Products(Base):
     brand = relationship("Brand")
 
 
+
 class ProductVariant(Base):
     __tablename__ = "product_variants"
 
@@ -50,7 +51,7 @@ class ProductVariant(Base):
     product_id = Column(BIGINT, ForeignKey("products.product_id", ondelete="CASCADE"), nullable=False)
     branch_id = Column(BIGINT, ForeignKey("branch.branch_id", ondelete="CASCADE"), nullable=False)
 
-    product = relationship("ProductsTable")
+    product = relationship("Products")
     branch = relationship("Branch")
 
 
@@ -513,5 +514,5 @@ class Stock(Base):
     date_of_shipment = Column(TIMESTAMP(timezone=True), nullable=True, server_default=text('now()'))
     expiry_date = Column(String, nullable=True)
 
-    product = relationship("ProductsTable")
+    product = relationship("Products")
     variant = relationship("ProductVariant")

@@ -1,3 +1,6 @@
+from http.client import HTTPException
+from turtle import update
+
 from fastapi import Response, Depends, Query, APIRouter
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -5,54 +8,39 @@ from sqlalchemy.orm import Session
 from app import models, schemas
 from app.database import get_db
 from app.models import Products, Brand, Category, Branch
-from app.schemas import ProductInput, ProductVariant
+from app.schemas import ProductInput, ProductVariant, ProductUpdate
 
 router = APIRouter()
+
 
 
 @router.post('/addProduct')
 def add_product(product_data: ProductInput, db: Session = Depends(get_db)):
     try:
-        existing_product = db.query(Products).filter(
-            Products.product_name == product_data.product_name).first()
 
-        if existing_product:
-            return {"status": 400, "message": "Product already exists!", "data": {}}
-
-        brand = db.query(Brand).filter(
-            Brand.brand_name == product_data.brand_name).first()
+        brand = db.query(models.Brand).filter(models.Brand.brand_name == product_data.brand_name).first()
 
         if not brand:
-            return {"status": 204, "message": "Brand not found", "data": {}}
+            return {"status": 400, "message": "Brand not found", "data": {}}
 
-        category = db.query(Category).filter(
-            Category.category_name == product_data.category_name).first()
+        category = db.query(models.Category).filter(models.Category.category_name == product_data.category_name).first()
 
         if not category:
-            category = Category(category_name=product_data.category_name)
+            category = models.Category(category_name=product_data.category_name)
             db.add(category)
             db.commit()
             db.refresh(category)
 
-        barcode_no = product_data.barcode_no if product_data.barcode_no is not None else ""
-
-        branch = db.query(Branch).filter(
-            Branch.branch_id == product_data.branch_id).first()
-
-        if not branch:
-            return {"status": 204, "message": "Branch not found", "data": {}}
-
-        new_product = Products(
+        new_product = models.Products(
             product_name=product_data.product_name,
             brand_id=brand.brand_id,
             category_id=category.category_id
         )
-
         db.add(new_product)
         db.commit()
         db.refresh(new_product)
 
-        new_variant = ProductVariant(
+        new_variant = models.ProductVariant(
             variant_cost=product_data.variant_cost,
             measuring_unit=product_data.measuring_unit,
             brand_name=product_data.brand_name,
@@ -61,10 +49,14 @@ def add_product(product_data: ProductInput, db: Session = Depends(get_db)):
             image=product_data.image,
             stock=product_data.stock,
             description=product_data.description,
-            product=new_product,
+            product_id=new_product.product_id,
             branch_id=product_data.branch_id,
-            is_published=product_data.is_published
+            is_published=product_data.is_published,
+            barcode_no=product_data.barcode_no
         )
+        db.add(new_variant)
+        db.commit()
+
         db.add(new_variant)
         db.commit()
 
@@ -86,59 +78,62 @@ def add_product(product_data: ProductInput, db: Session = Depends(get_db)):
         if "duplicate key value violates unique constraint" in str(e):
             return {"status": 400, "message": "Check the product name or categories or barcode no", "data": {}}
         else:
-            print("Database Error:", str(e))
-            raise
+            return {"status": 500, "message": "Internal Server Error", "error": str(e)}
+
 
 
 @router.post('/addProductVariant')
-def add_product_variant(product_id: int, variant_data: ProductVariant, db: Session = Depends(get_db)):
+def add_product_variant(product_id: int, product_data: schemas.ProductVariant, db: Session = Depends(get_db)):
     try:
-        existing_product_variant = db.query(models.ProductVariant).filter(
-            models.ProductVariant.product_id == product_id).first()
+
+        existing_product_variant = db.query(models.ProductVariant).filter(models.ProductVariant.product_id == product_id).first()
 
         if not existing_product_variant:
-            return {"status": 204, "message": "Product not found", "data": {}}
+            return {"status": 204, "message": "Product Variant Not found", "data": {}}
 
-        product = existing_product_variant.product
+        product = db.query(models.Products).filter(models.Products.product_id == product_id).first()
+
+        if not product:
+            return {"status": 204, "message": "Product Not found", "data": {}}
 
         new_variant = models.ProductVariant(
-            variant_cost=variant_data.variant_cost,
+            variant_cost=product_data.variant_cost,
             brand_name=existing_product_variant.brand_name,
             branch_id=existing_product_variant.branch_id,
-            user_id=existing_product_variant.user_id,
-            discounted_cost=variant_data.discounted_cost,
-            discount=variant_data.discount,
-            stock=variant_data.stock,
-            quantity=variant_data.quantity,
-            measuring_unit=variant_data.measuring_unit,
+            discounted_cost=product_data.discounted_cost,
+            stock=product_data.stock,
+            quantity=product_data.quantity,
+            measuring_unit=product_data.measuring_unit,
             description=existing_product_variant.description,
-            product_id=product.product_id,
-            barcode_no=variant_data.barcode_no,
-            image=variant_data.image,
-            is_published=variant_data.is_published,
-            ratings=variant_data.ratings)
+            product_id=product_id,
+            barcode_no=product_data.barcode_no,
+            image=product_data.image,
+            is_published=product_data.is_published
+        )
+
         db.add(new_variant)
         db.commit()
 
         return {"status": 200, "message": "Product variant added successfully", "data": {}}
-    except Exception:
-        return {"status": 500, "message": "Internal Server Error", "data": {}}
+    except Exception as e:
+        return {"status": 500, "message": "Internal Server Error", "error": str(e)}
+
 
 
 @router.put('/editProductVariant')
-def edit_product_variant(variant_data: schemas.ProductEdit, db: Session = Depends(get_db)):
+def edit_product_variant(variant_id: int, variant_data: schemas.ProductEdit, db: Session = Depends(get_db)):
     try:
         existing_variant = db.query(models.ProductVariant).filter(
-            models.ProductVariant.variant_id == variant_data.variant_id,
-            models.ProductVariant.product_id == variant_data.product_id,
-            models.ProductVariant.branch_id == variant_data.branch_id,
-            models.ProductVariant.user_id == variant_data.user_id).first()
+            models.ProductVariant.variant_id == variant_id,
+
+            models.ProductVariant.branch_id == variant_data.branch_id).first()
+
 
         if not existing_variant:
             return {"status": 204, "detail": "Product variant not found", "data": {}}
 
         # Update the fields based on the provided data
-        for field, value in variant_data.model_dump().items():
+        for field, value in variant_data.dict().items():
             if value is not None:
                 setattr(existing_variant, field, value)
 
@@ -195,12 +190,12 @@ def delete_product_by_id(product_id: int = Query(None, description="Product ID t
         if product_id is None:
             return {"status": 400, "message": "product_id is required", "data": {}}
 
-        product = db.query(models.ProductsTable).filter(models.ProductsTable.product_id == product_id).first()
+        product = db.query(models.Products).filter(models.Products.product_id == product_id).first()
 
         if not product:
             return {"status": 204, "message": "Product not found", "data": {}}
 
-        db.query(models.ProductsTable).filter(models.ProductsTable.product_id == product_id).delete()
+        db.query(models.Products).filter(models.Products.product_id == product_id).delete()
         db.commit()
 
         return {"status": 200, "message": "Product deleted successfully", "data": {}}
@@ -257,7 +252,7 @@ def get_product_variant_details(
         db: Session = Depends(get_db)
 ):
     try:
-        product = db.query(models.ProductsTable).filter(models.ProductsTable.product_id == product_id).first()
+        product = db.query(models.Products).filter(models.Products.product_id == product_id).first()
 
         if not product:
             return {"status": 204, "message": "Product Not Found", "data": {}}
@@ -301,21 +296,20 @@ def get_product_variant_details(
         return {"status": 500, "message": "Internal Server Error", "data": {}}
 
 
+
+
 @router.get("/productsByCategory")
 def get_products_by_categories(db: Session = Depends(get_db)):
     try:
-
+        # Find all distinct category names with is_published = true
         category_names = (
-            db.query(Category.category_name)
-            .join(Products, Products.category_id == Category.category_id)
-            .join(ProductVariant, ProductVariant.product_id == Products.product_id)
-            .filter(ProductVariant.is_published.is_(True))
+            db.query(models.Category.category_name)
+            .join(models.Products, models.Products.category_id == models.Category.category_id)
+            .join(models.ProductVariant, models.ProductVariant.product_id == models.Products.product_id)
+            .filter(models.ProductVariant.is_published.is_(True))
             .distinct()
             .all()
         )
-
-        if not category_names:
-            return {"status": 204, "message": "No categories found with published products", "data": []}
 
         response_data = []
 
@@ -323,11 +317,11 @@ def get_products_by_categories(db: Session = Depends(get_db)):
             category_name = category_name[0]
 
             products = (
-                db.query(Products)
-                .join(ProductVariant, Products.product_id == ProductVariant.product_id)
+                db.query(models.Products)
+                .join(models.ProductVariant, models.Products.product_id == models.ProductVariant.product_id)
                 .filter(
-                    Category.category_name == category_name,
-                    ProductVariant.is_published.is_(True)
+                    models.Category.category_name == category_name,
+                    models.ProductVariant.is_published.is_(True)
                 )
                 .all()
             )
@@ -337,10 +331,10 @@ def get_products_by_categories(db: Session = Depends(get_db)):
 
                 for product in products:
                     product_variants = (
-                        db.query(ProductVariant)
+                        db.query(models.ProductVariant)
                         .filter(
-                            ProductVariant.product_id == product.product_id,
-                            ProductVariant.is_published.is_(True)
+                            models.ProductVariant.product_id == product.product_id,
+                            models.ProductVariant.is_published.is_(True)
                         )
                         .all()
                     )
@@ -348,15 +342,12 @@ def get_products_by_categories(db: Session = Depends(get_db)):
                     if product_variants:
                         serialized_variants = []
                         for variant in product_variants:
+                            variant_images = variant.image if variant.image else []
                             serialized_variants.append({
+                                "product_id": product.product_id,
+                                "product_name": product.product_name,
                                 "variant_id": variant.variant_id,
-                                "variant_cost": variant.variant_cost,
-                                "discounted_cost": variant.discounted_cost,
-                                "stock": variant.stock,
-                                "quantity": variant.quantity,
-                                "measuring_unit": variant.measuring_unit,
-                                "description": variant.description,
-                                "image": variant.image,
+                                "image": variant_images,
                             })
 
                         serialized_products.append({
@@ -379,50 +370,28 @@ def get_products_by_categories(db: Session = Depends(get_db)):
 
     except Exception as e:
         print(repr(e))
-        return {"status": 500, "message": "Internal Server Error", "data": {}}
+        return {"status": 500, "message": "Internal Server Error", "data": str(e)}
+
+
 
 
 @router.put('/editProduct')
-def edit_product(
-        product_data: schemas.ProductUpdate,
-        product_id: int = Query(..., description="The ID of the product to edit"),
-        db: Session = Depends(get_db)
-):
+def edit_product(product_data: schemas.ProductUpdate, product_id: int = Query(..., description="The ID of the product to edit"), db: Session = Depends(get_db)):
     try:
-        existing_product = db.query(models.ProductsTable).filter(
-            models.ProductsTable.product_id == product_id
-        ).first()
+        existing_product = db.query(models.Products).filter(
+            models.Products.product_id == product_id).first()
 
         if not existing_product:
             return {"status": 204, "message": "Product not found", "data": {}}
-
-        if product_data.category_name and product_data.category_name != existing_product.category.category_name:
-
-            existing_category = db.query(models.Category).filter(
-                models.Category.category_name == product_data.category_name).first()
-
-            if existing_category:
-
-                existing_product.category_id = existing_category.category_id
-            else:
-
-                new_category = models.Category(category_name=product_data.category_name)
-                db.add(new_category)
-                db.commit()
-                db.refresh(new_category)
-
-                existing_product.category_id = new_category.category_id
 
         for field, value in product_data.dict().items():
             if value is not None:
                 setattr(existing_product, field, value)
 
-        product_variant = db.query(models.ProductVariant).filter(
-            models.ProductVariant.product_id == existing_product.product_id
-        ).first()
-
-        if product_variant:
-            product_variant.description = product_data.description
+        # Update the description in associated ProductVariant records
+        db.query(models.ProductVariant).filter(
+            models.ProductVariant.product_id == product_id
+        ).update({"description": product_data.description})
 
         db.commit()
 
@@ -432,3 +401,5 @@ def edit_product(
             return {"status": 400, "message": "Check the product details", "data": {}}
         else:
             return {"status": 500, "message": "Internal Server Error", "error": str(e)}
+
+
