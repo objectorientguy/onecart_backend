@@ -50,7 +50,7 @@ def products_by_categories(branch_id, db):
 
 
 @router.get("/product/categories")
-def get_product_by_categories(branch_id=int, db: Session = Depends(get_db), response_model=schemas.GetBilling):
+def get_product_by_categories(branch_id=int, db: Session = Depends(get_db)):
     try:
         branches = db.query(models.Branch).filter(models.Branch.branch_id == branch_id).all()
         if not branches:

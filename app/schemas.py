@@ -1,6 +1,6 @@
-from typing import Optional, List, Union
+from typing import Optional, List
 from pydantic import BaseModel, EmailStr
-from datetime import date, time, datetime
+from datetime import date, datetime
 
 
 
@@ -144,13 +144,6 @@ class EditAddress(Address):
         from_attributes = True
 
 
-# class OrderItems(BaseModel):
-#     product_id: int
-#     variant: int
-#
-#     class Config:
-#         from_attributes = True
-
 class CartItem(BaseModel):
     cart_id: int
     product_id: int
@@ -166,8 +159,6 @@ class CartSchema(BaseModel):
     customer_contact: int
     coupon_id: int
     products: str
-
-    # creation_time: datetime
 
     class Config:
         from_attributes = True
@@ -193,7 +184,6 @@ class Bookings(BaseModel):
     user_name: str
     user_contact: int
     address_id: int
-    # track_id: int
     order_status: str
     image_status: str
     order_number: str
@@ -253,12 +243,6 @@ class Deals(BaseModel):
     deal_start: str
     deal_end: str
 
-
-# class ShopASSociation(BaseModel):
-#
-#     product_id: int
-#     variant_id: int
-#     shop_id: int
 
 class Feature(BaseModel):
     shop_id: int
@@ -529,19 +513,6 @@ class OrderList(BaseModel):
     customer_contact: int
 
 
-class Inventory(BaseModel):
-    product_image: str
-    product_name: str
-    stock_qty_unit: str
-    stock_order_count: int
-    price: float
-    reorder_stock: int
-    supplier: str
-    barcode: int
-    date_of_shipment: str
-    expiry_of_product: str
-
-
 class Stock(BaseModel):
     stock_id: int | None = None
     stock_order_count: int
@@ -549,8 +520,27 @@ class Stock(BaseModel):
     expiry_date: str | None = ""
 
 
+class AddStock(BaseModel):
+    supplier: str
+    unit_price: float
+    shipment_date: str
+    expiry_of_product: str
+    incoming_stock_count: int
+
+
 class UpdateStock(BaseModel):
-    stock_order_count: int
+    supplier: str
+    unit_price: float
+    shipment_date: str
+    expiry_of_product: str
+    incoming_stock_count: int
+
+    def update(self, data, synchronize_session=False):
+        for key, value in data.items():
+            setattr(self, key, value)
+
+        if synchronize_session:
+            self.session.flush()
 
 
 class AddEmployee(BaseModel):
@@ -567,7 +557,26 @@ class ChangePassword(BaseModel):
     confirm_password: str
 
 
-# class GetBilling(BaseModel):
-#     category: Category
-#     product: Product
-#     product_variant: ProductVariant
+class Inventory(BaseModel):
+    product_image: str
+    product_name: str
+    quantity_unit: str
+    price_value: float
+    stock: int
+    selling_price: float
+    reorder_stock_at: int
+    barcode: int
+
+    class Config:
+        from_attributes = True
+
+
+class History(BaseModel):
+    supplier: str
+    unit_price: float
+    shipment_date: str
+    expiry_of_product: str
+    incoming_stock: int
+
+    class Config:
+        from_attributes = True

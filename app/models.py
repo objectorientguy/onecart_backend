@@ -1,9 +1,9 @@
-from sqlalchemy import Column, String, BIGINT, Date, JSON, ForeignKey, CheckConstraint, Time, Boolean, Float, Integer, DateTime
+from sqlalchemy import Column, String, BIGINT, Date, JSON, ForeignKey, CheckConstraint, Boolean, Float, Integer
 from sqlalchemy.orm import validates, relationship
 from sqlalchemy.sql.expression import text
 from sqlalchemy.sql.sqltypes import TIMESTAMP
+
 from .database import Base
-from sqlalchemy.orm import composite
 
 
 class Category(Base):
@@ -375,6 +375,7 @@ class Brand(Base):
 #     customer = relationship("User")
 
 
+
 class Companies(Base):
     __tablename__ = "companies"
 
@@ -505,13 +506,26 @@ class Stock(Base):
     __tablename__ = "stock"
 
     stock_id = Column(Integer, primary_key=True, nullable=False, autoincrement=True)
-    stock_order_count = Column(Integer, nullable=False)
-    seller = Column(String, nullable=True)
-    barcode_no = Column(Integer, nullable=False)
     product_id = Column(Integer, ForeignKey("products.product_id", ondelete="CASCADE"), nullable=False)
     variant_id = Column(Integer, ForeignKey("product_variants.variant_id", ondelete="CASCADE"), nullable=False)
-    date_of_shipment = Column(TIMESTAMP(timezone=True), nullable=True, server_default=text('now()'))
-    expiry_date = Column(String, nullable=True)
+    current_stock_count = Column(Integer, nullable=False)
+    barcode_no = Column(Integer, nullable=False)
+    reorder_stock_at = Column(Integer, nullable=True)
+    perishable = Column(Boolean, nullable=True)
 
     product = relationship("Products")
     variant = relationship("ProductVariant")
+
+
+class History(Base):
+    __tablename__ = "stock_history"
+
+    history_id = Column(Integer, primary_key=True, nullable=False, autoincrement=True)
+    supplier = Column(String, nullable=True)
+    unit_price = Column(Float, nullable=True)
+    shipment_date = Column(Date, nullable=True)
+    expiry_of_product = Column(Date, nullable=True)
+    incoming_stock_count = Column(Integer, nullable=False)
+    stock_id = Column(Integer, ForeignKey("stock.stock_id", ondelete="CASCADE"), nullable=False)
+
+    stock = relationship("Stock")
