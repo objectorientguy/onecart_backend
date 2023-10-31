@@ -98,6 +98,14 @@ def add_product_variant(product_id: int, product_data: schemas.ProductVariant, d
             image=product_data.image,
             is_published=product_data.is_published
         )
+        new_stock = models.Stock(
+            product_id=new_product.product_id,
+            variant_id=new_variant.variant_id,
+            current_stock_count=new_variant.stock,
+            barcode_no=product_data.barcode_no
+        )
+        db.add(new_stock)
+        db.commit()
         db.add(new_variant)
         db.commit()
         return {"status": 200, "message": "Product variant added successfully", "data": {}}
@@ -255,7 +263,6 @@ def get_product_variant_details(
 @router.get("/productsByCategory")
 def get_products_by_categories(db: Session = Depends(get_db)):
     try:
-        # Find all distinct category names with is_published = true
         category_names = (
             db.query(models.Category.category_name)
             .join(models.Products, models.Products.category_id == models.Category.category_id)

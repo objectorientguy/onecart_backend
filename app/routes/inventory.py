@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from app import schemas, models
 from app.database import get_db
 router = APIRouter()
@@ -11,7 +11,6 @@ def fetch_product_details(barcode_no: int, db: Session = Depends(get_db)):
         stock = db.query(models.Stock).filter(models.Stock.barcode_no == barcode_no).first()
         if not stock:
             return {"status": 404, "message": "Variant not found!", "data": {}}
-
         variant = db.query(models.ProductVariant).filter(models.ProductVariant.variant_id == stock.variant_id).first()
         product = db.query(models.Products).filter(models.Products.product_id == stock.product_id).first()
         stock_data = {
@@ -45,9 +44,9 @@ def fetch_stock(db: Session = Depends(get_db)):
         for item in stock:
             variant = db.query(models.ProductVariant).filter(models.ProductVariant.variant_id == item.variant_id).first()
             product = db.query(models.Products).filter(models.Products.product_id == item.product_id).first()
-            if product is not None:  # Check if product is not None
+            if product is not None:
                 product_name = product.product_name
-            if variant is not None:  # Check if variant is not None
+            if variant is not None:
                 product_image = variant.image
                 selling_price = variant.discounted_cost
                 qt_unit = str(variant.quantity) + " " + variant.measuring_unit
